@@ -1,0 +1,444 @@
+import { EmployeeLeave, Employee, LeaveTypes, Company, EmployeeLeaveBalance } from "../utils/join.js";
+import fs from "fs";
+import path from "path";
+
+const createLeave = async (req, res) => {
+    const {
+        em_username,
+        leave_type,
+        comp_fname,
+        start_date,
+        end_date,
+        apply_date,
+        leave_duration,
+        reason,
+        created_by,
+    } = req.body;
+
+    const leaveattachment = req.file ? req.file.filename : null;
+    // if (!leaveattachment) {
+    //     return res.status(400).json({ message: "Leave attachment is required" });
+    // }
+    console.log("Leave Attachment:", leaveattachment);
+    console.log("Request Body:", req.body);
+
+    try {
+        
+    const duration = parseFloat(leave_duration);
+    if (isNaN(duration) || !(duration === 0.5 || duration >= 1)) {
+        return res.status(400).json({
+            message: "Leave duration must be at least 1 day or exactly 0.5 for half-day leave.",
+        });
+    }
+
+        const employee = await Employee.findOne({ where: { em_username } });
+        if (!employee) {
+            return res.status(404).json({ message: "Employee not found" });
+        }
+        const employeeId = employee.em_code;
+        console.log("Employee ID:", employee.em_code);
+
+        const leaveType = await LeaveTypes.findOne({ where: { name: req.body.leave_type } });
+        if (!leaveType) return res.status(400).json({ message: "Invalid leave type" });
+
+        console.log("Leave Type ID:", leaveType.type_id);
+        console.log("Leave Type Name:", leaveType.name);
+
+        const company = await Company.findOne({ where: { comp_fname } });
+        if (!company) {
+            return res.status(404).json({ message: "Company not found" });
+        }
+       if (leaveType.name !== "Leave Without Pay") {
+        const credit = await EmployeeLeaveBalance.sum('number_of_days', {
+            where: {
+              emp_id: employeeId,
+              leave_type_id: leaveType.type_id,
+              leave_status: "Credit"
+            }
+          });
+
+          console.log("Credit:", credit);
+
+        if (credit === null) {
+        return res.status(400).json({
+            message: `No credit found for this leave type.`
+        });
+       }
+          
+          const debit = await EmployeeLeaveBalance.sum('number_of_days', {
+            where: {
+              emp_id: employeeId,
+              leave_type_id: leaveType.type_id,
+              leave_status: "Debit"
+            }
+          });
+
+          console.log("Debit:", debit);
+          
+          const available = (credit || 0) + (debit || 0);
+          console.log("Available Leave Days:", available);
+          
+          if (leave_duration > available) {
+            return res.status(400).json({
+              message: `Insufficient leave days for ${leave_type}. Remaining leave days: ${available}`
+            });
+          }
+ }
+       
+    //     const usedDays = await EmployeeLeaveBalance.sum("number_of_days", {
+    //         where: {
+    //             emp_id: employeeId,
+    //             leave_type_id: leaveType.type_id,
+    //             leave_status: "approved",
+    //         },
+    //     });
+
+    //     const totalEntitled = leaveType.balance;
+    //     const used = usedDays || 0;
+    //     const remaining = totalEntitled - used;
+
+    //     if (leave_duration > remaining) {
+    //         return res.status(400).json({
+    //             message: `Insufficient balance for ${leave_type}. Remaining: ${remaining} day(s).`,
+    //         });
+    //     }
+
+        const leave = await EmployeeLeave.create({
+            em_id: employeeId,
+            comp_id: company.comp_id,
+            typeid: leaveType.type_id,
+            leave_type,
+            start_date,
+            end_date,
+            leave_duration,
+            apply_date,
+            reason,
+            leave_status: "Not Approve",
+            leaveattachment,
+            created_by,
+            update_id: employeeId,
+            update_date: new Date(),
+            created_at: new Date(),
+        });
+
+        console.log("Leave Created:", leave);
+        return res.status(201).json({ message: "Leave created successfully", leave });
+
+    } catch (error) {
+        console.error("Error creating leave:", error);
+        return res.status(500).json({ message: "Server side error" });
+    }
+}
+
+// const rejectLeave = async (req, res) => {
+//     const { id } = req.params;
+//     const { reject_reason } = req.body;
+
+//     try {
+//         const leave = await EmployeeLeave.findOne({ where: { id } });
+//         if (!leave) {
+//             return res.status(404).json({ message: "Leave not found" });
+//         }
+//         if (leave.leave_status === 'rejected') {
+//             return res.status(400).json({ message: "Leave already rejected" });
+//         }
+
+//         const result = await leave.update({
+//             leave_status: 'rejected',
+//             reject_reason: reject_reason || null,
+//         });
+
+//         return res.status(200).json({ message: "Leave request rejected", result });
+
+//     } catch (error) {
+//         console.log("Error rejecting leave: ", error);
+//         res.status(500).json({ message: "Server side error from reject leave", error });
+//     }
+// }
+
+const getLeavesByStatusForEmployee = async (req, res) => {
+
+    const { em_username, status, leave_type_id } = req.query;
+    try {
+        const employee = await Employee.findOne({ where: { em_username } });
+        if (!employee) {
+            return res.status(404).json({ message: "Employee not found" });
+        }
+
+        const leaves = await EmployeeLeave.findAll({
+            where: {
+                em_id: employee.em_code,
+                leave_status: status,
+                typeid: leave_type_id
+            },
+        });
+        console.log("leave_status",leaves.leave_status);
+       console.log("leaves: ", leaves);
+        return res.status(200).json({ leaves });
+    } catch (error) {
+        console.error("Error fetching leaves by status for employee:", error);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+
+// const avalibaleLeaves = async (req, res) => {
+//     const{ em_username,leave_type,leave_duration } = req.query;
+//     try {
+
+//         const employee = await Employee.findOne({ where: { em_username } });
+//         if (!employee) return res.status(404).json({ message: "Employee not found" });
+
+//         const employeeId = employee.em_code;
+
+//         const leaveType = await LeaveType.findOne({ where:{
+//             name: leave_type
+//         }});
+//         if (!leaveType) return res.status(400).json({ message: "Invalid leave type" });
+
+    
+//               const usedDays = await EmployeeLeaveBalance.sum("number_of_days", {
+//                 where: {
+//                     emp_id: employeeId,
+//                     leave_type_id: leaveType.type_id,
+//                     leave_status: "approved",
+//                 },
+//             });
+
+//             const totalEntitled = leaveType.balance;
+//             const used = usedDays || 0;
+//             const remaining = totalEntitled - used;
+    
+//             if (leave_duration > remaining) {
+//                 return res.status(400).json({
+//                     message: `Insufficient balance for ${leave_type}. Remaining: ${remaining} day(s).`,
+//                 });
+//             }
+//             res.json({ remaining });
+
+//     } catch (error) {
+//         console.error("Error fetching leaves by status for employee:", error);
+//         return res.status(500).json({ message: "Server error" });
+//     }
+// }
+
+const getFileAttachment = async(req, res) => {
+    const filename = req.params.filename;   
+    const filePath = path.resolve('..','uploads', filename);
+
+    fs.access(filePath, fs.constants.F_OK, (err) => {
+        if (err) {
+            res.status(404).send('File not found');
+        } 
+        res.sendFile(filePath);
+    });
+
+}
+
+const updateLeaveApplication = async(req, res) => {
+    const {id} = req.params;
+    const updateData = req.body;
+
+    try {
+        const leave = await EmployeeLeave.findByPk(id);
+        if (!leave) {
+            return res.status(404).json({ message: "Leave not found" });
+        }
+
+        const updatedLeaveTypeName = updateData.leave_type || leave.leave_type;
+
+        let updatedLeaveDuration = updateData.leave_duration || leave.leave_duration;
+
+        updatedLeaveDuration = parseFloat(updatedLeaveDuration);
+
+
+        if (!(updatedLeaveDuration === 0.5 || updatedLeaveDuration >= 1))
+            {
+                console.log("Invalid input:", updatedLeaveDuration);
+            return res.status(400).json({
+                message: "Leave duration must be at least 1 day or exactly 0.5 for half-day leave.",
+            });
+        }
+
+        const leaveType = await LeaveTypes.findOne({ where: { name: updatedLeaveTypeName } });
+        if (!leaveType) {
+            return res.status(400).json({ message: "Invalid leave type" });
+        }
+
+        if (updateData.leave_type) {
+            updateData.typeid = leaveType.type_id;
+        }
+
+        const usedDays = await EmployeeLeaveBalance.sum("number_of_days", {
+            where: {
+                emp_id: leave.em_id,
+                leave_type_id: leaveType.type_id,
+                leave_status: "approved",
+            },
+        });
+
+        const totalEntitled = leaveType.balance;
+        const used = usedDays || 0;
+        const remaining = totalEntitled - used;
+
+        if (updatedLeaveDuration > remaining) {
+
+            console.log("Insufficient balance for", updatedLeaveTypeName, ". Remaining:", remaining, "day(s).");
+
+            return res.status(400).json({
+                message: `Insufficient balance for ${updatedLeaveTypeName}. Remaining: ${remaining} day(s).`,
+            });
+        }
+      
+        if(req.file){
+            updateData.leaveattachment = req.file ? req.file.filename : null;
+            console.log("updated attachment",updateData.leaveattachment);
+          
+        }
+        updateData.update_date = new Date();
+
+       const updateResult = await leave.update(updateData);
+        console.log("Leave application updated successfully",updateResult);
+
+        res.status(201).json({ message: 'Leave application updated successfully', data: leave });
+
+        
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "Server error while upadating leave application" });
+    }
+}
+
+const getLeaveRequestsBySupervisor = async (req, res) => {
+  const { supervisorId,status } = req.params;
+
+  try {
+    const subordinates = await Employee.findAll({
+      where: { supervisor_id: (supervisorId) },
+    });
+    console.log(subordinates,"62035236")
+
+    const subordinateIds = subordinates.map(emp => emp.em_id);
+    console.log("subordinateIds:", subordinateIds);
+
+    if (subordinateIds.length === 0) {
+      return res.status(200).json([
+        {
+          message: 'No leave requests found',
+        },
+      ]); 
+    }
+
+    const leaveRequests = await EmployeeLeave.findAll({
+      where: { em_id: subordinateIds,leave_status: status },
+    });
+
+    res.status(200).json({
+        pendingLeaves: leaveRequests
+    });
+  } catch (err) {
+    console.error('Error fetching leave requests:', err);
+    res.status(500).json({ error: 'Failed to get leave requests' });
+  }
+};
+
+
+const approveRejectLeave = async(req, res) => {
+const { id } = req.params;
+const { action, reject_reason } = req.body;
+
+try {
+    const leave = await EmployeeLeave.findOne({ where: { id } });
+    if (!leave) {
+        return res.status(404).json({ message: "Leave not found" });
+    }
+
+    const employee = await Employee.findOne({ where: { em_code: leave.em_id } });
+
+    console.log("employee: ", leave.em_id);
+
+
+    console.log("employee: ", req.user.em_code);
+    console.log("supervisor_id: ", employee.supervisor_id);
+    console.log("employee.em_code: ", employee.em_code);
+    console.log("employee",employee)
+
+    if (!employee || employee.supervisor_id !== req.user.em_code) {
+        return res.status(403).json({ message: "You are not authorized to approve/reject this leave" });
+    }
+
+    console.log("leave_type_id",employee.typeid,"employee.em_id",employee.em_id);
+    if (action === "approve") {
+
+     if (leave.typeid !== 20) {
+
+    if (employee.typeid !== 20) {
+        const credit = await EmployeeLeaveBalance.sum('number_of_days', {
+        where: {
+          emp_id: employee.em_id,
+          leave_type_id: employee.typeid,
+          leave_status: "Credit"
+        }
+      });
+
+      console.log("Credit:", credit);
+
+      if (credit === null) {
+        return res.status(400).json({
+            message: `No credit found for this leave type.`
+        });
+    }
+    
+      const debit = await EmployeeLeaveBalance.sum('number_of_days', {
+        where: {
+          emp_id: employee.em_id,
+          leave_type_id: employee.typeid,
+          leave_status: "Debit"
+        }
+      });
+      
+
+        console.log("Debit:", debit);
+
+        const availableBalance = (credit || 0) + (debit || 0);
+        console.log("Available Leave Days:", availableBalance);
+
+        if (leave.leave_duration > availableBalance) {
+        return res.status(400).json({
+            message: `Insufficient leave days for ${leave.leave_type}. Remaining leave days: ${availableBalance}`
+        });
+    }            
+            const balanceCreate = await EmployeeLeaveBalance.create({
+                request_id: leave.id,
+                comp_id: leave.comp_id,
+                emp_id: leave.em_id,
+                leave_type_id: leave.typeid,
+                number_of_days: -Math.abs(leave.leave_duration),
+                add_date: new Date(),
+                leave_status: 'Debit',
+                leave_upload_date: leave.created_at
+            })
+            console.log("balanceCreate",balanceCreate);
+        }
+    }
+        leave.leave_status = "Approve";
+        
+    }else if (action === "reject") {
+        leave.leave_status = "Rejected";
+        leave.reject_reason = reject_reason;
+    }
+
+    leave.approved_by = req.user.em_code;
+    leave.approved_at = new Date();
+    const result = await leave.save();
+
+    return res.status(200).json({ message: "Leave request updated" ,result});
+}
+    catch (error) {
+        console.log("Error rejecting leave: ", error);
+        res.status(500).json({ message: "Server side error from reject leave", error });
+    }
+
+}
+
+export { createLeave, getLeavesByStatusForEmployee ,getFileAttachment,updateLeaveApplication,approveRejectLeave,getLeaveRequestsBySupervisor};
