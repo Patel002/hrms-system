@@ -6,7 +6,6 @@ import 'package:file_selector/file_selector.dart';
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-
 class LeaveApplicationPage extends StatefulWidget {
 const LeaveApplicationPage({super.key});
 
@@ -54,7 +53,6 @@ if (token != null) {
     compFname = payload['comp_fname'];
   });
 }
-
 }
 
 Future<void> fetchLeaveTypes() async {
@@ -165,6 +163,8 @@ if(startDate !=null && endDate !=null){
            });
          });
 
+           _resetForm();
+
       } else {
         final error = jsonDecode(responseBody);
         _showCustomSnackBar(
@@ -189,6 +189,18 @@ if(startDate !=null && endDate !=null){
       isLoading = false;
     });
   }
+
+  void _resetForm() {
+  setState(() {
+    _formKey.currentState?.reset();
+    selectedLeaveType = null;
+    reason = null;
+    startDate = null;
+    endDate = null;
+    selectedFile = null;
+    type = null;
+  });
+}
 
   void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
     final snackBar = SnackBar(

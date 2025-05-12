@@ -15,7 +15,7 @@ const EmployeeLeaveBalance = sequelize.define('employee_leave_balance',{
         allowNull: false
     },
     leave_type_id: {
-        type: DataTypes.STRING,
+        type: DataTypes.INTEGER,
         allowNull: false
     },
     number_of_days: {

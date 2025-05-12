@@ -1,5 +1,17 @@
 import { sequelize } from './database/db.js';
 import { app } from  './app.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// console.log({
+//   DB_DATABASENAME: process.env.DB_DATABASENAME,
+//   DB_USERNAME: process.env.DB_USERNAME,
+//   DB_PASSWORD: process.env.DB_PASSWORD,
+//   DB_HOST: process.env.DB_HOST,
+//   DB_PORT: process.env.DB_PORT,
+// });
+
 
 const PORT = 8071;
 

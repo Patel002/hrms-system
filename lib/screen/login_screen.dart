@@ -46,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final data = jsonDecode(response.body);
 
-      final responseBody = await data.stream.bytesToString();
+      final responseBody = await data;
       
       if (response.statusCode == 200 && data['token'] != null) {
         await prefs.setString('token', data['token']);
@@ -119,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Icon(Icons.lock_outline, size: 64, color: Color(0XFF213448)),
                     const SizedBox(height: 16),
                     Text(
-                      'Welcome Back',
+                      'Welcome',
                       style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
@@ -133,7 +133,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Username',
                         prefixIcon: Icon(Icons.person),
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -143,7 +145,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Password',
                         prefixIcon: Icon(Icons.lock),
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                          borderSide: BorderSide(color:Color(0XFF213448) ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),

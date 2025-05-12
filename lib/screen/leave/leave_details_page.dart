@@ -53,7 +53,6 @@ class LeaveDetailPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Status Badge
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
@@ -269,8 +268,8 @@ class LeaveDetailPage extends StatelessWidget {
   }
 
   IconData _getStatusIcon(String status) {
-    if (status.toLowerCase() == 'approved') {
-      return Icons.check_circle_outline;
+    if (status.toLowerCase() == 'approve') {
+      return Icons.verified;
     } else if (status.toLowerCase() == 'rejected') {
       return Icons.cancel_outlined;
     } else {

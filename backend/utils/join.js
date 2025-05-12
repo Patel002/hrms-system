@@ -37,7 +37,16 @@ EmployeeLeave.belongsTo(LeaveTypes, {
   as: "leaveTypeInfo"
 });
 
+EmployeeLeaveBalance.belongsTo(LeaveTypes, {
+  foreignKey: 'leave_type_id',
+  targetKey: 'type_id',
+  as: 'leave_type',
+});
 
+LeaveTypes.hasMany(EmployeeLeaveBalance, {
+  foreignKey: 'leave_type_id',
+  sourceKey: 'type_id',
+});
 
 
 export {

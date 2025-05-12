@@ -51,9 +51,8 @@ Future<void> loadUserPermissions() async {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            // Optional: Header
             DrawerHeader(
-              decoration: BoxDecoration(color: theme.colorScheme.primary),
+              decoration: BoxDecoration(color: Color(0XFF213448)),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -66,7 +65,7 @@ Future<void> loadUserPermissions() async {
 
             ExpansionTile(
               title: const Text('Leave'),
-              leading: const Icon(Icons.beach_access),
+              leading: const Icon(Icons.apps),
               initiallyExpanded: _isLeaveExpanded,
               onExpansionChanged: (expanded) {
                 setState(() => _isLeaveExpanded = expanded);
@@ -78,7 +77,7 @@ Future<void> loadUserPermissions() async {
                   onTap: () => Navigator.pushNamed(context, '/holiday'),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.send),
+                  leading: const Icon(Icons.eject),
                   title: const Text('leave Application'),
                   onTap: () => Navigator.pushNamed(context, '/leave'),
                 ),
@@ -87,9 +86,14 @@ Future<void> loadUserPermissions() async {
                   title: const Text('Leave Status'),
                   onTap: () => Navigator.pushNamed(context, '/leave-status'),
                 ),
+                ListTile(
+                  leading: const Icon(Icons.stacked_bar_chart_sharp),
+                  title: const Text('Leave Balance'),
+                  onTap: () => Navigator.pushNamed(context, '/leave-balance'),
+                ),
                 if (userRole == 'super admin' || isSupervisor)
                 ListTile(
-                  leading: const Icon(Icons.request_page),
+                  leading: const Icon(Icons.hourglass_bottom),
                   title: const Text('Leave Request'),
                   onTap: () => Navigator.pushNamed(context, '/leave-request'),
                 ),
