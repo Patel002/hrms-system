@@ -244,13 +244,16 @@ const updateLeaveApplication = async(req, res) => {
         if (!leave) {
             return res.status(404).json({ message: "Leave not found" });
         }
+        
+        console.log("leave",updateData);
 
         const updatedLeaveTypeName = updateData.leave_type || leave.leave_type;
+
+        console.log("updatedLeaveTypeName",updatedLeaveTypeName);
 
         let updatedLeaveDuration = updateData.leave_duration || leave.leave_duration;
 
         updatedLeaveDuration = parseFloat(updatedLeaveDuration);
-
 
         if (!(updatedLeaveDuration === 0.5 || updatedLeaveDuration >= 1))
             {
@@ -269,35 +272,54 @@ const updateLeaveApplication = async(req, res) => {
             updateData.typeid = leaveType.type_id;
         }
 
-        const usedDays = await EmployeeLeaveBalance.sum("number_of_days", {
+       if (leaveType.name !== "Leave Without Pay") {
+        const credit = await EmployeeLeaveBalance.sum('number_of_days', {
             where: {
-                emp_id: leave.em_id,
-                leave_type_id: leaveType.type_id,
-                leave_status: "approved",
-            },
+              emp_id: leave.em_id,
+              leave_type_id: leaveType.type_id,
+              leave_status: "Credit"
+            }
+          });
+
+          console.log("Credit:", credit);
+
+        if (credit === null) {
+        return res.status(400).json({
+            message: `No credit found for this leave type.`
         });
+       }
+          
+          const debit = await EmployeeLeaveBalance.sum('number_of_days', {
+            where: {
+              emp_id: leave.em_id,
+              leave_type_id: leaveType.type_id,
+              leave_status: "Debit"
+            }
+          });
 
-        const totalEntitled = leaveType.balance;
-        const used = usedDays || 0;
-        const remaining = totalEntitled - used;
-
-        if (updatedLeaveDuration > remaining) {
-
-            console.log("Insufficient balance for", updatedLeaveTypeName, ". Remaining:", remaining, "day(s).");
-
+          console.log("Debit:", debit);
+          
+          const available = (credit || 0) + (debit || 0);
+          console.log("Available Leave Days:", available);
+          
+          if (leave_duration > available) {
             return res.status(400).json({
-                message: `Insufficient balance for ${updatedLeaveTypeName}. Remaining: ${remaining} day(s).`,
+              message: `Insufficient leave days for ${leave.leave_type}. Remaining leave days: ${available}`
             });
-        }
-      
+          }
+ }    
         if(req.file){
             updateData.leaveattachment = req.file ? req.file.filename : null;
             console.log("updated attachment",updateData.leaveattachment);
           
         }
         updateData.update_date = new Date();
+        console.log("updated date",updateData.update_date);
 
-       const updateResult = await leave.update(updateData);
+        updateData.update_id = leave.em_id;
+        console.log("updated id",updateData.update_id);
+
+        const updateResult = await leave.update(updateData);
         console.log("Leave application updated successfully",updateResult);
 
         res.status(201).json({ message: 'Leave application updated successfully', data: leave });
@@ -397,7 +419,6 @@ try {
         }
       });
       
-
         console.log("Debit:", debit);
 
         const availableBalance = (credit || 0) + (debit || 0);

@@ -474,7 +474,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isApproved = widget.leave['leave_status']?.toLowerCase() == 'approved';
+    final isApproved = widget.leave['leave_status']?.toLowerCase() == 'approve';
     final isRejected = widget.leave['leave_status']?.toLowerCase() == 'rejected';
     final hasAttachment = widget.leave['leaveattachment'] != null && widget.leave['leaveattachment'] != '';
 
@@ -547,7 +547,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                                 child: Text(type, style: const TextStyle(fontSize: 13)),
                               );
                             }).toList(),
-                            onChanged: (value) {
+                            onChanged: (isApproved || isRejected) ? null : (value) {
                               setState(() {
                                 selectedLeaveType = value;
                               });
@@ -641,7 +641,6 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   ),
                 ],
                 const Divider(height: 32),
-                // Reason Section
                 Text(
                   'Reason',
                   style: theme.textTheme.titleSmall?.copyWith(
@@ -692,7 +691,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   ElevatedButton.icon(
                     icon: const Icon(Icons.attach_file),
                     label: const Text('Select File'),
-                    onPressed: () async {
+                    onPressed: (isApproved || isRejected)? null: () async {
                       final file = await openFile();
                       if (file != null) {
                         setState(() {
@@ -714,7 +713,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                           const SnackBar(content: Text('No attachment found')),
                         );
                         return;
-                                      }
+                    }
                       print('Attachment: ${widget.leave['leaveattachment']}');
 
                       final url = '$baseUrl/api/emp-leave/attachment/$fileName';
@@ -769,6 +768,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                     ),
                   ),
                 ],
+               if (!isApproved && !isRejected) ...[
                const SizedBox(height: 10),
               ElevatedButton.icon(
                 onPressed: leaveDuration == -1 ? null : () async {
@@ -783,13 +783,14 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   ),
                 ),
               ),
-              ],
-            ),
+             ],
+           ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildDetailRow({
     required IconData icon,

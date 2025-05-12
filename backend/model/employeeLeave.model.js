@@ -21,7 +21,8 @@ const EmployeeLeave = sequelize.define('emp_leave',{
     },
     leave_status: {
         type: DataTypes.ENUM('Approve','Not Approve','Rejected'),
-        allowNull: false
+        allowNull: false,
+        defaultValue: 'Not Approve'
     },
     leave_duration: {
         type: DataTypes.DECIMAL(4,2),
@@ -56,6 +57,9 @@ const EmployeeLeave = sequelize.define('emp_leave',{
         allowNull: false
     },
     update_id: {
+        type: DataTypes.DATE,
+    },
+    update_date:{
         type: DataTypes.DATE,
     },
     reject_reason: {

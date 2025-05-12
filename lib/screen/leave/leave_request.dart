@@ -106,6 +106,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
     );
 
     final responseBody = await response.body;
+    print('responseBody,$responseBody');
 
     if (response.statusCode == 200) {
      _showCustomSnackBar(context, 'Leave details updated successfully ', Colors.green, Icons.check);
