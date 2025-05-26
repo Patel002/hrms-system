@@ -50,7 +50,7 @@ const EmployeeLeave = sequelize.define('emp_leave',{
     },
     leaveattachment: {
         type: DataTypes.STRING,
-        allowNull: false
+        // allowNull: false
     },
     created_at: {
         type: DataTypes.DATEONLY,

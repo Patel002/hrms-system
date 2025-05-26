@@ -73,10 +73,13 @@ class _HolidayScreenState extends State<HolidayScreen> {
                       child: ListTile(
                         contentPadding: const EdgeInsets.all(16),
                         leading: CircleAvatar(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          backgroundColor: Colors.teal.shade100,
+                          radius: 24,
                           child: Text(
                             holiday['holiday_name'][0].toUpperCase(),
-                            style: const TextStyle(color: Colors.white),
+                            style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                         title: Text(

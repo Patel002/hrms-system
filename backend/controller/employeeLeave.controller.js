@@ -64,7 +64,6 @@ const createLeave = async (req, res) => {
             message: `No credit found for this leave type.`
         });
        }
-          
           const debit = await EmployeeLeaveBalance.sum('number_of_days', {
             where: {
               emp_id: employeeId,

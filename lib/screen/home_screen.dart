@@ -100,6 +100,22 @@ Future<void> loadUserPermissions() async {
               ],
             ),
 
+            ExpansionTile(
+              title: const Text('Out Station'),
+              leading: const Icon(Icons.punch_clock_outlined),
+              initiallyExpanded: _isLeaveExpanded,
+              onExpansionChanged: (expanded) {
+              setState(() => _isLeaveExpanded = expanded);
+              },
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.add),
+                  title: const Text('Add Attendance'),
+                  onTap: () => Navigator.pushNamed(context, '/add-out-station'),
+                )
+              ],
+              ),
+
             const Divider(),
 
             ListTile(
