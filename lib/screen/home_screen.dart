@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decode/jwt_decode.dart';
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
-
 class _HomePageState extends State<HomePage> {
-  bool _isLeaveExpanded = false;
+  // bool _isLeaveExpanded = false;
+  // bool _isOutStationExpanded = false;
   String? userRole;
+  String? _expandedTile;
   bool isSupervisor = false;
 
   @override
@@ -32,7 +32,6 @@ Future<void> loadUserPermissions() async {
     });
   }
 }
-
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
@@ -53,8 +52,8 @@ Future<void> loadUserPermissions() async {
           children: [
             DrawerHeader(
               decoration: BoxDecoration(color: Color(0XFF213448)),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Icon(Icons.account_circle, size: 64, color: Colors.white),
                   SizedBox(height: 8),
@@ -63,16 +62,20 @@ Future<void> loadUserPermissions() async {
               ),
             ),
 
-            ExpansionTile(
+
+          Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+           child: ExpansionTile(
               title: const Text('Leave'),
               leading: const Icon(Icons.apps),
-              initiallyExpanded: _isLeaveExpanded,
+              initiallyExpanded: _expandedTile == 'Leave',
               onExpansionChanged: (expanded) {
-                setState(() => _isLeaveExpanded = expanded);
+                setState(() => _expandedTile = expanded ? 'Leave' : null);
               },
+              childrenPadding: const EdgeInsets.only(left: 25, right: 16, bottom: 8), 
               children: [
                  ListTile(
-                  leading: const Icon(Icons.holiday_village),
+                  leading: const Icon(Icons.calendar_month_outlined),
                   title: const Text('Holiday'),
                   onTap: () => Navigator.pushNamed(context, '/holiday'),
                 ),
@@ -99,14 +102,18 @@ Future<void> loadUserPermissions() async {
                 ),
               ],
             ),
+            ),
 
-            ExpansionTile(
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),          
+            child: ExpansionTile(
               title: const Text('Out Station'),
               leading: const Icon(Icons.punch_clock_outlined),
-              initiallyExpanded: _isLeaveExpanded,
+              initiallyExpanded: _expandedTile == 'Out Station',
               onExpansionChanged: (expanded) {
-              setState(() => _isLeaveExpanded = expanded);
+              setState(() { _expandedTile = expanded ? 'Out Station' : null; });
               },
+              childrenPadding: const EdgeInsets.only(left: 25, right: 16, bottom: 8), 
               children: [
                 ListTile(
                   leading: const Icon(Icons.add),
@@ -115,8 +122,9 @@ Future<void> loadUserPermissions() async {
                 )
               ],
               ),
+            ),
 
-            const Divider(),
+            const Divider(thickness: 1),
 
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
