@@ -19,8 +19,8 @@ const createLeave = async (req, res) => {
     // if (!leaveattachment) {
     //     return res.status(400).json({ message: "Leave attachment is required" });
     // }
-    console.log("Leave Attachment:", leaveattachment);
-    console.log("Request Body:", req.body);
+    // console.log("Leave Attachment:", leaveattachment);
+    // console.log("Request Body:", req.body);
 
     try {
         
@@ -41,8 +41,8 @@ const createLeave = async (req, res) => {
         const leaveType = await LeaveTypes.findOne({ where: { name: req.body.leave_type } });
         if (!leaveType) return res.status(400).json({ message: "Invalid leave type" });
 
-        console.log("Leave Type ID:", leaveType.type_id);
-        console.log("Leave Type Name:", leaveType.name);
+        // console.log("Leave Type ID:", leaveType.type_id);
+        // console.log("Leave Type Name:", leaveType.name);
 
         const company = await Company.findOne({ where: { comp_fname } });
         if (!company) {
@@ -171,55 +171,14 @@ const getLeavesByStatusForEmployee = async (req, res) => {
                 typeid: leave_type_id
             },
         });
-        console.log("leave_status",leaves.leave_status);
-       console.log("leaves: ", leaves);
+      //   console.log("leave_status",leaves.leave_status);
+      //  console.log("leaves: ", leaves);
         return res.status(200).json({ leaves });
     } catch (error) {
         console.error("Error fetching leaves by status for employee:", error);
         return res.status(500).json({ message: "Server error" });
     }
 };
-
-
-// const avalibaleLeaves = async (req, res) => {
-//     const{ em_username,leave_type,leave_duration } = req.query;
-//     try {
-
-//         const employee = await Employee.findOne({ where: { em_username } });
-//         if (!employee) return res.status(404).json({ message: "Employee not found" });
-
-//         const employeeId = employee.em_code;
-
-//         const leaveType = await LeaveType.findOne({ where:{
-//             name: leave_type
-//         }});
-//         if (!leaveType) return res.status(400).json({ message: "Invalid leave type" });
-
-    
-//               const usedDays = await EmployeeLeaveBalance.sum("number_of_days", {
-//                 where: {
-//                     emp_id: employeeId,
-//                     leave_type_id: leaveType.type_id,
-//                     leave_status: "approved",
-//                 },
-//             });
-
-//             const totalEntitled = leaveType.balance;
-//             const used = usedDays || 0;
-//             const remaining = totalEntitled - used;
-    
-//             if (leave_duration > remaining) {
-//                 return res.status(400).json({
-//                     message: `Insufficient balance for ${leave_type}. Remaining: ${remaining} day(s).`,
-//                 });
-//             }
-//             res.json({ remaining });
-
-//     } catch (error) {
-//         console.error("Error fetching leaves by status for employee:", error);
-//         return res.status(500).json({ message: "Server error" });
-//     }
-// }
 
 const getFileAttachment = async(req, res) => {
     const filename = req.params.filename;   
@@ -244,11 +203,11 @@ const updateLeaveApplication = async(req, res) => {
             return res.status(404).json({ message: "Leave not found" });
         }
         
-        console.log("leave",updateData);
+        // console.log("leave",updateData);
 
         const updatedLeaveTypeName = updateData.leave_type || leave.leave_type;
 
-        console.log("updatedLeaveTypeName",updatedLeaveTypeName);
+        // console.log("updatedLeaveTypeName",updatedLeaveTypeName);
 
         let updatedLeaveDuration = updateData.leave_duration || leave.leave_duration;
 
@@ -256,7 +215,7 @@ const updateLeaveApplication = async(req, res) => {
 
         if (!(updatedLeaveDuration === 0.5 || updatedLeaveDuration >= 1))
             {
-                console.log("Invalid input:", updatedLeaveDuration);
+                // console.log("Invalid input:", updatedLeaveDuration);
             return res.status(400).json({
                 message: "Leave duration must be at least 1 day or exactly 0.5 for half-day leave.",
             });
@@ -280,7 +239,7 @@ const updateLeaveApplication = async(req, res) => {
             }
           });
 
-          console.log("Credit:", credit);
+          // console.log("Credit:", credit);
 
         if (credit === null) {
         return res.status(400).json({
@@ -340,7 +299,7 @@ const getLeaveRequestsBySupervisor = async (req, res) => {
     console.log(subordinates,"62035236")
 
     const subordinateIds = subordinates.map(emp => emp.em_id);
-    console.log("subordinateIds:", subordinateIds);
+    // console.log("subordinateIds:", subordinateIds);
 
     if (subordinateIds.length === 0) {
       return res.status(200).json([
@@ -376,13 +335,13 @@ try {
 
     const employee = await Employee.findOne({ where: { em_code: leave.em_id } });
 
-    console.log("employee: ", leave.em_id);
+    // console.log("employee: ", leave.em_id);
 
 
-    console.log("employee: ", req.user.em_code);
-    console.log("supervisor_id: ", employee.supervisor_id);
-    console.log("employee.em_code: ", employee.em_code);
-    console.log("employee",employee)
+    // console.log("employee: ", req.user.em_code);
+    // console.log("supervisor_id: ", employee.supervisor_id);
+    // console.log("employee.em_code: ", employee.em_code);
+    // console.log("employee",employee)
 
     if (!employee || employee.supervisor_id !== req.user.em_code) {
         return res.status(403).json({ message: "You are not authorized to approve/reject this leave" });

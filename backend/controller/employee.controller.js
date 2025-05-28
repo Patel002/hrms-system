@@ -23,7 +23,7 @@ const loginEmployee = async (req, res) => {
             },
             include: [
                 { model: Department, attributes: ['dep_name'] },
-                { model: Company, attributes: ['comp_fname'] }
+                { model: Company, attributes: ['comp_fname','comp_id'] }
             ]
         });
 
@@ -47,18 +47,21 @@ const loginEmployee = async (req, res) => {
 
         const token = jwt.sign(
             {
-                id: employee.id,
+                em_id: employee.em_id,
                 em_code: employee.em_code,
-                em_username: employee.em_id,
+                em_username: employee.em_username,
                 em_role: employee.em_role,
                 isSupervisor,
-                dep_name: employee.department.dep_name,
-                comp_fname: employee.company.comp_fname
+                dep_name: employee.department?.dep_name,
+                comp_fname: employee.company?.comp_fname,
+                comp_id: employee.company?.comp_id
             },
             "this is a secret key of !@#$%^&*()_+-=[]{};':\"|\\<>/?~`",
             { expiresIn: '1d' }
         );
         
+        // console.log("token", token);
+
         return res.status(200).json({ message: "Login successful", token, data: employee });
 
     } catch (error) {

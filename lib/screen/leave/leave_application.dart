@@ -532,43 +532,43 @@ valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
 //   );
 // }
 
-                      Widget buildReadOnlyField(String label, String value) {
-                      return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                      Text(
-                      label,
-                      style: TextStyle(
-                      fontSize: 14,
-                      color: const Color(0xFF6C757D),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                      const SizedBox(height: 8),
-                      Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                      decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Row(
-                      children: [
-                      Expanded(
-                      child: Text(
-                      value,
-                      style: TextStyle(
-                      fontSize: 15,
-                      color:  const Color(0xFF212529),
-                      ),
-                     ),
-                    ),
-                   ],
-                  ),
-                 ),
-                ],
-               );
-              }
+          Widget buildReadOnlyField(String label, String value) {
+          return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+          Text(
+          label,
+          style: TextStyle(
+          fontSize: 14,
+          color: const Color(0xFF6C757D),
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+          const SizedBox(height: 8),
+          Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Row(
+          children: [
+          Expanded(
+          child: Text(
+          value,
+          style: TextStyle(
+          fontSize: 15,
+          color:  const Color(0xFF212529),
+          ),
+        ),
+        ),
+      ],
+      ),
+    ),
+  ],
+  );
+  }
 
                   Widget buildDateTile(String label, DateTime? date) {
                   return Container(

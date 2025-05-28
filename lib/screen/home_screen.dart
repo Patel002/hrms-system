@@ -118,7 +118,7 @@ Future<void> loadUserPermissions() async {
                 ListTile(
                   leading: const Icon(Icons.add),
                   title: const Text('Add Attendance'),
-                  onTap: () => Navigator.pushNamed(context, '/add-out-station'),
+                  onTap: () => Navigator.pushNamed(context, '/attendance'),
                 )
               ],
               ),

@@ -7,6 +7,7 @@ import 'screen/leave/leave_request.dart';
 import 'screen/leave/leave_status_screen.dart';
 import 'screen/holiday_screen.dart';
 import 'screen/leave/leave_balance.dart';
+import 'screen/outStation/attandance_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
@@ -33,6 +34,7 @@ class MyApp extends StatelessWidget {
         '/leave-status': (context) => LeaveStatusPage(),
         '/leave-request': (context) => LeaveRequestPage(),
         '/leave-balance': (context) => LeaveBalancePage(),
+        '/attendance': (context) => const AttendanceScreen(),
       },
 
     );
