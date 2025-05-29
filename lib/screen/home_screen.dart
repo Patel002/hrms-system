@@ -66,7 +66,8 @@ Future<void> loadUserPermissions() async {
           Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
            child: ExpansionTile(
-              title: const Text('Leave'),
+              title: const Text('Leave',
+              style: TextStyle(fontWeight: FontWeight.w600)),
               leading: const Icon(Icons.apps),
               initiallyExpanded: _expandedTile == 'Leave',
               onExpansionChanged: (expanded) {
@@ -107,7 +108,7 @@ Future<void> loadUserPermissions() async {
             Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),          
             child: ExpansionTile(
-              title: const Text('Out Station'),
+              title: const Text('Out Station',style: TextStyle(fontWeight: FontWeight.w600)),
               leading: const Icon(Icons.punch_clock_outlined),
               initiallyExpanded: _expandedTile == 'Out Station',
               onExpansionChanged: (expanded) {
@@ -116,10 +117,17 @@ Future<void> loadUserPermissions() async {
               childrenPadding: const EdgeInsets.only(left: 25, right: 16, bottom: 8), 
               children: [
                 ListTile(
-                  leading: const Icon(Icons.add),
-                  title: const Text('Add Attendance'),
-                  onTap: () => Navigator.pushNamed(context, '/attendance'),
-                )
+                  title: const Text('Attendance In'),
+                  onTap: () => Navigator.pushNamed(context, '/attendance-in'),
+                ),
+                ListTile(
+                  title: const Text('Attendance Out'),
+                  onTap: () => Navigator.pushNamed(context, '/attendance-out'),
+                ),
+                ListTile(
+                  title: const Text('Attendance History'),
+                  onTap: () => Navigator.pushNamed(context, '/attendance-history'),
+                ),
               ],
               ),
             ),

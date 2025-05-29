@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ModernAnimatedSplash extends StatefulWidget {
-  const ModernAnimatedSplash({Key? key}) : super(key: key);
+  const ModernAnimatedSplash({super.key});
 
   @override
   _ModernAnimatedSplashState createState() => _ModernAnimatedSplashState();
@@ -57,7 +57,7 @@ class _ModernAnimatedSplashState extends State<ModernAnimatedSplash>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: Center(
         child: ScaleTransition(
           scale: _scaleAnimation,

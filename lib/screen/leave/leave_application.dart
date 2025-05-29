@@ -230,9 +230,10 @@ if(startDate !=null && endDate !=null){
 Widget build(BuildContext context) {
 return Scaffold(
 appBar: AppBar(
-title: const Text("Leave Application"),
+title: const Text("Leave Application",
+style: TextStyle(fontWeight: FontWeight.bold)),
 foregroundColor: Colors.white,
-backgroundColor: Color(0XFF123458),
+backgroundColor: Color(0XFF123448),
 elevation: 1,
 ),
 body: Container(
@@ -325,8 +326,7 @@ valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
                                     onPrimary: Colors.white,
                                     surface: Colors.white,
                                     onSurface: const Color(0xFF212529),
-                                  ),
-                                  dialogBackgroundColor: Colors.white,
+                                  ), dialogTheme: DialogThemeData(backgroundColor: Colors.white),
                                 ),
                                 child: child!,
                               );
@@ -364,8 +364,7 @@ valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
                                     onPrimary: Colors.white,
                                     surface: Colors.white,
                                     onSurface: const Color(0xFF212529),
-                                  ),
-                                  dialogBackgroundColor: Colors.white,
+                                  ), dialogTheme: DialogThemeData(backgroundColor: Colors.white),
                                 ),
                                 child: child!,
                               );
@@ -585,7 +584,7 @@ valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
                   const SizedBox(height: 4),
                   Text(
                   date != null ? date.toLocal().toString().split(' ')[0] : 'Select',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: const Color(0xFF212529)),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF212529)),
                   ),
                   ],
                   ),

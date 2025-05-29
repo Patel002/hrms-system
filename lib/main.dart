@@ -7,7 +7,9 @@ import 'screen/leave/leave_request.dart';
 import 'screen/leave/leave_status_screen.dart';
 import 'screen/holiday_screen.dart';
 import 'screen/leave/leave_balance.dart';
-import 'screen/outStation/attandance_screen.dart';
+import 'screen/outStation/attendance_in_screen.dart';
+import 'screen/outStation/attendance_history_screen.dart';
+import 'screen/outStation/attendance_out_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
@@ -34,7 +36,9 @@ class MyApp extends StatelessWidget {
         '/leave-status': (context) => LeaveStatusPage(),
         '/leave-request': (context) => LeaveRequestPage(),
         '/leave-balance': (context) => LeaveBalancePage(),
-        '/attendance': (context) => const AttendanceScreen(),
+        '/attendance-in': (context) => const AttendanceScreenIN(),
+        '/attendance-out': (context) => const AttendanceScreenOut(),
+        '/attendance-history': (context) => const AttandanceHistory(),
       },
 
     );

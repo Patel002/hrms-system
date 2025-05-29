@@ -8,7 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 
 class LeaveRequestPage extends StatefulWidget {
-  const LeaveRequestPage({Key? key}) : super(key: key);
+  const LeaveRequestPage({super.key});
 
   @override
   _LeaveRequestPageState createState() => _LeaveRequestPageState();
@@ -105,7 +105,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
       }),
     );
 
-    final responseBody = await response.body;
+    final responseBody = response.body;
     print('responseBody,$responseBody');
 
     if (response.statusCode == 200) {
@@ -160,14 +160,14 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
   }
 
   void _showRejectDialog(String leaveId) {
-    final TextEditingController _reasonController = TextEditingController();
+    final TextEditingController reasonController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: Text("Reject Leave"),
         content: TextField(
-          controller: _reasonController,
+          controller: reasonController,
           decoration: InputDecoration(
             labelText: 'Enter reject reason',
             border: OutlineInputBorder(),
@@ -178,7 +178,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
           TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
           ElevatedButton(
             onPressed: () {
-              final reason = _reasonController.text.trim();
+              final reason = reasonController.text.trim();
               if (reason.isNotEmpty) {
                 Navigator.pop(context);
                 _sendApprovalOrRejection(leaveId, action: 'reject', reason: reason);

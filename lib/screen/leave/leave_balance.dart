@@ -5,6 +5,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class LeaveBalancePage extends StatefulWidget {
+  const LeaveBalancePage({super.key});
+
   @override
   _LeaveBalancePageState createState() => _LeaveBalancePageState();
 }

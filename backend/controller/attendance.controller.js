@@ -18,13 +18,46 @@ const punchAttendance = async(req, res) => {
             return res.status(400).json({ message: "All fields are required" });
         }
 
+        const lastPunchIn = await Attendance.findOne({
+        where: {
+            emp_id,
+            punchtype: 'OUTSTATION1'
+        },
+        order: [['created_at', 'DESC']]
+        });
+
+        const punchOutExists = lastPunchIn
+        ? await Attendance.findOne({
+            where: {
+                emp_id,
+                punchtype: 'OUTSTATION2',
+                created_at: { [Op.gt]: lastPunchIn.created_at }
+            }
+            })
+        : null;
+
+        if (punch_type === 'OUTSTATION1') {
+        if (lastPunchIn && !punchOutExists) {
+            return res.status(400).json({ message: "Already punched in without punching out." });
+        }
+        }
+
+        if (punch_type === 'OUTSTATION2') {
+        if (!lastPunchIn) {
+            return res.status(400).json({ message: "Cannot punch out without punching in." });
+        }
+        if (punchOutExists) {
+            return res.status(400).json({ message: "Already punched out for your last punch in." });
+        }
+        }
+
         const newAttendance = await Attendance.create({
             emp_id,
             comp_id,
             punch_date: punchDate,
             punch_time: punchTime,
             punch_place,
-            punchtype: 'OUTSTATION1',
+            punchtype,
             punch_remark,
             punch_img,
             latitude,
@@ -48,6 +81,29 @@ const punchAttendance = async(req, res) => {
     }
 }
 
+const getAttendance = async (req, res) => {
+    const { emp_id, punch_date  } = req.query;
+    if (!emp_id) {
+        return res.status(400).json({ message: "Employee ID is required" });
+    }
+    try {
+        const attendances = await Attendance.findAll({
+            where: {
+                emp_id: emp_id,
+                punch_date: punch_date
+            }
+        });
+        res.status(200).json({ message: "Attendances fetched successfully", data: attendances });
+    } catch (error) {
+        console.error("Error fetching attendances:", error);
+        res.status(500).json({
+            message: "Error fetching attendances",
+            error: error.message
+        });
+    }
+}
+
 export {
-    punchAttendance
+    punchAttendance,
+    getAttendance
 }

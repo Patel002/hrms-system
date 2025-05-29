@@ -13,7 +13,7 @@ class LeaveDetailPage extends StatelessWidget {
   final void Function(String action, [String? reason]) onAction;
   final baseUrl = dotenv.env['API_BASE_URL'];
 
-  LeaveDetailPage({
+  LeaveDetailPage({super.key, 
     required this.leave,
     this.departmentName,
     required this.employeeCode,
