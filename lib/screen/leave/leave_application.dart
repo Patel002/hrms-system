@@ -229,21 +229,37 @@ if(startDate !=null && endDate !=null){
 @override
 Widget build(BuildContext context) {
 return Scaffold(
-appBar: AppBar(
-title: const Text("Leave Application",
-style: TextStyle(fontWeight: FontWeight.bold)),
-foregroundColor: Colors.white,
-backgroundColor: Color(0XFF123448),
-elevation: 1,
-),
-body: Container(
-decoration: const BoxDecoration(
-gradient: LinearGradient(
-colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-begin: Alignment.topLeft,
-end: Alignment.bottomRight,
-),
-),
+  backgroundColor: Colors.transparent,
+
+appBar: PreferredSize(
+ preferredSize: const Size.fromHeight(kToolbarHeight),
+child: Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFECE9E6), Color(0xFFFFFFFF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+child: AppBar(
+        title: const Text(
+          "Leave Request",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+       backgroundColor: Colors.transparent, 
+        foregroundColor: Colors.black,
+        elevation: 0,
+      ),
+    ),
+  ),
+  body: Container(
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+         begin: Alignment.topRight,
+         end: Alignment.bottomLeft,
+      ),
+    ),
 padding: const EdgeInsets.all(16.0),
 child: emUsername == null || compFname == null
 ? const Center(child: CircularProgressIndicator(
@@ -257,12 +273,7 @@ valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
           color: const Color(0xFF4361EE),
           child: ListView(
             children: [
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                color: Colors.white,
-                child: Padding(
+               Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,7 +286,9 @@ valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
                         value: selectedLeaveType,
                         decoration: InputDecoration(
                           labelText: 'Leave Type',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
+                          filled: true,
+                          fillColor: Colors.white60
                         ),
                         dropdownColor: Colors.white,
                         icon: Icon(Icons.arrow_drop_down, color: const Color(0xFF4361EE)),
@@ -299,8 +312,10 @@ valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
                       TextFormField(
                         decoration: InputDecoration(
                           labelText: 'Reason',
-                          // filled: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          filled: true,
+                          fillColor: Colors.white60,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(5),
+                            borderSide: BorderSide(color: Colors.grey.shade300)),
                           alignLabelWithHint: true,
                         ),
                         maxLines: 3,
@@ -420,7 +435,9 @@ valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
                         value: type,
                         decoration: InputDecoration(
                           labelText: "Select Leave Type",
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
+                          filled: true,
+                          fillColor: Colors.white60
                         ),
                         items: items,
                         onChanged: (value) {
@@ -492,7 +509,7 @@ valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
                         ),
                           icon: const Icon(Icons.send),
                           label: const Text(
-                            'Submit Leave Application',
+                            'SUBMIT',
                             style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -505,7 +522,6 @@ valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
                     ],
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -548,7 +564,7 @@ valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
           color: Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(5),
           border: Border.all(color: Colors.grey.shade300),
           ),
           child: Row(
@@ -574,12 +590,13 @@ valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                   decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(5),
+                  color: Colors.white60,
                   ),
                   child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                  Icon(Icons.calendar_month_rounded, color: const Color(0xFF4361EE)),
+                  Icon(Icons.calendar_today, color: const Color(0xFF4361EE)),
                   Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 4),
                   Text(
