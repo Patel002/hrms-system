@@ -115,11 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Image.asset(
-                    'assets/image/image.png',
-                    width: 71,
-                    height: 71,
-                    ),
+                    Icon(Icons.lock, size: 64, color: Color(0XFF213448)), 
                     const SizedBox(height: 16),
                     Text(
                       'Welcome',
