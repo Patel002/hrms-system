@@ -236,7 +236,7 @@ appBar: PreferredSize(
 child: Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFECE9E6), Color(0xFFFFFFFF)],
+          colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -353,7 +353,7 @@ valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
                             if (endDate != null) {
                               final diff = endDate!.difference(startDate!).inDays;
                               if (diff > 0) {
-                                type = diff > 1 ? 'More than One Day' : null; // set type to null or leave it unset if 1 day
+                                type = diff > 1 ? 'More than One Day' : null; 
                               }
                             }
                           });
@@ -460,7 +460,7 @@ valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
                               icon: const Icon(Icons.attach_file),
                               label: const Text("Upload File"),
                               style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFD4C9BF),
+                              backgroundColor: const Color.fromARGB(255, 219, 214, 209),
                               foregroundColor: Color(0xFF030303),
                               elevation: 0,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

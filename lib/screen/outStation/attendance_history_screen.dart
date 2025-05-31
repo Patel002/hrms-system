@@ -303,8 +303,7 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Attendance History',
@@ -327,7 +326,7 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color.fromARGB(195, 51, 52, 126),
+          color: const Color.fromARGB(226, 16, 22, 54),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(

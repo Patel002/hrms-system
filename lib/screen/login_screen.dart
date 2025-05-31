@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -116,7 +115,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.lock_outline, size: 64, color: Color(0XFF213448)),
+                    Image.asset(
+                    'assets/image/image.png',
+                    width: 71,
+                    height: 71,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       'Welcome',

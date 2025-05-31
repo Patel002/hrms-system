@@ -70,7 +70,7 @@ flutter_icons:
   ios: true
   image_path: "assets/icon/app_icon.png" 
   background_color: "#FF123448" 
-  adaptive_icon_background: "assets/icon/app_icon_foreground.png" 
+  # adaptive_icon_background: "assets/icon/app_icon_foreground.png" 
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -84,6 +84,8 @@ flutter:
   uses-material-design: true
   assets:
     - .env
+    - assets/icon/app_icon.png
+    - assets/image/image.png
 
 flutter_native_splash:
   # General configuration
@@ -112,7 +114,5 @@ flutter_native_splash:
   # Full screen modern look
   fullscreen: true
 
-  assets:
-    - assets/icon/app_icon.png
-    - assets/icon/app_icon_foreground.png
+    
 

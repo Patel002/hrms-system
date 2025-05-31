@@ -56,12 +56,11 @@ Future<void> loadUserPermissions() async {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Icon(Icons.account_circle, size: 64, color: Colors.white),
-                  SizedBox(height: 8),
+                  SizedBox(height: 4),
                   Text('Welcome!', style: TextStyle(color: Colors.white, fontSize: 18)),
                 ],
               ),
             ),
-
 
           Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -104,7 +103,6 @@ Future<void> loadUserPermissions() async {
               ],
             ),
             ),
-
             Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),          
             child: ExpansionTile(

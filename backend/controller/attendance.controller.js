@@ -1,18 +1,20 @@
 import Attendance from "../model/attendance.model.js";
 import { DateTime } from "luxon";
+import { Op } from "sequelize";
+
 const punchAttendance = async(req, res) => {
     try {
-        const { emp_id, comp_id, punch_place, punch_remark, punch_img, latitude, longitude, created_by } = req.body;
+        const { emp_id, comp_id, punchtype, punch_place, punch_remark, punch_img, latitude, longitude, created_by } = req.body;
 
        const istNow = DateTime.now().setZone('Asia/Kolkata');
        const punchDate = istNow.toISODate(); 
        const punchTime = istNow.toFormat('HH:mm:ss'); 
-       const createdAt = istNow.toJSDate();
+       const createdAtIst = istNow.toISO();
        
        console.log("Current IST Date and Time:", istNow);
        console.log("Punch Date:", punchDate);
        console.log("Punch Time:", punchTime);
-       console.log("Created At:", createdAt);
+       console.log("Created At:", createdAtIst);
 
         if (!emp_id || !comp_id || !punch_place || !punch_img || !latitude || !longitude || !created_by) {
             return res.status(400).json({ message: "All fields are required" });
@@ -36,13 +38,13 @@ const punchAttendance = async(req, res) => {
             })
         : null;
 
-        if (punch_type === 'OUTSTATION1') {
+        if (punchtype === 'OUTSTATION1') {
         if (lastPunchIn && !punchOutExists) {
             return res.status(400).json({ message: "Already punched in without punching out." });
         }
         }
 
-        if (punch_type === 'OUTSTATION2') {
+        if (punchtype === 'OUTSTATION2') {
         if (!lastPunchIn) {
             return res.status(400).json({ message: "Cannot punch out without punching in." });
         }
@@ -63,7 +65,7 @@ const punchAttendance = async(req, res) => {
             latitude,
             longitude,
             created_by,
-            created_at: createdAt
+            created_at: createdAtIst
         });
 
         console.log("Attendance recorded:", newAttendance);
