@@ -94,7 +94,7 @@ Future<void> loadUserPermissions() async {
                   title: const Text('Leave Balance'),
                   onTap: () => Navigator.pushNamed(context, '/leave-balance'),
                 ),
-                if (userRole == 'super admin' || isSupervisor)
+                if (userRole == 'Super Admin' || isSupervisor)
                 ListTile(
                   leading: const Icon(Icons.hourglass_bottom),
                   title: const Text('Leave Request'),
@@ -106,7 +106,7 @@ Future<void> loadUserPermissions() async {
             Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),          
             child: ExpansionTile(
-              title: const Text('Out Station',style: TextStyle(fontWeight: FontWeight.w600)),
+              title: const Text('Attendance',style: TextStyle(fontWeight: FontWeight.w600)),
               leading: const Icon(Icons.punch_clock_outlined),
               initiallyExpanded: _expandedTile == 'Out Station',
               onExpansionChanged: (expanded) {

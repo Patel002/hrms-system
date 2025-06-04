@@ -35,6 +35,9 @@ const Employee = sequelize.define('employee',{
     },
     reporting_auth:{
         type: DataTypes.BOOLEAN,
+    },
+    attcode: {
+        type: DataTypes.INTEGER,
     }
 
 },{

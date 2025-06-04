@@ -32,7 +32,7 @@ class _AttendanceScreenINState extends State<AttendanceScreenIN> {
   File? _imageFile;
   CameraController? _cameraController;
   late FaceDetector _faceDetector;
-  bool _isBlinking = false;
+  // bool _isBlinking = false;
   bool _isCapturing = false;
   bool _isProcessing = false;
   DateTime? _lastBlinkTime; 
@@ -153,7 +153,7 @@ Future<void> _initializeCamera() async {
     if (faces.isEmpty) return;
 
     final face = faces.first; 
-    await _checkForBlink(face);
+   await _checkForSmile(face);
   } catch (e) {
     debugPrint('Face detection error: $e');
   } finally {
@@ -204,36 +204,37 @@ InputImage? _inputImageFromCameraImage(CameraImage image) {
 }
 
 
-Future<void> _checkForBlink(Face face) async {
-  if (face.leftEyeOpenProbability == null || face.rightEyeOpenProbability == null) return;
+Future<void> _checkForSmile(Face face) async {
+  if (face.smilingProbability == null) return;
 
-  final leftOpen = face.leftEyeOpenProbability!;
-  final rightOpen = face.rightEyeOpenProbability!;
+  final smileProb = face.smilingProbability!;
+  print('Smile probability: $smileProb');
 
-  debugPrint('left: $leftOpen, right: $rightOpen');
+  const smileThreshold = 0.39; 
 
-  if (leftOpen < 1.0 && rightOpen < 1.0) {
-    final now = DateTime.now();
+  final now = DateTime.now();
 
-    if (!_isBlinking && (_lastBlinkTime == null || now.difference(_lastBlinkTime!) > const Duration(seconds: 2))) {
-      _isBlinking = true;
-      _lastBlinkTime = now;
+  if (smileProb > smileThreshold &&
+      !_isCapturing &&
+      (_lastBlinkTime == null || now.difference(_lastBlinkTime!) > const Duration(milliseconds: 800))) {
+    _lastBlinkTime = now;
 
-      setState(() {
-        _isCapturing = true;
-      });
+    setState(() {
+      _isCapturing = true;
+    });
 
-      await _captureImage();
+    await _captureImage();
+    print('Captured image: $_imageFile');
 
-      await Future.delayed(const Duration(seconds: 1));
+    await Future.delayed(const Duration(seconds: 1));
 
-      setState(() {
-        _isCapturing = false;
-        _isBlinking = false;
-      });
-    }
+    setState(() {
+      _isCapturing = false;
+    });
   }
 }
+
+
 Future<void> _captureImage() async {
   try {
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
@@ -310,7 +311,6 @@ Future<void> _captureImage() async {
      _showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
   }
 }
-
 
  void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
     final snackBar = SnackBar(
@@ -416,12 +416,12 @@ Widget build(BuildContext context) {
           ),
           const SizedBox(height: 24),
         ],
-          ElevatedButton.icon(
-            onPressed: _captureImage,
-            icon: const Icon(Icons.camera_alt, size: 20),
-            label: const Text("Capture Image"),
-            style: primaryButtonStyle,
-          ),
+          // ElevatedButton.icon(
+          //   onPressed: _captureImage,
+          //   icon: const Icon(Icons.camera_alt, size: 20),
+          //   label: const Text("Capture Image"),
+          //   style: primaryButtonStyle,
+          // ),
 
           if (_imageFile != null) ...[
             const SizedBox(height: 20),

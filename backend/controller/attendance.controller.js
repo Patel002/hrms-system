@@ -1,7 +1,7 @@
 import Attendance from "../model/attendance.model.js";
 import { DateTime } from "luxon";
-import { Op } from "sequelize";
-
+import { Employee } from "../utils/join.js";
+import MonitorData from "../model/monitorData.model.js";
 const punchAttendance = async(req, res) => {
     try {
         const { emp_id, comp_id, punchtype, punch_place, punch_remark, punch_img, latitude, longitude, created_by } = req.body;
@@ -20,38 +20,46 @@ const punchAttendance = async(req, res) => {
             return res.status(400).json({ message: "All fields are required" });
         }
 
-        const lastPunchIn = await Attendance.findOne({
-        where: {
-            emp_id,
-            punchtype: 'OUTSTATION1'
-        },
-        order: [['created_at', 'DESC']]
-        });
+        // const lastPunchIn = await Attendance.findOne({
+        // where: {
+        //     emp_id,
+        //     punchtype: 'OUTSTATION1'
+        // },
+        // order: [['created_at', 'DESC']]
+        // });
 
-        const punchOutExists = lastPunchIn
-        ? await Attendance.findOne({
-            where: {
-                emp_id,
-                punchtype: 'OUTSTATION2',
-                created_at: { [Op.gt]: lastPunchIn.created_at }
-            }
-            })
-        : null;
+        // const punchOutExists = lastPunchIn
+        // ? await Attendance.findOne({
+        //     where: {
+        //         emp_id,
+        //         punchtype: 'OUTSTATION2',
+        //         created_at: { [Op.gt]: lastPunchIn.created_at }
+        //     }
+        //     })
+        // : null;
 
-        if (punchtype === 'OUTSTATION1') {
-        if (lastPunchIn && !punchOutExists) {
-            return res.status(400).json({ message: "Already punched in without punching out." });
-        }
+        // if (punchtype === 'OUTSTATION1') {
+        // if (lastPunchIn && !punchOutExists) {
+        //     return res.status(400).json({ message: "Already punched in without punching out." });
+        // }
+        // }
+
+        // if (punchtype === 'OUTSTATION2') {
+        // if (!lastPunchIn) {
+        //     return res.status(400).json({ message: "Cannot punch out without punching in." });
+        // }
+        // if (punchOutExists) {
+        //     return res.status(400).json({ message: "Already punched out for your last punch in." });
+        // }
+        // }
+
+        const employee = await Employee.findOne({ where: { em_id: emp_id } });
+      if (!employee || !employee.attcode) {
+            return res.status(404).json({ message: "Employee not found or missing attcode" });
         }
 
-        if (punchtype === 'OUTSTATION2') {
-        if (!lastPunchIn) {
-            return res.status(400).json({ message: "Cannot punch out without punching in." });
-        }
-        if (punchOutExists) {
-            return res.status(400).json({ message: "Already punched out for your last punch in." });
-        }
-        }
+        const enrollId = employee.attcode;
+        console.log("Enroll ID:", enrollId);
 
         const newAttendance = await Attendance.create({
             emp_id,
@@ -68,12 +76,23 @@ const punchAttendance = async(req, res) => {
             created_at: createdAtIst
         });
 
-        console.log("Attendance recorded:", newAttendance);
+        const monitorData = await MonitorData.create({
+            SRNO: newAttendance.punchtype,
+            EnrollID: enrollId,
+            PunchDate: newAttendance.punch_date,
+            Received_date: newAttendance.punch_date,
+            verifyMode: 'Selfie'
+        });
+
+        console.log("Attendance recorded:", newAttendance,);
+        console.log("Monitor Data recorded:", monitorData,);
 
         res.status(201).json({
             message: "Attendance recorded successfully",
-            data: newAttendance
+            data: newAttendance,
+            monitorData
         });
+
     } catch (error) {
         console.error("Error recording attendance:", error);
         res.status(500).json({

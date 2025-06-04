@@ -735,12 +735,6 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                // const SizedBox(height: 12),
-                //   if(widget.leave['status']=='Rejected')
-                // Text(
-                //   widget.leave['reject_reason'].toString(),
-                //   style: theme.textTheme.bodyMedium,
-                // ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: reasonController,
@@ -766,7 +760,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                   ),
                 if (_attachmentController == null && hasAttachment)
                   Text(
-                    widget.leave['leaveattachment'].toString(),
+                  Uri.parse(  widget.leave['leaveattachment'].toString()).pathSegments.last,
                     style: theme.textTheme.bodyMedium,
                   ),
                 if (_attachmentController == null && !hasAttachment)
@@ -793,10 +787,10 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                   const SizedBox(height: 16),
                   InkWell(
                     onTap: () async {
-                      final fileName =
-                          widget.leave['leaveattachment']?.toString();
+                      final fileUrl =
+                          widget.leave['leaveattachment']?.fl_atrachment;
 
-                      if (fileName == null || fileName.trim().isEmpty) {
+                      if (fileUrl == null || fileUrl.trim().isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('No attachment found')),
                         );
@@ -804,12 +798,12 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                       }
                       print('Attachment: ${widget.leave['leaveattachment']}');
 
-                      final url = '$baseUrl/api/emp-leave/attachment/$fileName';
                       try {
+                        final fileName = Uri.parse(fileUrl).pathSegments.last;
                         final dir = await getTemporaryDirectory();
                         final filePath = '${dir.path}/$fileName';
 
-                        await Dio().download(url, filePath);
+                        await Dio().download(fileUrl, filePath);
                         final result = await OpenFile.open(filePath);
                         if (result.type != ResultType.done) {
                           ScaffoldMessenger.of(context).showSnackBar(

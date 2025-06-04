@@ -123,10 +123,10 @@ class LeaveDetailPage extends StatelessWidget {
                         color: Colors.blueGrey,
                         onTap: () async {
                         print('onTap triggered');
-                        final fileName = leave['leaveattachment'];
-                        print('File Name: $fileName');
+                        final fileUrl = leave['leaveattachment'];
+                        print('File Name: $fileUrl');
 
-                        if (fileName == null || fileName.trim().isEmpty) {
+                        if (fileUrl == null || fileUrl.trim().isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('No attachment found')),
                         );
@@ -134,13 +134,12 @@ class LeaveDetailPage extends StatelessWidget {
                         }
                         
                          print('Attachment: ${leave['leaveattachment']}');
-                        final url = '$baseUrl/api/emp-leave/attachment/$fileName';
                       try {
-                        final dir = await getTemporaryDirectory();
-                        final filePath = '${dir.path}/$fileName';
-
-                        await Dio().download(url, filePath);
-                        final result = await OpenFile.open(filePath);
+                      final fileName = fileUrl.split('/').last.split('?').first;
+                      final dir = await getTemporaryDirectory();
+                      final filePath = '${dir.path}/$fileName';
+                      await Dio().download(fileUrl, filePath);
+                      final result = await OpenFile.open(filePath);
                         if (result.type != ResultType.done) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Could not open attachment')),

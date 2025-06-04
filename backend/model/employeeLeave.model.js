@@ -49,7 +49,7 @@ const EmployeeLeave = sequelize.define('emp_leave',{
         allowNull: false
     },
     leaveattachment: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         // allowNull: false
     },
     created_at: {
@@ -57,7 +57,7 @@ const EmployeeLeave = sequelize.define('emp_leave',{
         allowNull: false
     },
     update_id: {
-        type: DataTypes.DATE,
+        type: DataTypes.STRING,
     },
     update_date:{
         type: DataTypes.INTEGER,

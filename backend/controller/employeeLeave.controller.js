@@ -1,6 +1,5 @@
 import { EmployeeLeave, Employee, LeaveTypes, Company, EmployeeLeaveBalance } from "../utils/join.js";
-import fs from "fs";
-import path from "path";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const createLeave = async (req, res) => {
     const {
@@ -15,7 +14,9 @@ const createLeave = async (req, res) => {
         created_by,
     } = req.body;
 
-    const leaveattachment = req.file ? req.file.filename : null;
+    let attachment = null;
+
+    // const leaveattachment = req.file ? req.file.filename : null;
     // if (!leaveattachment) {
     //     return res.status(400).json({ message: "Leave attachment is required" });
     // }
@@ -23,6 +24,13 @@ const createLeave = async (req, res) => {
     // console.log("Request Body:", req.body);
 
     try {
+
+      if(req.file){
+        const fileUrl = await uploadOnCloudinary(req.file.path);  
+        attachment = fileUrl;
+
+      console.log("fileUrl",fileUrl); 
+      }
         
     const duration = parseFloat(leave_duration);
     if (isNaN(duration) || !(duration === 0.5 || duration >= 1)) {
@@ -113,7 +121,7 @@ const createLeave = async (req, res) => {
             apply_date,
             reason,
             leave_status: "Not Approve",
-            leaveattachment,
+            leaveattachment : attachment?.url,
             created_by,
             update_id: employeeId,
             update_date: new Date(),
@@ -180,18 +188,18 @@ const getLeavesByStatusForEmployee = async (req, res) => {
     }
 };
 
-const getFileAttachment = async(req, res) => {
-    const filename = req.params.filename;   
-    const filePath = path.resolve('..','uploads', filename);
+// const getFileAttachment = async(req, res) => {
+//     const filename = req.params.filename;   
+//     const filePath = path.resolve('..','uploads', filename);
 
-    fs.access(filePath, fs.constants.F_OK, (err) => {
-        if (err) {
-            res.status(404).send('File not found');
-        } 
-        res.sendFile(filePath);
-    });
+//     fs.access(filePath, fs.constants.F_OK, (err) => {
+//         if (err) {
+//             res.status(404).send('File not found');
+//         } 
+//         res.sendFile(filePath);
+//     });
 
-}
+// }
 
 const updateLeaveApplication = async(req, res) => {
     const {id} = req.params;
@@ -267,15 +275,18 @@ const updateLeaveApplication = async(req, res) => {
           }
  }    
         if(req.file){
-            updateData.leaveattachment = req.file ? req.file.filename : null;
+          const result = await uploadOnCloudinary(req.file.path);
+          if(result && result.secure_url){
+            updateData.leaveattachment = result.secure_url;
             console.log("updated attachment",updateData.leaveattachment);
+          }
           
         }
         updateData.update_date = new Date();
-        console.log("updated date",updateData.update_date);
+        // console.log("updated date",updateData.update_date);
 
         updateData.update_id = leave.em_id;
-        console.log("updated id",updateData.update_id);
+        // console.log("updated id",updateData.update_id);
 
         const updateResult = await leave.update(updateData);
         console.log("Leave application updated successfully",updateResult);
@@ -296,7 +307,8 @@ const getLeaveRequestsBySupervisor = async (req, res) => {
     const subordinates = await Employee.findAll({
       where: { supervisor_id: (supervisorId) },
     });
-    console.log(subordinates,"62035236")
+
+    console.log(subordinates);
 
     const subordinateIds = subordinates.map(emp => emp.em_id);
     // console.log("subordinateIds:", subordinateIds);
@@ -420,4 +432,4 @@ try {
 
 }
 
-export { createLeave, getLeavesByStatusForEmployee ,getFileAttachment,updateLeaveApplication,approveRejectLeave,getLeaveRequestsBySupervisor};
+export { createLeave, getLeavesByStatusForEmployee ,updateLeaveApplication,approveRejectLeave,getLeaveRequestsBySupervisor};

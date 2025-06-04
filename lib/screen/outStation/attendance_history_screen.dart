@@ -58,9 +58,25 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: selectedDate ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
+          builder: (context, child) {
+      return Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFF3C3FD5),
+            onPrimary: Colors.white,
+            onSurface: Colors.black,
+          ),
+
+            textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(foregroundColor: Color(0xFF3C3FD5)),
+          ),
+        ),
+        child: child!,
+      );
+    },
     );
 
     if (picked != null && picked != selectedDate) {
@@ -204,7 +220,23 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
                             ),
                           ),
                         ),
-
+                        Expanded(
+                          child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                        item['punchtype'] == 'OUTSTATION1'
+                                ? 'In'
+                            : item['punchtype'] == 'OUTSTATION2'
+                                ? 'Out'
+                                : item['punchtype'],
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            
+                            ),
+                          ),
+                        ),
+                      ),
                         Expanded(
                           child: Text(
                             item['punch_place'] ?? '',
@@ -247,6 +279,12 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
                         Expanded(
                           child: Text(
                             "Time",
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            "Punch",
                             style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                         ),
@@ -320,18 +358,18 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
          Padding(
   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
   child: Align(
-    alignment: Alignment.centerLeft, // Prevents awkward center alignment
+    alignment: Alignment.centerLeft, 
     child: GestureDetector(
       onTap: () => _selectDate(context),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color.fromARGB(226, 16, 22, 54),
+          color: const Color(0xFF202A44),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
               color: Colors.black12,
-              blurRadius: 4,
+              blurRadius: 6,
               offset: Offset(0, 2),
             ),
           ],
@@ -342,7 +380,10 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
             const Icon(Icons.calendar_today_outlined, color: Colors.white, size: 20),
             const SizedBox(width: 12),
             Text(
-            DateFormat('dd MMM yyyy').format(selectedDate ?? DateTime.now()),
+              selectedDate == null
+          ?
+            DateFormat('dd MMM yyyy').format(DateTime.now()) 
+          : DateFormat('dd MMM yyyy').format(selectedDate!),
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
