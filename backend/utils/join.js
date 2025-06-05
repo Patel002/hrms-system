@@ -4,6 +4,7 @@ import LeaveTypes from "../model/leaveTypes.model.js";
 import Company from "../model/company.model.js";
 import EmployeeLeave from "../model/employeeLeave.model.js";
 import EmployeeLeaveBalance from "../model/employeeLeaveBalance.model.js";
+import MonitorData from "../model/monitorData.model.js";
 
 Employee.hasMany(EmployeeLeave, {
   foreignKey: 'em_id',
@@ -47,6 +48,7 @@ LeaveTypes.hasMany(EmployeeLeaveBalance, {
   foreignKey: 'leave_type_id',
   sourceKey: 'type_id',
 });
+
 
 
 export {

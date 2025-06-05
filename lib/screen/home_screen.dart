@@ -67,7 +67,7 @@ Future<void> loadUserPermissions() async {
            child: ExpansionTile(
               title: const Text('Leave',
               style: TextStyle(fontWeight: FontWeight.w600)),
-              leading: const Icon(Icons.apps),
+              leading: const Icon(Icons.calendar_month_outlined),
               initiallyExpanded: _expandedTile == 'Leave',
               onExpansionChanged: (expanded) {
                 setState(() => _expandedTile = expanded ? 'Leave' : null);
@@ -75,28 +75,23 @@ Future<void> loadUserPermissions() async {
               childrenPadding: const EdgeInsets.only(left: 25, right: 16, bottom: 8), 
               children: [
                  ListTile(
-                  leading: const Icon(Icons.calendar_month_outlined),
                   title: const Text('Holiday'),
                   onTap: () => Navigator.pushNamed(context, '/holiday'),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.eject),
                   title: const Text('leave Application'),
                   onTap: () => Navigator.pushNamed(context, '/leave'),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.history),
                   title: const Text('Leave Status'),
                   onTap: () => Navigator.pushNamed(context, '/leave-status'),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.stacked_bar_chart_sharp),
                   title: const Text('Leave Balance'),
                   onTap: () => Navigator.pushNamed(context, '/leave-balance'),
                 ),
-                if (userRole == 'Super Admin' || isSupervisor)
+                if (userRole == 'SUPER ADMIN' || isSupervisor)
                 ListTile(
-                  leading: const Icon(Icons.hourglass_bottom),
                   title: const Text('Leave Request'),
                   onTap: () => Navigator.pushNamed(context, '/leave-request'),
                 ),
@@ -107,12 +102,12 @@ Future<void> loadUserPermissions() async {
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),          
             child: ExpansionTile(
               title: const Text('Attendance',style: TextStyle(fontWeight: FontWeight.w600)),
-              leading: const Icon(Icons.punch_clock_outlined),
-              initiallyExpanded: _expandedTile == 'Out Station',
+              leading: const Icon(Icons.access_time),
+              initiallyExpanded: _expandedTile == 'Attendance',
               onExpansionChanged: (expanded) {
-              setState(() { _expandedTile = expanded ? 'Out Station' : null; });
+              setState(() { _expandedTile = expanded ? 'Attendance' : null; });
               },
-              childrenPadding: const EdgeInsets.only(left: 25, right: 16, bottom: 8), 
+              childrenPadding: const EdgeInsets.only(left: 25, right: 16, bottom: 5), 
               children: [
                 ListTile(
                   title: const Text('Attendance In'),
@@ -128,6 +123,29 @@ Future<void> loadUserPermissions() async {
                 ),
               ],
               ),
+            ),
+
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),          
+            child: ExpansionTile(
+              title: const Text('Gate Pass',style: TextStyle(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.door_back_door),
+              initiallyExpanded: _expandedTile == 'Gate Pass',
+              onExpansionChanged: (expanded) {
+              setState(() { _expandedTile = expanded ? 'Gate Pass' : null; });
+              },
+              childrenPadding: const EdgeInsets.only(left: 25, right: 16, bottom: 5), 
+              children: [
+                ListTile(
+                  title: const Text('Apply OD'),
+                  onTap: () => Navigator.pushNamed(context, '/od-pass'),
+                ),
+                ListTile(
+                  title: const Text('OD History'),
+                  onTap: () => Navigator.pushNamed(context, '/od-history'),
+                ),
+              ]
+             )
             ),
 
             const Divider(thickness: 1),

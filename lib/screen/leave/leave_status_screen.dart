@@ -31,7 +31,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
 
   @override
   void initState() {
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length:3, vsync: this);
     super.initState();
     fetchLeaveTypes();
   }
@@ -105,13 +105,35 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Leave Status"),
-        backgroundColor: Color(0XFF213448),
-        foregroundColor: Colors.white,
+    appBar: PreferredSize(
+    preferredSize: const Size.fromHeight(kToolbarHeight),
+    child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color.fromARGB(255, 252, 253, 255), Color.fromARGB(255, 234, 239, 245)],
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+          ),
+        ),
+      child: AppBar(
+        title: Text("Leave Status",
+        style: TextStyle(fontWeight: FontWeight.bold),),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.black,
         elevation: 4,
       ),
-      body: Column(
+     )
+    ),
+      body: Container(
+        decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color.fromARGB(255, 252, 253, 255), Color.fromARGB(255, 234, 239, 245)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
@@ -124,10 +146,10 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
               itemBuilder: (context, index) {
                 final type = leaveTypes[index];
                 final isSelected =
-                    type['type_id'].toString() == selectedTypeId?.toString();
-
+                type['type_id'].toString() == selectedTypeId?.toString();
+                
                 return ChoiceChip(
-                  label: Text(type['name']),
+                  label: Text(type['name'],),
                   selected: isSelected,
                   onSelected: (_) {
                     setState(() {
@@ -165,6 +187,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -535,12 +558,37 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
         widget.leave['leaveattachment'] != '';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Leave Details'),
-        centerTitle: false,
+       backgroundColor: Colors.transparent,
+      appBar: PreferredSize(
+ preferredSize: const Size.fromHeight(kToolbarHeight),
+child: Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+child: AppBar(
+        title: const Text(
+          "Leave Details",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+       backgroundColor: Colors.transparent, 
+        foregroundColor: Colors.black,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
+    ),
+  ),
+      body: Container(
+        decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+         begin: Alignment.topRight,
+         end: Alignment.bottomLeft,
+      ),
+      ),
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Card(
           elevation: 2,
@@ -880,6 +928,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

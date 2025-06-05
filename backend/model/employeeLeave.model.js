@@ -70,6 +70,10 @@ const EmployeeLeave = sequelize.define('emp_leave',{
     },
     approved_at: {
         type: DataTypes.DATE,
+    },
+    created_by:{
+        type: DataTypes.STRING,
+        allowNull: false
     }
 },{
     tableName: 'emp_leave',

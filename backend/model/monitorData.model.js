@@ -26,6 +26,16 @@ const MonitorData = sequelize.define('monitordatatbl', {
     verifyMode:{
         type: DataTypes.STRING,
         allowNull: false
+    },
+    TRID:{
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    Temperature_c:{
+        type: DataTypes.INTEGER
+    },
+    Temperature_f:{
+        type: DataTypes.INTEGER
     }
 },{
     tableName: 'monitordatatbl',

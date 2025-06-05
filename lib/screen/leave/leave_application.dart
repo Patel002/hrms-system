@@ -260,11 +260,10 @@ child: AppBar(
          end: Alignment.bottomLeft,
       ),
     ),
-padding: const EdgeInsets.all(16.0),
-child: emUsername == null || compFname == null
-? const Center(child: CircularProgressIndicator(
-valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
-
+          padding: const EdgeInsets.all(16.0),
+          child: emUsername == null || compFname == null
+          ? const Center(child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
         ))
       : Form(
           key: _formKey,

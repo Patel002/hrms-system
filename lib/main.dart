@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screen/splash_screen.dart';
 import 'screen/login_screen.dart';
 import 'screen/home_screen.dart';
@@ -10,7 +11,8 @@ import 'screen/leave/leave_balance.dart';
 import 'screen/outStation/attendance_in_screen.dart';
 import 'screen/outStation/attendance_history_screen.dart';
 import 'screen/outStation/attendance_out_screen.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'screen/getPass/odPass_screen.dart';
+import 'screen/getPass/odPass_history_screen.dart';
 
 void main() async {
   await dotenv.load();
@@ -39,6 +41,8 @@ class MyApp extends StatelessWidget {
         '/attendance-in': (context) => const AttendanceScreenIN(),
         '/attendance-out': (context) => const AttendanceScreenOut(),
         '/attendance-history': (context) => const AttandanceHistory(),
+        '/od-pass': (context) => const ODPassScreen(),
+        '/od-history': (context) => const OdHistory(),
       },
 
     );
