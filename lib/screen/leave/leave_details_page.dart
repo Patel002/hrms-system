@@ -7,16 +7,16 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class LeaveDetailPage extends StatelessWidget {
   final Map<String, dynamic> leave;
-  final String? departmentName;
-  final String employeeCode;
+  // final String? departmentName;
+  // final String employeeCode;
   final String compFname;
   final void Function(String action, [String? reason]) onAction;
   final baseUrl = dotenv.env['API_BASE_URL'];
 
   LeaveDetailPage({super.key, 
     required this.leave,
-    this.departmentName,
-    required this.employeeCode,
+    // this.departmentName,
+    // required this.employeeCode,
     required this.compFname,
     required this.onAction,
   });
@@ -98,14 +98,13 @@ class LeaveDetailPage extends StatelessWidget {
 
                         const SizedBox(height: 12),
                         const Divider(height: 32),
-                        
-                        // Employee Information Section
+                    
                         _buildSectionHeader(Icons.person_outline, 'Employee Information'),
                         _buildInfoTile(Icons.badge_outlined, "Employee ID", leave['em_id'].toString()),
-                        _buildInfoTile(Icons.credit_card_outlined, "Employee Code", employeeCode),
+                        // _buildInfoTile(Icons.credit_card_outlined, "Employee Code", employeeCode),
                         _buildInfoTile(Icons.business_outlined, "Company Name", compFname),
-                        if (departmentName != null) 
-                          _buildInfoTile(Icons.group_outlined, "Department", departmentName!),
+                        // if (departmentName != null) 
+                          // _buildInfoTile(Icons.group_outlined, "Department", departmentName!),
                         
                         const Divider(height: 32),
                         

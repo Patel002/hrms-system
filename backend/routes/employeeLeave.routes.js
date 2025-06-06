@@ -12,7 +12,7 @@ router.route('/list').get(getLeavesByStatusForEmployee);
 // router.route('/avalibaleLeaves').get(avalibaleLeaves);
 // router.route('/attachment/:filename').get(getFileAttachment);
 router.route('/update/:id').patch(upload.single('leaveattachment'),updateLeaveApplication);
-router.route('/:status/:supervisorId').get(getLeaveRequestsBySupervisor);
+router.route('/:status').get(authenticateUser,getLeaveRequestsBySupervisor);
 router.route('/approve-reject/:id').patch(authenticateUser,approveRejectLeave);
 
 export default router;

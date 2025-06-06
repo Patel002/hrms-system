@@ -138,9 +138,9 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
         } else if (snapshot.hasError) {
-          return Center(child: Text("Error loading $approved leaves"));
+          return Center(child: Text("Error loading $approved Od-Pass"));
         } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(child: Text("No $approved leaves."));
+          return Center(child: Text("No $approved Od-Pass."));
         }
 
         final odPass = snapshot.data!;

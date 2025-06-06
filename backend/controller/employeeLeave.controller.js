@@ -10,8 +10,7 @@ const createLeave = async (req, res) => {
         end_date,
         apply_date,
         leave_duration,
-        reason,
-        created_by,
+        reason
     } = req.body;
 
     let attachment = null;
@@ -122,7 +121,7 @@ const createLeave = async (req, res) => {
             reason,
             leave_status: "Not Approve",
             leaveattachment : attachment?.url,
-            created_by,
+            created_by: employeeId,
             update_id: employeeId,
             update_date: new Date(),
             created_at: new Date(),
@@ -181,6 +180,7 @@ const getLeavesByStatusForEmployee = async (req, res) => {
         });
       //   console.log("leave_status",leaves.leave_status);
       //  console.log("leaves: ", leaves);
+
         return res.status(200).json({ leaves });
     } catch (error) {
         console.error("Error fetching leaves by status for employee:", error);
@@ -301,17 +301,27 @@ const updateLeaveApplication = async(req, res) => {
 }
 
 const getLeaveRequestsBySupervisor = async (req, res) => {
-  const { supervisorId,status } = req.params;
+  const { status } = req.params;
+  const { em_id, em_role } = req.user;
 
   try {
+    if (em_role === 'SUPER ADMIN') {
+      const allLeaveRequests = await EmployeeLeave.findAll({
+        where: { leave_status: status },
+      });
+      return res.status(200).json({
+        pendingLeaves: allLeaveRequests,
+      });
+    }
+
     const subordinates = await Employee.findAll({
-      where: { supervisor_id: (supervisorId) },
+      where: { supervisor_id: (em_id) },
     });
 
     console.log(subordinates);
 
     const subordinateIds = subordinates.map(emp => emp.em_id);
-    // console.log("subordinateIds:", subordinateIds);
+    console.log("subordinateIds:", subordinateIds);
 
     if (subordinateIds.length === 0) {
       return res.status(200).json([
@@ -334,11 +344,9 @@ const getLeaveRequestsBySupervisor = async (req, res) => {
   }
 };
 
-
 const approveRejectLeave = async(req, res) => {
 const { id } = req.params;
 const { action, reject_reason } = req.body;
-
 try {
     const leave = await EmployeeLeave.findOne({ where: { id } });
     if (!leave) {
@@ -347,19 +355,11 @@ try {
 
     const employee = await Employee.findOne({ where: { em_code: leave.em_id } });
 
-    // console.log("employee: ", leave.em_id);
-
-
-    // console.log("employee: ", req.user.em_code);
-    // console.log("supervisor_id: ", employee.supervisor_id);
-    // console.log("employee.em_code: ", employee.em_code);
-    // console.log("employee",employee)
-
-    if (!employee || employee.supervisor_id !== req.user.em_code) {
+    if (!employee || employee.supervisor_id !== req.user.em_code && req.user.em_role !== 'SUPER ADMIN') {
         return res.status(403).json({ message: "You are not authorized to approve/reject this leave" });
     }
 
-    console.log("leave_type_id",employee.typeid,"employee.em_id",employee.em_id);
+    console.log("leave_type_id",leave.typeid,"employee.em_id",employee.em_id,"quattro",req.user.em_role);
     if (action === "approve") {
 
      if (leave.typeid !== 20) {
@@ -368,7 +368,7 @@ try {
         const credit = await EmployeeLeaveBalance.sum('number_of_days', {
         where: {
           emp_id: employee.em_id,
-          leave_type_id: employee.typeid,
+          leave_type_id: leave.typeid,
           leave_status: "Credit"
         }
       });
@@ -384,7 +384,7 @@ try {
       const debit = await EmployeeLeaveBalance.sum('number_of_days', {
         where: {
           emp_id: employee.em_id,
-          leave_type_id: employee.typeid,
+          leave_type_id: leave.typeid,
           leave_status: "Debit"
         }
       });
@@ -421,6 +421,7 @@ try {
 
     leave.approved_by = req.user.em_code;
     leave.approved_at = new Date();
+    leave.update_date = new Date();
     const result = await leave.save();
 
     return res.status(200).json({ message: "Leave request updated" ,result});

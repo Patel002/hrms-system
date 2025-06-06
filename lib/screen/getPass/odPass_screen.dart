@@ -197,11 +197,12 @@ _resetForm();
                         children: [
                           Expanded(
                             child: InkWell(
+                              
                               onTap: () async {
                                 final picked = await showDatePicker(
                                   context: context,
                                   initialDate: fromdate ?? DateTime.now(),
-                                  firstDate: DateTime(1947),
+                                  firstDate: DateTime.now(),
                                   lastDate: DateTime(2100),
                                    builder: (context, child) {
                               return Theme(
@@ -371,13 +372,13 @@ _resetForm();
                     ],
                   ),
                 ),
-             ],
+              ],
+            ),
           ),
         ),
-      ),
-    )
-  );
-} 
+      )
+    );
+  } 
 }
 
  Widget buildReadOnlyField(String label, String value) {

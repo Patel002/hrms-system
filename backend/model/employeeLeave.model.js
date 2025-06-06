@@ -60,7 +60,7 @@ const EmployeeLeave = sequelize.define('emp_leave',{
         type: DataTypes.STRING,
     },
     update_date:{
-        type: DataTypes.INTEGER,
+        type: DataTypes.DATE,
     },
     reject_reason: {
         type: DataTypes.STRING,

@@ -43,7 +43,7 @@ class _ModernAnimatedSplashState extends State<ModernAnimatedSplash>
   Future<void> _startAnimationAndNavigate() async {
     await _controller.forward();
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    prefs.getString('token');
    
       Navigator.of(context).pushReplacementNamed('/login');
   }

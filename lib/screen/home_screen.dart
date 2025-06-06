@@ -27,7 +27,7 @@ Future<void> loadUserPermissions() async {
   if (token != null) {
     final decoded = Jwt.parseJwt(token);
     setState(() {
-      userRole = decoded['role']; 
+      userRole = decoded['em_role']; 
       isSupervisor = decoded['isSupervisor'] == true;
     });
   }

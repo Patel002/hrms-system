@@ -60,6 +60,10 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
 
   Future<List<Map<String, dynamic>>> fetchRequests(String status) async {
     if (employeeCode == null) return [];  
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token'); 
+       if (token == null) return [];
+
 
     final statusMap = {
       'pending': 'Not Approve',
@@ -70,7 +74,10 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
     final apiStatus = statusMap[status.toLowerCase()];
     print('API Status: $apiStatus');
 
-    final res = await http.get(Uri.parse('$baseUrl/api/emp-leave/$apiStatus/$employeeCode'));
+    final res = await http.get(Uri.parse('$baseUrl/api/emp-leave/$apiStatus'),
+    headers: {
+      'Authorization': 'Bearer $token', 
+    });
     print("res,$res");
 
     if (res.statusCode == 200) {
@@ -211,7 +218,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
               leading: Icon(Icons.event_note, color: Colors.blue),
               title: Text("${leave['start_date']} → ${leave['end_date']}"),
               subtitle: Text("Employee: ${leave['em_id']}", 
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              style: TextStyle(fontWeight: FontWeight.bold)),
               trailing: Container(
                 padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
@@ -227,16 +234,16 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                 final pref = await SharedPreferences.getInstance();
                 final token = pref.getString('token');
                 final decoded = Jwt.parseJwt(token!);
-                final employeeCode = decoded['em_code'];
-                final departmentName = decoded['dep_name'];
+                // final employeeCode = decoded['em_code'];
+                // final departmentName = decoded['dep_name'];
                 final compFname = decoded['comp_fname'];
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => LeaveDetailPage(
                       leave: leave,
-                      departmentName: departmentName ?? '',
-                      employeeCode: employeeCode ?? '',
+                      // departmentName: departmentName ?? '',
+                      // employeeCode: employeeCode ?? '',
                       compFname: compFname ?? '',
                       onAction: (action, [reason]) {
                         Navigator.pop(context);
@@ -248,7 +255,6 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                 );
               },
             ),
-            // Add action buttons only for pending requests and when showActions is true
             if (showActions && status.toLowerCase() == 'not approve')
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -257,27 +263,27 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   children: [
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
+                        backgroundColor: const Color.fromARGB(255, 242, 238, 238),
+                        foregroundColor: Colors.green,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.all(Radius.circular(10)),
                            ),
                           // contentPadding: EdgeInsets.symmetric(horizontal: 16),
                       ),
                       onPressed: () => _confirmApprove(leave['id'].toString()),
-                      child: Text("Approve"),
+                      child: Icon(Icons.check_circle_rounded, size: 20),
                     ),
                     SizedBox(width: 8),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
+                        backgroundColor: const Color.fromARGB(255, 242, 238, 238),
+                        foregroundColor: Colors.red,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(10)),
                         padding: EdgeInsets.symmetric(horizontal: 16),
                       ),
                       onPressed: () => _showRejectDialog(leave['id'].toString()),
-                      child: Text("Reject"),
+                      child: Icon(Icons.cancel_rounded, size: 20),
                     ),
                   ],
                 ),
