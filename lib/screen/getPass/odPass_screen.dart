@@ -49,7 +49,7 @@ Map<String, dynamic> getODDetails() {
   if (fromdate == null || todate == null || type == null) {
     return {'oddays': 0.0, 'odtype': 0};
   }
-
+  
   final diff = todate!.difference(fromdate!).inDays + 1;
 
   if (type == 'Half Day') {
@@ -69,7 +69,7 @@ Map<String, dynamic> getODDetails() {
   };
 }
 
-  Future<bool> submitOdPass() async {
+ Future<bool> submitOdPass() async {
 
   if (!_formKey.currentState!.validate() || fromdate == null || todate == null) return false; 
   _formKey.currentState!.save();
@@ -94,22 +94,18 @@ try{
     })
    );
 
+   print('body,${response.body}');
+
    if (response.statusCode == 201) {
-       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("OD Pass submitted successfully")),
-      );
+      _showCustomSnackBar(context, 'OD-Pass applied successfully', Colors.green, Icons.check);
       return true;
     } else {
       final body = jsonDecode(response.body);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(body['message'] ?? "Error submitting OD Pass")),
-      );
+      _showCustomSnackBar(context, body['message'], Colors.red, Icons.error);
       return false;
     }
   } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Error submitting OD Pass: $e")),
-    );
+    _showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
     return false;
   }
 }
@@ -126,8 +122,6 @@ _resetForm();
   });
 }
 
-
-
   void _resetForm() {
   _formKey.currentState?.reset();
   setState(() {
@@ -137,6 +131,30 @@ _resetForm();
     type = null;
   });
 }
+
+void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
+    final snackBar = SnackBar(
+      content: Row(
+        children: [
+          Icon(icon, color: Colors.white),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: color,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      margin: const EdgeInsets.all(16),
+      duration: const Duration(seconds: 2),
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
 
 
   @override

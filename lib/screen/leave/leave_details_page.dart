@@ -262,7 +262,6 @@ class LeaveDetailPage extends StatelessWidget {
   );
 } 
   void _showRejectDialog(BuildContext context) {
-    // Handle the reject action and show a dialog to input reject reason.
   }
 
   IconData _getStatusIcon(String status) {

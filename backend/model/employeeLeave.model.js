@@ -53,7 +53,7 @@ const EmployeeLeave = sequelize.define('emp_leave',{
         // allowNull: false
     },
     created_at: {
-        type: DataTypes.DATEONLY,
+        type: DataTypes.DATE,
         allowNull: false
     },
     update_id: {

@@ -41,33 +41,55 @@ Future<void> loadUserPermissions() async {
   @override
   Widget build(BuildContext context) {
     // final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
       ),
       drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
+        child: Column(
           children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: Color(0XFF213448)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 50),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Icon(Icons.account_circle, size: 64, color: Colors.white),
-                  SizedBox(height: 4),
-                  Text('Welcome!', style: TextStyle(color: Colors.white, fontSize: 18)),
+                  const CircleAvatar(
+                    radius: 28,
+                    backgroundImage: NetworkImage(
+                      '', 
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'Chim Bro',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Profile',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-
           Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
            child: ExpansionTile(
               title: const Text('Leave',
               style: TextStyle(fontWeight: FontWeight.w600)),
-              leading: const Icon(Icons.calendar_month_outlined),
+              leading: const Icon(Icons.calendar_month_outlined), 
               initiallyExpanded: _expandedTile == 'Leave',
               onExpansionChanged: (expanded) {
                 setState(() => _expandedTile = expanded ? 'Leave' : null);

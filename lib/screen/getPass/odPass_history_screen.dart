@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decode/jwt_decode.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:async';
+import 'package:intl/intl.dart';
 
 class OdHistory extends StatefulWidget {
   const OdHistory({super.key});
@@ -186,7 +187,8 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
                   final decoded = Jwt.parseJwt(token);
                   final emUsername = decoded['em_username'];
                   final departmentName = decoded['dep_name'];
-                  print("department name: $departmentName");
+                  // print("department name: $departmentName");
+                  // print("od pass id,${leave['id']}");
                   final compFname = decoded['comp_fname'];
                   Navigator.push(
                     context,
@@ -201,7 +203,8 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
                             remark: leave['remark'],
                             approved: leave['approved'],
                             date: leave['add_date'],
-                            oddays: leave['oddays']
+                            oddays: leave['oddays'],
+                            id: leave['id'].toString(),
                           ),
                     ),
                   );
@@ -238,7 +241,7 @@ class OdDetailsPage extends StatefulWidget {
   final String remark;
   final String approved;
   final String oddays;
-
+  final String id;
 
   const OdDetailsPage({
     super.key,
@@ -250,7 +253,8 @@ class OdDetailsPage extends StatefulWidget {
     required this.remark,
     required this.approved,
     required this.date,
-    required this.oddays
+    required this.oddays,
+    required this.id,
   });
 
   @override
@@ -269,28 +273,172 @@ class _OdDetailsPageState extends State<OdDetailsPage> {
     }
   }
 
-  IconData getStatusIcon(String status) {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return Icons.check_circle_outline;
-      case 'rejected':
-        return Icons.cancel_outlined;
-      default:
-        return Icons.hourglass_top;
+  // IconData getStatusIcon(String status) {
+  //   switch (status.toLowerCase()) {
+  //     case 'approved':
+  //       return Icons.check_circle_outline;
+  //     case 'rejected':
+  //       return Icons.cancel_outlined;
+  //     default:
+  //       return Icons.hourglass_top;
+  //   }
+  // }
+
+  final baseUrl = dotenv.env['API_BASE_URL'];
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController remarkController;
+  late DateTime fromDate;
+  late DateTime toDate;
+  late String type;
+  double duration = 1.0;
+
+  @override
+void initState() {
+  super.initState();
+  fromDate = DateTime.parse(widget.fromDate);
+  toDate = DateTime.parse(widget.toDate);
+  final duration = widget.oddays;
+
+  type = (duration == 0.5 || duration.toString() == '0.5') ? 'Half Day' : 'Full Day';
+
+  remarkController = TextEditingController(text: widget.remark);
+}
+
+ double calculateDuration(DateTime from, DateTime to) {
+    if (from.isAfter(to)) {
+      return -1;
+    }
+
+    if (type == 'Half Day') {
+      if (from.isAtSameMomentAs(to)) {
+        return 0.5;
+      } else {
+        return (to.difference(from).inDays + 1);
+      }
+    } else {
+      return to.difference(from).inDays + 1;
     }
   }
 
+  Future<void> _pickDate(BuildContext context, bool isFrom) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: isFrom ? fromDate : toDate,
+      firstDate: DateTime(DateTime.now().year, DateTime.now().month),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        if (isFrom) {
+          fromDate = picked;
+          if (toDate.isBefore(fromDate)) {
+            toDate = picked;
+          }
+        } else {
+          toDate = picked;
+        }
+      });
+    }
+  }
+
+    Future<void> _saveUpdates() async {
+      final id = (widget.id);
+      print('OD-Pass ID: $id');
+
+      final leaveDuration = calculateDuration(fromDate, toDate);
+      final int odType = leaveDuration <= 1.0 ? 1 : 2;
+
+      print('Leave Duration: $leaveDuration');
+      print('base url: $baseUrl');
+ 
+    if (baseUrl == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("API base URL is not configured.")),
+    );
+    return;
+  }
+    try {
+    final url = Uri.parse('$baseUrl/api/od-pass/update/$id');
+    print("url: $url");
+
+      final response = await http.patch(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'fromdate': fromDate.toIso8601String(),
+          'todate': toDate.toIso8601String(),
+          'remark': remarkController.text,
+          'oddays': leaveDuration.toString(),
+          'odtype': odType.toString(),
+        }),
+      );
+
+     final decode = jsonDecode(response.body);
+      print(decode['data']);
+
+      if (response.statusCode == 201) {
+        _showCustomSnackBar(
+          context,
+          "Leave submitted successfully",
+          Colors.green,
+          Icons.check_circle,
+        );
+      } else {
+        final error = jsonDecode(response.body);
+        _showCustomSnackBar(
+          context,
+          "${error['message']}",
+          Colors.red,
+          Icons.error,
+        );
+      }
+    } catch (e) {
+      _showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
+    }
+  }
+
+ void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
+    final snackBar = SnackBar(
+      content: Row(
+        children: [
+          Icon(icon, color: Colors.white),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: color,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      margin: const EdgeInsets.all(16),
+      duration: const Duration(seconds: 2),
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final screenHeight = MediaQuery.of(context).size.height;
     final statusColor = getStatusColor(widget.approved);
+    final isApproved = widget.approved.toLowerCase() == 'approved';
+    final isRejected =
+        widget.approved.toLowerCase() == 'rejected';
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('OD Pass Details',
-        style: TextStyle(fontWeight: FontWeight.bold),),
-        backgroundColor: Colors.transparent,
+        style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Color(0xFFF5F7FA),
         elevation: 0,
         foregroundColor: Colors.black,
       ),
@@ -317,14 +465,42 @@ class _OdDetailsPageState extends State<OdDetailsPage> {
                 child: Column(
                   children: [
                     Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 8,
                       shadowColor: Colors.black26,
                       child: Padding(
-                        padding: const EdgeInsets.all(24),
+                     padding: const EdgeInsets.all(16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                               decoration: BoxDecoration(
+                           color:
+                        isApproved
+                            ? Colors.green.withOpacity(0.1)
+                            : isRejected
+                            ? Colors.red.withOpacity(0.1)
+                            : Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                      ),
+                              child: Text(
+                                widget.approved!.toUpperCase(),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                          color:
+                          isApproved
+                              ? Colors.green
+                              : isRejected
+                              ? Colors.red
+                              : Colors.orange,
+                      fontWeight: FontWeight.bold,
+                              ),
+                             ),
+                            ),
+                            const SizedBox(height: 12),
                             _sectionTitle("Employee Info"),
                             const SizedBox(height: 10),
                             _infoRow("Username", widget.emUsername),
@@ -334,35 +510,70 @@ class _OdDetailsPageState extends State<OdDetailsPage> {
                             _sectionTitle("OD Duration"),
                             const SizedBox(height: 10),
                             _infoRow("Applied Date", widget.date),
-                            _infoRow("From", widget.fromDate),
-                            _infoRow("To", widget.toDate),
-                            _infoRow("Duration", widget.oddays),
+                           _editableDateField("From", fromDate, () => _pickDate(context, true)),
+                          _editableDateField("To", toDate, () => _pickDate(context, false)),
 
+                            _infoRow("Duration",'${calculateDuration(fromDate, toDate)} days',),
+                             if (fromDate.difference(toDate).inDays.abs() == 0) ...[
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              const Icon(Icons.access_time),
+                              const SizedBox(width: 8),
+                              const Text('Type: '),
+                              const SizedBox(width: 8),
+                              DropdownButton<String>(
+                                value: type,
+                                items:
+                              ['Full Day', 'Half Day']
+                                  .map(
+                                    (type) => DropdownMenuItem(
+                                      value: type,
+                                      child: Text(type),
+                                    ),
+                                  )
+                                  .toList(),
+                                onChanged: (val) {
+                                  setState(() {
+                                    type = val!;
+                                    duration = calculateDuration(fromDate, toDate);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
                             const SizedBox(height: 24),
                             _sectionTitle("Reason"),
-                            _infoRow("Remark", widget.remark),
-
-                            const SizedBox(height: 24),
-                            _sectionTitle("Status"),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Icon(getStatusIcon(widget.approved),
-                                    color: statusColor, size: 28),
-                                const SizedBox(width: 12),
-                                Chip(
-                                  label: Text(
-                                    widget.approved.toUpperCase(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  backgroundColor: statusColor,
-                                ),
-                              ],
+                             TextFormField(
+                            controller: remarkController,
+                            maxLines: 2,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              hintText: "Enter reason for OD...",
                             ),
+                            validator: (val) => val == null || val.isEmpty ? "Remark required" : null,
+                          ),
+
+                            const SizedBox(height: 10),
+
+                             if (!isApproved && !isRejected) ...[
+                             const SizedBox(height: 12),
+                            ElevatedButton.icon(
+                              onPressed: duration == -1 ? null : ()async {
+                                await _saveUpdates();
+                              },
+                              icon: const Icon(Icons.update),
+                              label: const Text("Save Changes"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                           ],
                           ],
                         ),
                       ),
@@ -419,3 +630,37 @@ class _OdDetailsPageState extends State<OdDetailsPage> {
     );
   }
 }
+
+Widget _editableDateField(String label, DateTime date, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: InkWell(
+        onTap: onTap,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 120,
+              child: Text(
+                "$label:",
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87),
+              ),
+            ),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  DateFormat('dd MMM yyyy').format(date),
+                  style: const TextStyle(fontSize: 15),
+                ),
+              ),
+            ),
+            const Icon(Icons.calendar_today, size: 18, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
