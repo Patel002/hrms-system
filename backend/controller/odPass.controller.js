@@ -20,7 +20,7 @@ const createOdPass = async(req, res) =>{
 
         if(!emp_id || !comp_fname || !fromdate || !todate || !add_date || !oddays || !odtype || !remark ){
             return res.status(400).json({message:"All fields are required"})
-        }
+        } 
 
         const company = await Company.findOne({ where: { comp_fname } });
         if (!company) {
@@ -113,7 +113,53 @@ const getHistoryOfOdPass = async(req, res) =>{
     }
 }
 
+const updateOdPassApplication = async(req, res) => {
+    const {id} = req.params;
+    const updateData = req.body;
+
+    try {
+        const OdHistory = await OdPass.findByPk(id);
+        if (!OdHistory) {
+            return res.status(404).json({ message: "Od Pass not found" });
+        }
+        
+        console.log("Od-Pass",updateData);
+
+        let updatedOdDuration = updateData.oddays || OdHistory.oddays;
+
+        updatedOdDuration = parseFloat(updatedOdDuration);
+
+        if (!(updatedOdDuration === 0.5 || updatedOdDuration >= 1))
+            {
+                console.log("Invalid input:", updatedOdDuration);
+            return res.status(400).json({
+                message: "Leave duration must be at least 1 day or exactly 0.5 for half-day leave.",
+            });
+        }
+
+        updateData.add_date = new Date();
+        console.log("updated date",updateData.add_date);
+
+        updateData.updated_at = new Date();
+        console.log("updated date",updateData.updated_at);
+
+        updateData.updated_by = OdHistory.emp_id;
+        console.log("updated id",updateData.updated_by);
+
+        const updateResult = await OdHistory.update(updateData);
+        console.log("Od-Pass application updated successfully",updateResult);
+
+        res.status(201).json({ message: 'OD-Pass application updated successfully', data: updateResult });
+
+        
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "Server error while upadating OD-Pass application" });
+    }
+}
+
 export {
     createOdPass,
-    getHistoryOfOdPass
+    getHistoryOfOdPass,
+    updateOdPassApplication
 }

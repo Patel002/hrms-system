@@ -55,7 +55,7 @@ Future<void> loadUserPermissions() async {
                   const CircleAvatar(
                     radius: 28,
                     backgroundImage: NetworkImage(
-                      '', 
+                      'https://picsum.photos/200/300', 
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -84,9 +84,11 @@ Future<void> loadUserPermissions() async {
                 ],
               ),
             ),
+
           Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
            child: ExpansionTile(
+              key: Key('Leave_${_expandedTile == 'Leave'}'),
               title: const Text('Leave',
               style: TextStyle(fontWeight: FontWeight.w600)),
               leading: const Icon(Icons.calendar_month_outlined), 
@@ -123,6 +125,7 @@ Future<void> loadUserPermissions() async {
             Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),          
             child: ExpansionTile(
+              key: Key('Attendance_${_expandedTile == 'Attendance'}'),
               title: const Text('Attendance',style: TextStyle(fontWeight: FontWeight.w600)),
               leading: const Icon(Icons.access_time),
               initiallyExpanded: _expandedTile == 'Attendance',
@@ -150,6 +153,7 @@ Future<void> loadUserPermissions() async {
             Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),          
             child: ExpansionTile(
+              key: Key('GatePass_${_expandedTile == 'Gate Pass'}'),
               title: const Text('Gate Pass',style: TextStyle(fontWeight: FontWeight.w600)),
               leading: const Icon(Icons.door_back_door),
               initiallyExpanded: _expandedTile == 'Gate Pass',

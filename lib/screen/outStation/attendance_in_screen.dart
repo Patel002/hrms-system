@@ -4,15 +4,17 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';  
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
-// import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+import 'dart:math' as math;
 import 'package:image/image.dart' as img;
 import 'package:camera/camera.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
-// import 'package:google_ml_kit/google_ml_kit.dart';
+// import 'dart:typed_data';
+// import 'package:image_picker/image_picker.dart';
+// import 'package:flutter/services.dart';
+// import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+
 
 class AttendanceScreenIN extends StatefulWidget {
   const AttendanceScreenIN({super.key});
@@ -31,26 +33,32 @@ class _AttendanceScreenINState extends State<AttendanceScreenIN> {
   String? base64Image;
   File? _imageFile;
   CameraController? _cameraController;
-  late FaceDetector _faceDetector;
+  // late FaceDetector _faceDetector;
   // bool _isBlinking = false;
   bool _isCapturing = false;
   bool _isProcessing = false;
-  DateTime? _lastBlinkTime; 
+  // DateTime? _lastSmileTime;
+  // bool _eyesClosed = false;
+  late Future<void> _initializeControllerFuture;
 
   @override
   void initState() {
     super.initState();
     getEmpCodeFromToken();
     getLocation();
-    _initializeCamera();
-    _faceDetector = FaceDetector(
-    options: FaceDetectorOptions(
-      performanceMode: FaceDetectorMode.accurate,
-      enableLandmarks: true,
-      enableClassification: true,
-      enableTracking: true,
-    ),
-  );
+  
+  //   _faceDetector = FaceDetector(
+  //   options: FaceDetectorOptions(
+  //     performanceMode: FaceDetectorMode.fast,
+  //     enableContours: false,
+  //     enableLandmarks: false,
+  //     enableClassification: true,
+  //     enableTracking: true,
+  //   ),
+  // );
+  
+    _initializeControllerFuture = _initializeCamera();
+
   }
 
   Future<void> getEmpCodeFromToken() async {
@@ -85,37 +93,7 @@ class _AttendanceScreenINState extends State<AttendanceScreenIN> {
       throw Exception('Location permission not granted');
     }
       print('Latitude: ${currentPosition?.latitude}, Longitude: ${currentPosition?.longitude}, Accuracy: ${currentPosition?.accuracy}');
-     }
-
-// Future<String?> captureImage() async {
-//   PermissionStatus status = await Permission.camera.request();
-  
-//     if (status.isDenied) {
-//     throw Exception('Camera permission denied by user');
-//   } else if (status.isPermanentlyDenied) {
-//     openAppSettings();
-//     throw Exception('Camera permission permanently denied. Please enable it from settings.');
-//   }
-
-//   final pickedFile = await ImagePicker().pickImage(source: ImageSource.camera);
-//   if (pickedFile == null) return null;
-
-//   final file = File(pickedFile.path);
-//   final originalBytes = await file.readAsBytes();
-
-//   img.Image? decodedImage = img.decodeImage(originalBytes);
-//   if (decodedImage == null) return null;
-
-//   img.Image resizedImage = img.copyResize(decodedImage, width: 250, height: 250);
-
-//   final resizedBytes = img.encodeJpg(resizedImage); 
-//   final encoded = base64Encode(resizedBytes);
-//   setState(() {
-//     _imageFile = file;
-//     base64Image =  'data:image/jpeg;base64,$encoded';
-//   });
-//   return base64Image;
-// } 
+     } 
 
 
 Future<void> _initializeCamera() async {
@@ -132,109 +110,21 @@ Future<void> _initializeCamera() async {
     (cam) => cam.lensDirection == CameraLensDirection.front,
   );
 
-  _cameraController = CameraController(frontCamera, ResolutionPreset.medium);
+  _cameraController = CameraController(
+    frontCamera,
+    ResolutionPreset.high,
+    imageFormatGroup: ImageFormatGroup.yuv420,
+    enableAudio: false,
+  );
+
   await _cameraController!.initialize();
 
-  _cameraController!.startImageStream((CameraImage image) {
+  await _cameraController!.startImageStream((CameraImage image) {
     if (!_isCapturing && !_isProcessing) {
-      _processCameraImage(image);
+      // _processCameraImage(image);
     }
   });
-}
-
- Future<void> _processCameraImage(CameraImage image) async {
-  _isProcessing = true;
-  
-  try {
-    final inputImage = _inputImageFromCameraImage(image);
-    if (inputImage == null) return;
-
-    final faces = await _faceDetector.processImage(inputImage);
-    if (faces.isEmpty) return;
-
-    final face = faces.first; 
-   await _checkForSmile(face);
-  } catch (e) {
-    debugPrint('Face detection error: $e');
-  } finally {
-    _isProcessing = false;
-  }
-}
-
-InputImage? _inputImageFromCameraImage(CameraImage image) {
-  try {
-    if (image.format.group == ImageFormatGroup.yuv420) {
-      final plane = image.planes[0];
-      final bytes = Uint8List(plane.bytes.length);
-      bytes.setRange(0, plane.bytes.length, plane.bytes);
-      
-      final metadata = InputImageMetadata(
-        size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: InputImageRotation.rotation90deg,
-        format: InputImageFormat.nv21,
-        bytesPerRow: plane.bytesPerRow,
-      );
-
-      return InputImage.fromBytes(
-        bytes: bytes,
-        metadata: metadata,
-      );
-    }
-    else {
-      final plane = image.planes[0];
-      final bytes = Uint8List(plane.bytes.length);
-      bytes.setRange(0, plane.bytes.length, plane.bytes);
-      
-      final metadata = InputImageMetadata(
-        size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: InputImageRotation.rotation90deg,
-        format: InputImageFormat.bgra8888,
-        bytesPerRow: plane.bytesPerRow,
-      );
-
-      return InputImage.fromBytes(
-        bytes: bytes,
-        metadata: metadata,
-      );
-    }
-  } catch (e) {
-    debugPrint('Error creating InputImage: $e');
-    return null;
-  }
-}
-
-
-Future<void> _checkForSmile(Face face) async {
-  if (face.smilingProbability == null) return;
-
-  final smileProb = face.smilingProbability!;
-  print('Smile probability: $smileProb');
-
-  const smileThreshold = 0.39; 
-
-  final now = DateTime.now();
-
-  if (smileProb > smileThreshold &&
-      !_isCapturing &&
-      (_lastBlinkTime == null || now.difference(_lastBlinkTime!) > const Duration(milliseconds: 800))) {
-    _lastBlinkTime = now;
-
-    setState(() {
-      _isCapturing = true;
-    });
-
-    await _captureImage();
-    print('Captured image: $_imageFile');
-
-    await Future.delayed(const Duration(seconds: 1));
-
-    setState(() {
-      _isCapturing = false;
-    });
-  }
-}
-
-
+} 
 Future<void> _captureImage() async {
   try {
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
@@ -247,7 +137,9 @@ Future<void> _captureImage() async {
     final decoded = img.decodeImage(originalBytes);
     if (decoded == null) return;
 
-    final resized = img.copyResize(decoded, width: 250, height: 250);
+    final flipped = img.flipHorizontal(decoded);
+
+    final resized = img.copyResize(flipped, width: 250, height: 250);
     final resizedBytes = img.encodeJpg(resized);
     final base64Str = base64Encode(resizedBytes);
 
@@ -257,6 +149,7 @@ Future<void> _captureImage() async {
       _imageFile = File(file.path);
       base64Image = 'data:image/jpeg;base64,$base64Str';
     });
+    
   } catch (e) {
     debugPrint('Error capturing image: $e');
   }
@@ -265,9 +158,7 @@ Future<void> _captureImage() async {
 
  Future<void> submitAttendance() async {
   if (narration == null && field == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Please fill all fields')),
-    );
+    _showCustomSnackBar(context, "Please fill all fields", Colors.yellow.shade900, Icons.warning_amber_outlined);
     return;
   }
 
@@ -336,28 +227,44 @@ Future<void> _captureImage() async {
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
-  @override
-  void dispose() {
-    _cameraController?.dispose();
-    _faceDetector.close();
-    super.dispose();
-  }
 
 @override
 Widget build(BuildContext context) {
   return Scaffold(
-    backgroundColor: Colors.grey.shade100,
-    appBar: AppBar(
-      title: const Text("Attendance Punch",
-        style: TextStyle(fontWeight: FontWeight.bold),
-      ),
-      centerTitle: false,
-      backgroundColor: Color(0XFF213448),
-      foregroundColor: Colors.white,
-      elevation: 2,
-    ),
+    backgroundColor: Colors.transparent,
+   appBar: PreferredSize(
+  preferredSize: const Size.fromHeight(kToolbarHeight),
+  child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: AppBar(
+                title: const Text(
+                  "Attendance In",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              backgroundColor: Colors.transparent, 
+                foregroundColor: Colors.black,
+                elevation: 0,
+              ),
+            ),
+          ),
     body: SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      // physics: const BouncingScrollPhysics(),
+       child: Container(
+    padding: const EdgeInsets.all(20),
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+      ),
+    ),
+      // padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -396,17 +303,98 @@ Widget build(BuildContext context) {
           ),
 
           const SizedBox(height: 24),
-          if (_cameraController != null && _cameraController!.value.isInitialized) ...[
-          AspectRatio(
-            aspectRatio: _cameraController!.value.aspectRatio,
-            child: CameraPreview(_cameraController!),
-          ),
+          FutureBuilder<void>(
+          future: _initializeControllerFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.done) {
+              if (_cameraController != null && _cameraController!.value.isInitialized) {
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      AspectRatio(
+                        aspectRatio: _cameraController!.value.aspectRatio,
+                        child: Transform(
+                          alignment: Alignment.center,
+                           transform: Matrix4.rotationY(
+                      _cameraController!.description.lensDirection == CameraLensDirection.front ? math.pi : 0,
+                    ),
+                          child: CameraPreview(_cameraController!),
+                        ),
+                      ),
+                      // Positioned(
+                      //   top: 0,
+                      //   bottom: 0,
+                      //   left: 0,
+                      //   right: 0,
+                      //   child: IgnorePointer(
+                      //     child: Center(
+                      //       child: Container(
+                      //         width: 200,
+                      //         height: 200,
+                      //         decoration: BoxDecoration(
+                      //           shape: BoxShape.circle,
+                      //           border: Border.all(
+                      //             color: Colors.white.withOpacity(0.8),
+                      //             width: 3,
+                      //           ),
+                      //           color: Colors.transparent,
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
+                      // // Optional instruction text
+                      // Positioned(
+                      //   bottom: 16,
+                      //   child: Text(
+                      //     "Align your face inside the circle",
+                      //     style: TextStyle(
+                      //       color: Colors.white,
+                      //       fontSize: 16,
+                      //       shadows: [
+                      //         Shadow(
+                      //           blurRadius: 8,
+                      //           color: Colors.black.withOpacity(0.7),
+                      //           offset: Offset(1, 1),
+                      //         ),
+                      //       ],
+                      //     ),
+                      //   ),
+                      // ),
+                    ],
+                  ),
+                );
+              } else {
+                return const Center(
+                  child: Text(
+                    'Camera not available',
+                    style: TextStyle(fontSize: 16, color: Colors.redAccent),
+                  ),
+                );
+              }
+            } else if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  'Camera error: ${snapshot.error}',
+                  style: const TextStyle(fontSize: 16, color: Colors.red),
+                ),
+              );
+            } else {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+          },
+        ),
+
           const SizedBox(height: 12),
           Center(
             child: Text(
               _isCapturing
                   ? 'Capturing image...'
-                  : 'Blink your eyes to capture image',
+                  : 'Press button to capture image',
               style: TextStyle(
                 fontSize: 16,
                 color: _isCapturing ? Colors.red : Colors.black87,
@@ -415,82 +403,97 @@ Widget build(BuildContext context) {
             ),
           ),
           const SizedBox(height: 24),
-        ],
-          // ElevatedButton.icon(
-          //   onPressed: _captureImage,
-          //   icon: const Icon(Icons.camera_alt, size: 20),
-          //   label: const Text("Capture Image"),
-          //   style: primaryButtonStyle,
-          // ),
+          ElevatedButton.icon(
+            onPressed: _captureImage,
+            icon: const Icon(Icons.camera_alt, size: 20),
+            label: const Text("Capture Image"),
+            style: primaryButtonStyle,
+          ),
 
-          if (_imageFile != null) ...[
-            const SizedBox(height: 20),
-            Center(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    )
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    _imageFile!,
-                    height: 120,
-                    width: 120,
-                    fit: BoxFit.cover,
+          if (_imageFile != null) 
+            ...[
+              const SizedBox(height: 20),
+              Center(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child:Transform(
+                    alignment: Alignment.center,
+                  transform: Matrix4.rotationY(math.pi),
+                    child: Image.file(
+                      _imageFile!,
+                      height: 120,
+                      width: 120,
+                      fit: BoxFit.cover,
+                    ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
 
           const SizedBox(height: 32),
-          ElevatedButton(
+          ElevatedButton.icon(
             onPressed: submitAttendance,
-            child: const Text("Submit Attendance"),
+            label: const Text("Submit Attendance"),
             style: greenButtonStyle,
+            icon: const Icon(Icons.send_rounded, size: 20),
           ),
         ],
       ),
+    ),
     ),
   );
 }
 }
 
-Widget buildReadOnlyField(String label, String value) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(label, style: labelStyle),
-      const SizedBox(height: 8),
-      Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Text(
-          value,
-          style: inputTextStyle,
+ Widget buildReadOnlyField(String label, String value) {
+          return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+          Text(
+          label,
+          style: TextStyle(
+          fontSize: 14,
+          color: const Color(0xFF6C757D),
+          fontWeight: FontWeight.w500,
         ),
       ),
-    ],
+          const SizedBox(height: 8),
+          Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Row(
+          children: [
+          Expanded(
+          child: Text(
+          value,
+          style: TextStyle(
+          fontSize: 15,
+          color:  const Color(0xFF212529),
+          ),
+        ),
+        ),
+      ],
+      ),
+    ),
+  ],
   );
-}
+  }
 
 final labelStyle = TextStyle(
   fontSize: 14,
@@ -508,16 +511,16 @@ final inputDecoration = InputDecoration(
   fillColor: Colors.white,
   contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
   border: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(5),
     borderSide: BorderSide(color: Colors.grey.shade300),
   ),
   enabledBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(5),
     borderSide: BorderSide(color: Colors.grey.shade300),
   ),
   focusedBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
-    borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+    borderRadius: BorderRadius.circular(5),
+    borderSide: const BorderSide(color: Color.fromARGB(255, 33, 108, 214), width: 1.5),
   ),
 );
 
@@ -526,17 +529,17 @@ final primaryButtonStyle = ElevatedButton.styleFrom(
   foregroundColor: Colors.white,
   minimumSize: const Size.fromHeight(48),
   shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(10),
   ),
   textStyle: const TextStyle(fontSize: 15),
 );
 
 final greenButtonStyle = ElevatedButton.styleFrom(
-  backgroundColor: Colors.green.shade600,
+  backgroundColor: Color(0XFF123458),
   foregroundColor: Colors.white,
-  minimumSize: const Size.fromHeight(50),
+  minimumSize: const Size.fromHeight(30),
   shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(10),
   ),
   textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
 );
