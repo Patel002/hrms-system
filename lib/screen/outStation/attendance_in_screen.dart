@@ -193,6 +193,11 @@ Future<void> _captureImage() async {
     );
 
     if (response.statusCode == 201) {
+      final responseData = jsonDecode(response.body);
+
+      if (responseData['warning'] != null) {
+    _showCustomSnackBar(context, responseData['warning'], Colors.orange.shade700, Icons.warning_amber_outlined);
+  }
       _showCustomSnackBar(context, 'Attendance marked successfully', Colors.green, Icons.check_circle);
     } else {
       final error = jsonDecode(response.body);
@@ -537,7 +542,7 @@ final primaryButtonStyle = ElevatedButton.styleFrom(
 final greenButtonStyle = ElevatedButton.styleFrom(
   backgroundColor: Color(0XFF123458),
   foregroundColor: Colors.white,
-  minimumSize: const Size.fromHeight(30),
+  minimumSize: const Size.fromHeight(48),
   shape: RoundedRectangleBorder(
     borderRadius: BorderRadius.circular(10),
   ),
