@@ -24,6 +24,7 @@ XFile? selectedFile;
 String? emUsername, compFname;
 bool isLoading = false;
 String? type;
+bool isSubmitting = false;
 final baseUrl = dotenv.env['API_BASE_URL'];
 
 
@@ -99,6 +100,8 @@ Future<void> submitForm() async {
 
 bool hasError = false;
 
+if (isSubmitting) return;
+
   if (!_formKey.currentState!.validate()) {
       hasError = true;
     }
@@ -111,6 +114,11 @@ bool hasError = false;
 
   if (hasError) return;
   _formKey.currentState!.save();
+
+ setState(() {
+      isSubmitting = true;
+    });
+
 
 try{
 var request = http.MultipartRequest(
@@ -152,6 +160,9 @@ if(startDate !=null && endDate !=null){
         setState(() {
         isLoading = false;  
       });
+          setState(() {
+      isSubmitting = false; 
+    });
       
         if (response.statusCode == 201) {
         _showCustomSnackBar(
@@ -178,7 +189,9 @@ if(startDate !=null && endDate !=null){
       }
     }catch(e){
       _showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
-
+      setState(() {
+        isSubmitting = false;
+      });
     }
   }
     Future<void> refreshPage() async {
@@ -256,7 +269,9 @@ child: AppBar(
       ),
     ),
   ),
-  body: Container(
+  body: Stack(
+     children: [
+  Container(
     decoration: const BoxDecoration(
       gradient: LinearGradient(
         colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
@@ -530,8 +545,28 @@ child: AppBar(
           ),
         ),
       ),
-    )
-  );
+    ),
+    if (isSubmitting)
+        Container(
+          color: Colors.black.withOpacity(0.5), 
+          child: const Center(
+            child: Column(
+             mainAxisSize: MainAxisSize.min,
+             children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 16),
+              Text(
+                'Submitting, please wait...',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+                textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+    ],
+  ),
+);
 } 
 
 // Widget buildReadOnlyField(String label, String value) {

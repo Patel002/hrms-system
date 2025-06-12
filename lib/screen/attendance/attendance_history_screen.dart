@@ -81,9 +81,15 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
 
     if (picked != null && picked != selectedDate) {
       setState(() {
+        isLoading = true;
         selectedDate = picked;
       });
-      fetchAttendanceData(picked);
+      
+      await fetchAttendanceData(picked);
+
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
