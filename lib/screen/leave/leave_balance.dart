@@ -56,7 +56,7 @@ Widget build(BuildContext context) {
   return Scaffold(
     appBar: AppBar(
       title: const Text(
-        "Leave Balances",
+        "Leave Availability",
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
       centerTitle: false,

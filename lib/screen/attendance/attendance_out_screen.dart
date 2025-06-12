@@ -7,24 +7,21 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math' as math;
 import 'package:image/image.dart' as img;
 import 'package:camera/camera.dart';
-// import 'dart:typed_data';
-// import 'package:image_picker/image_picker.dart';
-// import 'package:flutter/services.dart';
-// import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'dart:math' as math;
 
-
-class AttendanceScreenIN extends StatefulWidget {
-  const AttendanceScreenIN({super.key});
+class AttendanceScreenOut extends StatefulWidget {
+  const AttendanceScreenOut({super.key});
 
   @override
-  State<AttendanceScreenIN> createState() => _AttendanceScreenINState();
+  State<AttendanceScreenOut> createState() => _AttendanceScreenOutState();
 }
 
-class _AttendanceScreenINState extends State<AttendanceScreenIN> {
-   final baseUrl = dotenv.env['API_BASE_URL'];
+class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
+  final baseUrl = dotenv.env['API_BASE_URL'];
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _narrationController = TextEditingController();
 
   String? narration;
   String? field;
@@ -33,32 +30,20 @@ class _AttendanceScreenINState extends State<AttendanceScreenIN> {
   String? base64Image;
   File? _imageFile;
   CameraController? _cameraController;
-  // late FaceDetector _faceDetector;
-  // bool _isBlinking = false;
+  late Future<void> _initializeControllerFuture;
+  bool isLoading = false;
+  bool isSubmitting = false;
   bool _isCapturing = false;
   bool _isProcessing = false;
-  // DateTime? _lastSmileTime;
-  // bool _eyesClosed = false;
-  late Future<void> _initializeControllerFuture;
+
 
   @override
   void initState() {
     super.initState();
     getEmpCodeFromToken();
     getLocation();
-  
-  //   _faceDetector = FaceDetector(
-  //   options: FaceDetectorOptions(
-  //     performanceMode: FaceDetectorMode.fast,
-  //     enableContours: false,
-  //     enableLandmarks: false,
-  //     enableClassification: true,
-  //     enableTracking: true,
-  //   ),
-  // );
-  
-    _initializeControllerFuture = _initializeCamera();
 
+    _initializeControllerFuture = _initializeCamera();
   }
 
   Future<void> getEmpCodeFromToken() async {
@@ -93,7 +78,7 @@ class _AttendanceScreenINState extends State<AttendanceScreenIN> {
       throw Exception('Location permission not granted');
     }
       print('Latitude: ${currentPosition?.latitude}, Longitude: ${currentPosition?.longitude}, Accuracy: ${currentPosition?.accuracy}');
-     } 
+     }
 
 
 Future<void> _initializeCamera() async {
@@ -125,6 +110,7 @@ Future<void> _initializeCamera() async {
     }
   });
 } 
+
 Future<void> _captureImage() async {
   try {
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
@@ -157,23 +143,23 @@ Future<void> _captureImage() async {
 
 
  Future<void> submitAttendance() async {
-  if (narration == null && field == null) {
+  if (isSubmitting) return;
+
+   if (!_formKey.currentState!.validate() || narration == null || field == null) {
     _showCustomSnackBar(context, "Please fill all fields", Colors.yellow.shade900, Icons.warning_amber_outlined);
-    return;
-  }
+     return;
+   }
+    
+  _formKey.currentState!.save();
 
   try {
       if (base64Image == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Please capture an image')),
-    );
+      _showCustomSnackBar(context, 'Please capture an image', Colors.teal.shade400, Icons.camera);
     return;
   }
 
   if (currentPosition == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Please fetch location')),
-    );
+    _showCustomSnackBar(context, 'Please give access of location', Colors.teal.shade400, Icons.pin_drop);
     return;
   }
     final response = await http.post(
@@ -184,7 +170,7 @@ Future<void> _captureImage() async {
         'comp_id': compId,
         'punch_remark': narration,
         'punch_place': field,
-        'punchtype': 'OUTSTATION1',
+        'punchtype': 'OUTSTATION2',
         'latitude': currentPosition?.latitude,
         'longitude': currentPosition?.longitude,
         'punch_img': base64Image,
@@ -192,21 +178,52 @@ Future<void> _captureImage() async {
       }),
     );
 
-    if (response.statusCode == 201) {
+     if (response.statusCode == 201) {
       final responseData = jsonDecode(response.body);
 
-      if (responseData['warning'] != null) {
+    if (responseData['warning'] != null) {
     _showCustomSnackBar(context, responseData['warning'], Colors.orange.shade700, Icons.warning_amber_outlined);
   }
       _showCustomSnackBar(context, 'Attendance marked successfully', Colors.green, Icons.check_circle);
+
+      _resetForm();
+
     } else {
       final error = jsonDecode(response.body);
       _showCustomSnackBar(context, "${error['message']}", Colors.red, Icons.error);
     }
   } catch (e) {
      _showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
+  } finally {
+    setState(() {
+      isSubmitting = false;
+    });
   }
 }
+
+Future<void> handlePullToRefresh() async {
+  setState(() {
+    isLoading = true;
+  });
+
+  _resetForm();
+
+  setState(() {
+    isLoading = false;
+  });
+} 
+
+  void _resetForm() {
+    _formKey.currentState?.reset();
+    _narrationController.clear();
+    setState(() {
+    narration = null;
+    field = null;
+    base64Image = null;
+    _imageFile = null;
+    currentPosition = null;
+    });
+  }
 
  void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
     final snackBar = SnackBar(
@@ -226,7 +243,7 @@ Future<void> _captureImage() async {
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       margin: const EdgeInsets.all(16),
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 2),
     );
 
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -249,7 +266,7 @@ Widget build(BuildContext context) {
         ),
         child: AppBar(
                 title: const Text(
-                  "Attendance In",
+                  "Attendance Out",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               backgroundColor: Colors.transparent, 
@@ -258,18 +275,28 @@ Widget build(BuildContext context) {
               ),
             ),
           ),
-    body: SingleChildScrollView(
-      // physics: const BouncingScrollPhysics(),
-       child: Container(
-    padding: const EdgeInsets.all(20),
-    decoration: const BoxDecoration(
+    body: Stack(
+      children: [
+        Container (
+      padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
       gradient: LinearGradient(
         colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
         begin: Alignment.topRight,
         end: Alignment.bottomLeft,
       ),
     ),
-      // padding: const EdgeInsets.all(20),
+
+    child:Form(
+    key: _formKey,
+    child: RefreshIndicator(
+      onRefresh: handlePullToRefresh,
+      color: Colors.black,
+      backgroundColor: Colors.white ,
+      child: ListView(
+      children: [
+      Padding(
+        padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -293,107 +320,97 @@ Widget build(BuildContext context) {
               );
             }).toList(),
             onChanged: (val) => setState(() => field = val),
-          ),
+            validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please select a punch place';
+            }
+            return null;
+          },
+        ),
 
           const SizedBox(height: 24),
+
           Text("Narration*", style: labelStyle),
           const SizedBox(height: 8),
-          TextField(
+          TextFormField(
             maxLines: 3,
             style: inputTextStyle,
             decoration: inputDecoration.copyWith(
               hintText: "Remark",
             ),
-            onChanged: (val) => narration = val,
-          ),
+              validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Please enter a remark';
+            }
+            return null;
+          },
+            onChanged: (val) {
+            setState(() {
+              narration = val;
+            });
+          },
+        ),
 
-          const SizedBox(height: 24),
-          FutureBuilder<void>(
+        const SizedBox(height: 24),
+
+         FutureBuilder<void>(
           future: _initializeControllerFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.done) {
               if (_cameraController != null && _cameraController!.value.isInitialized) {
                 return ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      AspectRatio(
-                        aspectRatio: _cameraController!.value.aspectRatio,
-                        child: Transform(
-                          alignment: Alignment.center,
-                           transform: Matrix4.rotationY(
-                      _cameraController!.description.lensDirection == CameraLensDirection.front ? math.pi : 0,
-                    ),
-                          child: CameraPreview(_cameraController!),
+                  child: Container(
+                    color: Colors.black, 
+                    child: AspectRatio(
+                      aspectRatio: _cameraController!.value.aspectRatio,
+                      child: Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.rotationY(
+                          _cameraController!.description.lensDirection == CameraLensDirection.front ? math.pi : 0,
                         ),
+                        child: CameraPreview(_cameraController!),
                       ),
-                      // Positioned(
-                      //   top: 0,
-                      //   bottom: 0,
-                      //   left: 0,
-                      //   right: 0,
-                      //   child: IgnorePointer(
-                      //     child: Center(
-                      //       child: Container(
-                      //         width: 200,
-                      //         height: 200,
-                      //         decoration: BoxDecoration(
-                      //           shape: BoxShape.circle,
-                      //           border: Border.all(
-                      //             color: Colors.white.withOpacity(0.8),
-                      //             width: 3,
-                      //           ),
-                      //           color: Colors.transparent,
-                      //         ),
-                      //       ),
-                      //     ),
-                      //   ),
-                      // ),
-                      // // Optional instruction text
-                      // Positioned(
-                      //   bottom: 16,
-                      //   child: Text(
-                      //     "Align your face inside the circle",
-                      //     style: TextStyle(
-                      //       color: Colors.white,
-                      //       fontSize: 16,
-                      //       shadows: [
-                      //         Shadow(
-                      //           blurRadius: 8,
-                      //           color: Colors.black.withOpacity(0.7),
-                      //           offset: Offset(1, 1),
-                      //         ),
-                      //       ],
-                      //     ),
-                      //   ),
-                      // ),
-                    ],
+                    ),
                   ),
                 );
               } else {
-                return const Center(
-                  child: Text(
-                    'Camera not available',
-                    style: TextStyle(fontSize: 16, color: Colors.redAccent),
+                return Container(
+                  height: 200, 
+                  decoration: BoxDecoration(
+                    color: Colors.black12,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Center(
+                    child: Text('Camera not available', style: TextStyle(color: Colors.black54)),
                   ),
                 );
               }
             } else if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  'Camera error: ${snapshot.error}',
-                  style: const TextStyle(fontSize: 16, color: Colors.red),
+              return Container(
+                height: 200,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Center(
+                  child: Text('Camera error', style: TextStyle(color: Colors.red)),
                 ),
               );
             } else {
-              return const Center(
-                child: CircularProgressIndicator(),
+              return Container(
+                height: 200,
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
               );
             }
           },
         ),
-
           const SizedBox(height: 12),
           Center(
             child: Text(
@@ -415,90 +432,101 @@ Widget build(BuildContext context) {
             style: primaryButtonStyle,
           ),
 
-          if (_imageFile != null) 
-            ...[
-              const SizedBox(height: 20),
-              Center(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      )
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child:Transform(
-                    alignment: Alignment.center,
-                  transform: Matrix4.rotationY(math.pi),
-                    child: Image.file(
-                      _imageFile!,
-                      height: 120,
-                      width: 120,
-                      fit: BoxFit.cover,
-                    ),
-                    ),
+
+          if (_imageFile != null) ...[
+            const SizedBox(height: 20),
+            Center(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    )
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    _imageFile!,
+                    height: 120,
+                    width: 120,
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
-            ],
+            ),
+          ],
 
-          const SizedBox(height: 32),
+           const SizedBox(height: 32),
           ElevatedButton.icon(
-            onPressed: submitAttendance,
+            onPressed: isSubmitting? null : submitAttendance,
             label: const Text("Submit Attendance"),
             style: greenButtonStyle,
-            icon: const Icon(Icons.send_rounded, size: 20),
+            icon: const Icon(Icons.send_outlined, size: 20),
           ),
-        ],
-      ),
-    ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+    if (isSubmitting)
+        Container(
+          color: Colors.black.withOpacity(0.5), 
+          child: const Center(
+            child: Column(
+             mainAxisSize: MainAxisSize.min,
+             children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 16),
+              Text(
+                'Submitting, please wait...',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+                textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     ),
   );
-}
+ }
 }
 
- Widget buildReadOnlyField(String label, String value) {
-          return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-          Text(
-          label,
-          style: TextStyle(
-          fontSize: 14,
-          color: const Color(0xFF6C757D),
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-          const SizedBox(height: 8),
-          Container(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-          decoration: BoxDecoration(
-          color: Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(5),
+Widget buildReadOnlyField(String label, String value) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: labelStyle),
+      const SizedBox(height: 8),
+      Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: Row(
-          children: [
-          Expanded(
-          child: Text(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Text(
           value,
-          style: TextStyle(
-          fontSize: 15,
-          color:  const Color(0xFF212529),
-          ),
+          style: inputTextStyle,
         ),
-        ),
-      ],
       ),
-    ),
-  ],
+    ],
   );
-  }
+}
 
 final labelStyle = TextStyle(
   fontSize: 14,
@@ -516,16 +544,16 @@ final inputDecoration = InputDecoration(
   fillColor: Colors.white,
   contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
   border: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(5),
+    borderRadius: BorderRadius.circular(12),
     borderSide: BorderSide(color: Colors.grey.shade300),
   ),
   enabledBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(5),
+    borderRadius: BorderRadius.circular(12),
     borderSide: BorderSide(color: Colors.grey.shade300),
   ),
   focusedBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(5),
-    borderSide: const BorderSide(color: Color.fromARGB(255, 33, 108, 214), width: 1.5),
+    borderRadius: BorderRadius.circular(12),
+    borderSide: const BorderSide(color: Colors.blue, width: 1.5),
   ),
 );
 
@@ -534,17 +562,17 @@ final primaryButtonStyle = ElevatedButton.styleFrom(
   foregroundColor: Colors.white,
   minimumSize: const Size.fromHeight(48),
   shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(10),
+    borderRadius: BorderRadius.circular(12),
   ),
   textStyle: const TextStyle(fontSize: 15),
 );
 
 final greenButtonStyle = ElevatedButton.styleFrom(
-  backgroundColor: Color(0XFF123458),
+  backgroundColor: Colors.green.shade600,
   foregroundColor: Colors.white,
-  minimumSize: const Size.fromHeight(48),
+  minimumSize: const Size.fromHeight(50),
   shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(10),
+    borderRadius: BorderRadius.circular(12),
   ),
   textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
 );

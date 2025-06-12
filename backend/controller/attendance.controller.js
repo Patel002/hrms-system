@@ -136,46 +136,57 @@ const getPunchDurations = async (req, res) => {
   try {
     const punchIns = await Attendance.findAll({
       where: { emp_id: empId, punchtype: 'OUTSTATION1' },
-      order: [['punch_date', 'DESC'], ['punch_time', 'DESC']],
+      order: [['created_at', 'ASC']],
     });
 
-    // console.log("punchIns",punchIns);
+    console.log('punch in date', punchIns.punch_time);
+
+    const punchOuts = await Attendance.findAll({
+      where: { emp_id: empId, punchtype: 'OUTSTATION2' },
+      order: [['created_at', 'ASC']],
+    });
 
     const sessions = [];
+    const usedPunchIns = new Set();
 
-    for (const punchIn of punchIns) {
-      const punchOut = await Attendance.findOne({
-        where: {
-          emp_id: empId,
-          punchtype: 'OUTSTATION2',
-          punch_date: {
-            [Op.gte]: punchIn.punch_date
-          },
-          punch_time: {
-            [Op.gt]: punchIn.punch_time
-          }
-        },
-        order: [['punch_date', 'ASC'], ['punch_time', 'ASC']]
-      });
+    for (const punchOut of punchOuts) {
+      const punchOutTime = DateTime.fromISO(punchOut.created_at.replace(' ', 'T'));
 
-      console.log("punchOut",punchOut);
-      if (!punchOut) continue; 
+      let matchedIndex = -1;
+      let matchedPunchInTime = null;
 
-      const punchInDateTime = DateTime.fromISO(`${punchIn.punch_date}T${punchIn.punch_time}`);
-      const punchOutDateTime = DateTime.fromISO(`${punchOut.punch_date}T${punchOut.punch_time}`);
+     console.log('match punch in time', matchedPunchInTime);
 
-      const duration = punchOutDateTime.diff(punchInDateTime, ['hours', 'minutes']);
+     punchIns.forEach((punchIn, index) => {
+    const punchInTime = DateTime.fromISO(punchIn.created_at.replace(' ', 'T'));
 
-      sessions.push({
+    if (punchInTime < punchOutTime && !usedPunchIns.has(index)) {
+      if (!matchedPunchInTime || punchInTime > matchedPunchInTime) {
+        matchedPunchInTime = punchInTime;
+        matchedIndex = index;
+      }
+    }
+  });
+
+       if (matchedIndex === -1) continue;
+
+        const punchIn = punchIns[matchedIndex];
+        const duration = punchOutTime.diff(matchedPunchInTime, ['hours', 'minutes']);
+
+        sessions.push({
         punch_in: `${punchIn.punch_date} ${punchIn.punch_time}`,
         punch_out: `${punchOut.punch_date} ${punchOut.punch_time}`,
         duration: `${duration.hours}h ${duration.minutes}m`
-      });
+    });
+
+      usedPunchIns.add(matchedIndex);;
     }
 
-    console.log("sessions",sessions);
+    return res.status(200).json({
+      message: 'Punch durations fetched successfully',
+      data: sessions
+    });
 
-    res.status(200).json(sessions, { message: 'Punch durations fetched successfully' });
 
   } catch (error) {
     res.status(500).json({ message: 'Error fetching punch durations', error: error.message });

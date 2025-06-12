@@ -285,7 +285,7 @@ class _OdDetailsPageState extends State<OdDetailsPage> {
   // }
 
   final baseUrl = dotenv.env['API_BASE_URL'];
-  final _formKey = GlobalKey<FormState>();
+  // final _formKey = GlobalKey<FormState>();
   late TextEditingController remarkController;
   late DateTime fromDate;
   late DateTime toDate;
@@ -428,7 +428,7 @@ void initState() {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screenHeight = MediaQuery.of(context).size.height;
-    final statusColor = getStatusColor(widget.approved);
+    // final statusColor = getStatusColor(widget.approved);
     final isApproved = widget.approved.toLowerCase() == 'approved';
     final isRejected =
         widget.approved.toLowerCase() == 'rejected';
@@ -488,7 +488,7 @@ void initState() {
                     borderRadius: BorderRadius.circular(20),
                       ),
                               child: Text(
-                                widget.approved!.toUpperCase(),
+                                widget.approved.toUpperCase(),
                                 style: theme.textTheme.bodyMedium?.copyWith(
                           color:
                           isApproved

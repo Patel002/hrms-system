@@ -344,7 +344,7 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Attendance History',
+        title: const Text('Attendance Record',
             style: TextStyle(
               fontWeight: FontWeight.bold,
             )),

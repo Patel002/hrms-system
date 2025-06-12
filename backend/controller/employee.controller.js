@@ -57,10 +57,10 @@ const loginEmployee = async (req, res) => {
                 comp_id: employee.company?.comp_id
             },
             "this is a secret key of !@#$%^&*()_+-=[]{};':\"|\\<>/?~`",
-            { expiresIn: '1d' }
+            { expiresIn: '4h' }
         );
         
-        // console.log("token", token);
+        console.log("token", token);
 
         return res.status(200).json({ message: "Login successful", token, data: employee });
 

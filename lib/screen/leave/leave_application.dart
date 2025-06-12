@@ -96,18 +96,21 @@ print("Error fetching leave types: $e");
 // }
 
 Future<void> submitForm() async {
-if (!_formKey.currentState!.validate() || startDate == null || endDate == null) return;
-_formKey.currentState!.save();
 
-   showDialog(
-    context: context,
-    barrierDismissible: false,  
-    builder: (BuildContext context) {
-      return Center(
-        child: CircularProgressIndicator(),
-      );
-    },
-   );
+bool hasError = false;
+
+  if (!_formKey.currentState!.validate()) {
+      hasError = true;
+    }
+
+  if (startDate == null && endDate == null) {
+  _showCustomSnackBar(context, "Please select a date", Colors.yellow.shade900, Icons.date_range_outlined);
+  hasError = true;
+}
+
+
+  if (hasError) return;
+  _formKey.currentState!.save();
 
 try{
 var request = http.MultipartRequest(
@@ -146,7 +149,6 @@ if(startDate !=null && endDate !=null){
         final responseBody = await response.stream.bytesToString();
         print("Response Body: $responseBody");
 
-        Navigator.of(context).pop();
         setState(() {
         isLoading = false;  
       });
@@ -183,7 +185,9 @@ if(startDate !=null && endDate !=null){
     setState(() {
      isLoading = true;
     });
+
     await fetchLeaveTypes();
+    _resetForm();
 
     setState(() {
       isLoading = false;
@@ -321,6 +325,7 @@ child: AppBar(
                         onSaved: (val) => reason = val,
                         validator: (val) => val == null || val.isEmpty ? 'Enter reason' : null,
                       ),
+                      
                       const SizedBox(height: 15),
                       Row(
                         children: [

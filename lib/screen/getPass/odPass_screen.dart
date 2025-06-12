@@ -94,10 +94,11 @@ try{
     })
    );
 
-   print('body,${response.body}');
+  //  print('body,${response.body}');
 
    if (response.statusCode == 201) {
       _showCustomSnackBar(context, 'OD-Pass applied successfully', Colors.green, Icons.check);
+      _resetForm();
       return true;
     } else {
       final body = jsonDecode(response.body);
@@ -109,13 +110,12 @@ try{
     return false;
   }
 }
-
 Future<void> handlePullToRefresh() async {
   setState(() {
     isLoading = true;
   });
 
-_resetForm();
+  _resetForm();
 
   setState(() {
     isLoading = false;
@@ -129,6 +129,7 @@ _resetForm();
     fromdate = null;
     todate = null;
     type = null;
+    
   });
 }
 
@@ -199,7 +200,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
               key: _formKey,
               child: RefreshIndicator(
               onRefresh: handlePullToRefresh,
-              color: const Color(0xFF4361EE),
+              color: const Color.fromARGB(255, 28, 123, 202),
               child: ListView(
                 children: [
                   Padding(

@@ -8,9 +8,9 @@ import 'screen/leave/leave_request.dart';
 import 'screen/leave/leave_status_screen.dart';
 import 'screen/holiday_screen.dart';
 import 'screen/leave/leave_balance.dart';
-import 'screen/outStation/attendance_in_screen.dart';
-import 'screen/outStation/attendance_history_screen.dart';
-import 'screen/outStation/attendance_out_screen.dart';
+import 'screen/attendance/attendance_in_screen.dart';
+import 'screen/attendance/attendance_history_screen.dart';
+import 'screen/attendance/attendance_out_screen.dart';
 import 'screen/getPass/odPass_screen.dart';
 import 'screen/getPass/odPass_history_screen.dart';
 
@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
       ),
       routes: {
-        '/': (context) => const ModernAnimatedSplash(),
+        '/': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomePage(),
         '/holiday': (context) => const HolidayScreen(),
