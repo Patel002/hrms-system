@@ -48,6 +48,13 @@ dependencies:
   url_launcher: ^6.3.1
   flutter_launcher_icons: ^0.13.1
   intl: ^0.18.1
+  camera: ^0.11.1
+  google_mlkit_face_detection: ^0.13.1
+  google_mlkit_commons: ^0.11.0
+  table_calendar: ^3.0.9
+  syncfusion_flutter_pdf: ^20.4.0
+  syncfusion_flutter_xlsio: ^20.4.0
+  accordion: ^2.5.1
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -65,11 +72,11 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
 
-flutter_icons:
-  android: true
-  ios: true
-  image_path: "assets/icon/app_icon.png" 
-  background_color: "#FF123448" 
+# flutter_icons:
+#   android: true
+#   ios: true
+#   image_path: "assets/icon/app_icon.png" 
+#   background_color: "#FF123448" 
   # adaptive_icon_background: "assets/icon/app_icon_foreground.png" 
 
 # For information on the generic Dart part of this file, see the
@@ -84,8 +91,8 @@ flutter:
   uses-material-design: true
   assets:
     - .env
-    - assets/icon/app_icon.png
-    - assets/image/image.png
+    # - assets/icon/app_icon.png
+    # - assets/image/image.png
 
 flutter_native_splash:
   # General configuration

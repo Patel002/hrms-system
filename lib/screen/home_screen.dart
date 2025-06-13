@@ -21,6 +21,8 @@ class _HomePageState extends State<HomePage> {
   bool isSupervisor = false;
   Map<DateTime, List<String>> punchDurations = {};
   final baseUrl = dotenv.env['API_BASE_URL'];
+  DateTime? selectedDate;
+
 
 
   @override
@@ -127,12 +129,24 @@ Future<void> loadUserPermissions() async {
   }
 
 Widget buildCalendar() {
+  final today = DateTime.now();
+
   return Padding(
     padding: const EdgeInsets.all(8.0),
     child: TableCalendar(
       firstDay: DateTime.utc(2025, 1, 1),
       lastDay: DateTime.utc(2025, 12, 31),
-      focusedDay: DateTime.now(),
+      focusedDay: today,
+      rowHeight: 80,
+      selectedDayPredicate: (day) => isSameDay(selectedDate, day),
+      onDaySelected: (selectedDay, focusedDay) {
+        Navigator.pushNamed(
+              context,
+              '/attendance-history',
+              arguments: {'selectedDate': selectedDay},
+            );
+      },
+      availableGestures: AvailableGestures.all,
       calendarFormat: CalendarFormat.month,
       eventLoader: (day) {
         return punchDurations[DateTime(day.year, day.month, day.day)] ?? [];
@@ -142,29 +156,61 @@ Widget buildCalendar() {
           final isSunday = day.weekday == DateTime.sunday;
           final dayKey = DateTime(day.year, day.month, day.day);
           final isPresent = punchDurations.containsKey(dayKey);
+          final isToday = DateTime(day.year, day.month, day.day) == DateTime(today.year, today.month, today.day);
 
           Color backgroundColor;
-          Color textColor = Colors.white;
+          Color textColor = Colors.black;
+          BoxBorder? border;
 
-          if (isPresent) {
-            backgroundColor = Colors.green.shade100; 
+            if (isPresent) {
+            backgroundColor = Colors.green.shade100;
           } else if (isSunday) {
             backgroundColor = Colors.blue.shade50;
-            textColor = Colors.black;
-          } else if (day.isBefore(DateTime.now())) {
+          } else if (day.isBefore(today)) {
             backgroundColor = Colors.grey.shade200;
-            textColor = Colors.black; 
           } else {
-            backgroundColor = Colors.white12;
-            textColor = Colors.black;
+            backgroundColor = Colors.white;
           }
 
           return Container(
             margin: const EdgeInsets.all(4.0),
+            height: 60,
+            width: 80,
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
               color: backgroundColor,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(10),
+              border: border,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${day.day}',
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+          );
+        },
+
+        todayBuilder: (context, day, focusedDay) {
+          final dayKey = DateTime(day.year, day.month, day.day);
+          final isPresent = punchDurations.containsKey(dayKey);
+
+          Color backgroundColor = Colors.amber.shade100;
+          BoxBorder? border = Border.all(color: Colors.amber.shade700, width: 2);
+          Color textColor = Colors.black;
+
+          return Container(
+            margin: const EdgeInsets.all(4.0),
+            height: 60,
+            width: 80,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(10), 
+              // border: border,
             ),
             alignment: Alignment.center,
             child: Text(
@@ -172,20 +218,29 @@ Widget buildCalendar() {
               style: TextStyle(
                 color: textColor,
                 fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
             ),
           );
         },
+
         markerBuilder: (context, date, events) {
           if (events.isNotEmpty) {
             return Positioned(
               bottom: 4,
-              child: Text(
-                formatDuration(events.first as String),
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  // color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  formatDuration(events.first as String),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             );
@@ -273,7 +328,7 @@ Widget buildCalendar() {
             child: ExpansionTile(
               key: Key('Attendance_${_expandedTile == 'Attendance'}'),
               title: const Text('Attendance',style: TextStyle(fontWeight: FontWeight.w600)),
-              leading: const Icon(Icons.access_time),
+              leading: const Icon(Icons.rocket_launch_outlined),
               initiallyExpanded: _expandedTile == 'Attendance',
               onExpansionChanged: (expanded) {
               setState(() { _expandedTile = expanded ? 'Attendance' : null; });
@@ -290,11 +345,12 @@ Widget buildCalendar() {
                 ),
                 ListTile(
                   title: const Text('Attendance History'),
-                  onTap: () => Navigator.pushNamed(context, '/attendance-history'),
-                ),
+                  onTap: () => Navigator.pushNamed(context, '/attendance-history',
+                  ),
+                ),    
               ],
-              ),
             ),
+          ),
 
             Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),          
@@ -318,6 +374,26 @@ Widget buildCalendar() {
                 ),
               ]
              )
+            ),
+
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),          
+            child: ExpansionTile(
+              key: Key('Time Machine${_expandedTile == 'Time Machine'}'),
+              title: const Text('Time Machine',style: TextStyle(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.access_time),
+              initiallyExpanded: _expandedTile == 'Time Machine',
+              onExpansionChanged: (expanded) {
+              setState(() { _expandedTile = expanded ? 'Time Machine' : null; });
+              },
+              childrenPadding: const EdgeInsets.only(left: 25, right: 16, bottom: 5), 
+              children: [
+                ListTile(
+                  title: const Text('Attendance Record'),
+                  onTap: () => Navigator.pushNamed(context, '/attendance-record'),
+                ),
+              ],
+            ),
             ),
           ],
         ),
