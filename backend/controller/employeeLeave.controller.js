@@ -28,7 +28,7 @@ const createLeave = async (req, res) => {
         const fileUrl = await uploadOnCloudinary(req.file.path);  
         attachment = fileUrl;
 
-      console.log("fileUrl",fileUrl); 
+      // console.log("fileUrl",fileUrl); 
       }
         
     const duration = parseFloat(leave_duration);
@@ -43,7 +43,7 @@ const createLeave = async (req, res) => {
             return res.status(404).json({ message: "Employee not found" });
         }
         const employeeId = employee.em_code;
-        console.log("Employee ID:", employee.em_code);
+        // console.log("Employee ID:", employee.em_code);
 
         const leaveType = await LeaveTypes.findOne({ where: { name: req.body.leave_type } });
         if (!leaveType) return res.status(400).json({ message: "Invalid leave type" });
@@ -64,7 +64,7 @@ const createLeave = async (req, res) => {
             }
           });
 
-          console.log("Credit:", credit);
+          // console.log("Credit:", credit);
 
         if (credit === null) {
         return res.status(400).json({
@@ -79,10 +79,10 @@ const createLeave = async (req, res) => {
             }
           });
 
-          console.log("Debit:", debit);
+          // console.log("Debit:", debit);
           
           const available = (credit || 0) + (debit || 0);
-          console.log("Available Leave Days:", available);
+          // console.log("Available Leave Days:", available);
           
           if (leave_duration > available) {
             return res.status(400).json({
@@ -127,7 +127,7 @@ const createLeave = async (req, res) => {
             created_at: new Date(),
         });
 
-        console.log("Leave Created:", leave);
+        // console.log("Leave Created:", leave);
         return res.status(201).json({ message: "Leave created successfully", leave });
 
     } catch (error) {
@@ -263,10 +263,10 @@ const updateLeaveApplication = async(req, res) => {
             }
           });
 
-          console.log("Debit:", debit);
+          // console.log("Debit:", debit);
           
           const available = (credit || 0) + (debit || 0);
-          console.log("Available Leave Days:", available);
+          // console.log("Available Leave Days:", available);
           
           if (leave_duration > available) {
             return res.status(400).json({
@@ -278,7 +278,7 @@ const updateLeaveApplication = async(req, res) => {
           const result = await uploadOnCloudinary(req.file.path);
           if(result && result.secure_url){
             updateData.leaveattachment = result.secure_url;
-            console.log("updated attachment",updateData.leaveattachment);
+            // console.log("updated attachment",updateData.leaveattachment);
           }
           
         }
@@ -289,6 +289,7 @@ const updateLeaveApplication = async(req, res) => {
         // console.log("updated id",updateData.update_id);
 
         const updateResult = await leave.update(updateData);
+        
         console.log("Leave application updated successfully",updateResult);
 
         res.status(201).json({ message: 'Leave application updated successfully', data: leave });
@@ -359,7 +360,8 @@ try {
         return res.status(403).json({ message: "You are not authorized to approve/reject this leave" });
     }
 
-    console.log("leave_type_id",leave.typeid,"employee.em_id",employee.em_id,"quattro",req.user.em_role);
+    // console.log("leave_type_id",leave.typeid,"employee.em_id",employee.em_id,"quattro",req.user.em_role);
+
     if (action === "approve") {
 
      if (leave.typeid !== 20) {
@@ -373,7 +375,7 @@ try {
         }
       });
 
-      console.log("Credit:", credit);
+      // console.log("Credit:", credit);
 
       if (credit === null) {
         return res.status(400).json({
@@ -389,10 +391,10 @@ try {
         }
       });
       
-        console.log("Debit:", debit);
+        // console.log("Debit:", debit);
 
         const availableBalance = (credit || 0) + (debit || 0);
-        console.log("Available Leave Days:", availableBalance);
+        // console.log("Available Leave Days:", availableBalance);
 
         if (leave.leave_duration > availableBalance) {
         return res.status(400).json({
@@ -430,7 +432,6 @@ try {
         console.log("Error rejecting leave: ", error);
         res.status(500).json({ message: "Server side error from reject leave", error });
     }
-
 }
 
 export { createLeave, getLeavesByStatusForEmployee ,updateLeaveApplication,approveRejectLeave,getLeaveRequestsBySupervisor};
