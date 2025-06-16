@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decode/jwt_decode.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import "package:url_launcher/url_launcher.dart";
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -19,9 +19,10 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
 
   String? emId, emUsername, compFname, compId, department;
   List attendanceList = [];
-  bool isLoading = true;
   DateTime? selectedDate;
   String? errorMessage;
+  bool isLoading = true;
+  bool isFirstLoadDone = false; 
 
   @override
   void initState() {
@@ -117,9 +118,14 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
 
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body)['data'];
+        
+         attendanceList = data;
+
+        await Future.delayed(Duration(seconds: 2));
+
         setState(() {
-          attendanceList = data;
           isLoading = false;
+          isFirstLoadDone = true;
         });
       } else {
         throw Exception(
@@ -129,6 +135,7 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
     } catch (e) {
       setState(() {
         isLoading = false;
+        isFirstLoadDone = true;
         errorMessage = e.toString();
       });
     }
@@ -156,7 +163,7 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFF5F7FA),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -347,10 +354,18 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
 
   @override
   Widget build(BuildContext context) {
-    
+
+    final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+    final passedDate = args?['selectedDate'] as DateTime?;
+
+    if (passedDate != null && selectedDate == null) {
+    selectedDate = passedDate;
+    fetchAttendanceData(passedDate);
+  }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Attendance Record',
+        title: const Text('Attendance History',
             style: TextStyle(
               fontWeight: FontWeight.bold,
             )),
@@ -362,54 +377,75 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
       body: Column(
         children: [
          Padding(
-  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-  child: Align(
-    alignment: Alignment.centerLeft, 
-    child: GestureDetector(
-      onTap: () => _selectDate(context),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF202A44),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 6,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.calendar_today_outlined, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Text(
-              selectedDate == null
-          ?
-            DateFormat('dd MMM yyyy').format(DateTime.now()) 
-          : DateFormat('dd MMM yyyy').format(selectedDate!),
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Align(
+              alignment: Alignment.centerLeft, 
+              child: GestureDetector(
+                onTap: () => _selectDate(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF202A44),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                    child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.calendar_today_outlined, color: Colors.white, size: 20),
+                      const SizedBox(width: 12),
+                      Text(
+                      selectedDate == null ?
+                      DateFormat('dd MMM yyyy').format(DateTime.now()) 
+                    : DateFormat('dd MMM yyyy').format(selectedDate!),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
-      ),
-    ),
-  ),
-),
+          ),
           Expanded(
             child:
                 isLoading
                     ? const Center(child: CircularProgressIndicator())
-                    : errorMessage != null
-                    ? Center(child: Text("Error: $errorMessage"))
-                    : attendanceList.isEmpty
-                    ? const Center(child: Text("No attendance records found."))
+                    : isFirstLoadDone
+                    ? attendanceList.isEmpty
+                    ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.event_busy,
+                              size: 100,
+                              color: Colors.grey.shade300,
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              "No Attendance Records Found",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
                     : RefreshIndicator(
                       onRefresh: () async {
                         await fetchAttendanceData(
@@ -423,7 +459,8 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
                           return buildAttendanceCard(attendanceList[index]);
                         },
                       ),
-                    ),
+                    )
+                    : const SizedBox(), 
           ),
         ],
       ),

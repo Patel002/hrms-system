@@ -33,8 +33,8 @@ class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
   late Future<void> _initializeControllerFuture;
   bool isLoading = false;
   bool isSubmitting = false;
-  bool _isCapturing = false;
-  bool _isProcessing = false;
+  final bool _isCapturing = false;
+  final bool _isProcessing = false;
 
 
   @override
@@ -353,65 +353,61 @@ Widget build(BuildContext context) {
 
         const SizedBox(height: 24),
 
-         FutureBuilder<void>(
-          future: _initializeControllerFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.done) {
-              if (_cameraController != null && _cameraController!.value.isInitialized) {
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    color: Colors.black, 
-                    child: AspectRatio(
-                      aspectRatio: _cameraController!.value.aspectRatio,
-                      child: Transform(
-                        alignment: Alignment.center,
-                        transform: Matrix4.rotationY(
-                          _cameraController!.description.lensDirection == CameraLensDirection.front ? math.pi : 0,
-                        ),
+        FutureBuilder<void>(
+            future: _initializeControllerFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.done) {
+                if (_cameraController != null && _cameraController!.value.isInitialized) {
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      color: Colors.black,
+                      child: AspectRatio(
+                        aspectRatio: _cameraController!.value.aspectRatio,
                         child: CameraPreview(_cameraController!),
                       ),
                     ),
+                  );
+                } else {
+                  return Container(
+                    height: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.black12,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Center(
+                      child: Text('Camera not available', style: TextStyle(color: Colors.black54)),
+                    ),
+                  );
+                }
+              } else if (snapshot.hasError) {
+                return Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade100,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Center(
+                    child: Text('Camera error', style: TextStyle(color: Colors.red)),
                   ),
                 );
               } else {
                 return Container(
-                  height: 200, 
+                  height: 200,
                   decoration: BoxDecoration(
                     color: Colors.black12,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Center(
-                    child: Text('Camera not available', style: TextStyle(color: Colors.black54)),
+                    child: CircularProgressIndicator(),
                   ),
                 );
               }
-            } else if (snapshot.hasError) {
-              return Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.red.shade100,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Center(
-                  child: Text('Camera error', style: TextStyle(color: Colors.red)),
-                ),
-              );
-            } else {
-              return Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
-            }
-          },
-        ),
+            },
+          ),
+
           const SizedBox(height: 12),
+          
           Center(
             child: Text(
               _isCapturing
@@ -424,7 +420,9 @@ Widget build(BuildContext context) {
               ),
             ),
           ),
+          
           const SizedBox(height: 24),
+
           ElevatedButton.icon(
             onPressed: _captureImage,
             icon: const Icon(Icons.camera_alt, size: 20),
@@ -433,33 +431,37 @@ Widget build(BuildContext context) {
           ),
 
 
-          if (_imageFile != null) ...[
-            const SizedBox(height: 20),
-            Center(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    )
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    _imageFile!,
-                    height: 120,
-                    width: 120,
-                    fit: BoxFit.cover,
+         if (_imageFile != null) 
+            ...[
+              const SizedBox(height: 20),
+              Center(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child:Transform(
+                    alignment: Alignment.center,
+                  transform: Matrix4.rotationY(math.pi),
+                    child: Image.file(
+                      _imageFile!,
+                      height: 120,
+                      width: 120,
+                      fit: BoxFit.cover,
+                    ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-
+            ],
            const SizedBox(height: 32),
           ElevatedButton.icon(
             onPressed: isSubmitting? null : submitAttendance,

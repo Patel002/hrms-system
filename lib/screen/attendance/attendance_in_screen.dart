@@ -35,8 +35,8 @@ class _AttendanceScreenINState extends State<AttendanceScreenIN> {
   String? base64Image;
   File? _imageFile;
   CameraController? _cameraController;
-  bool _isCapturing = false;
-  bool _isProcessing = false;
+  final bool _isCapturing = false;
+  final bool _isProcessing = false;
   bool isLoading = false;
   bool isSubmitting = false;
   late Future<void> _initializeControllerFuture;
@@ -199,9 +199,9 @@ Future<void> _captureImage() async {
     if (response.statusCode == 201) {
       final responseData = jsonDecode(response.body);
 
-    if (responseData['warning'] != null) {
-    _showCustomSnackBar(context, responseData['warning'], Colors.orange.shade700, Icons.warning_amber_outlined);
-  }
+      if (responseData['warning'] != null) {
+      _showCustomSnackBar(context, responseData['warning'], Colors.orange.shade700, Icons.warning_amber_outlined);
+    }
       _showCustomSnackBar(context, 'Attendance marked successfully', Colors.green, Icons.check_circle);
 
       _resetForm();
@@ -373,66 +373,61 @@ Widget build(BuildContext context) {
           },
         ),
 
-          const SizedBox(height: 24),
+         const SizedBox(height: 24),
 
-          FutureBuilder<void>(
-          future: _initializeControllerFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.done) {
-              if (_cameraController != null && _cameraController!.value.isInitialized) {
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    color: Colors.black, 
-                    child: AspectRatio(
-                      aspectRatio: _cameraController!.value.aspectRatio,
-                      child: Transform(
-                        alignment: Alignment.center,
-                        transform: Matrix4.rotationY(
-                          _cameraController!.description.lensDirection == CameraLensDirection.front ? math.pi : 0,
-                        ),
+         FutureBuilder<void>(
+            future: _initializeControllerFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.done) {
+                if (_cameraController != null && _cameraController!.value.isInitialized) {
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      color: Colors.black,
+                      child: AspectRatio(
+                        aspectRatio: _cameraController!.value.aspectRatio,
                         child: CameraPreview(_cameraController!),
                       ),
                     ),
+                  );
+                } else {
+                  return Container(
+                    height: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.black12,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Center(
+                      child: Text('Camera not available', style: TextStyle(color: Colors.black54)),
+                    ),
+                  );
+                }
+              } else if (snapshot.hasError) {
+                return Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade100,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Center(
+                    child: Text('Camera error', style: TextStyle(color: Colors.red)),
                   ),
                 );
               } else {
                 return Container(
-                  height: 200, 
+                  height: 200,
                   decoration: BoxDecoration(
                     color: Colors.black12,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Center(
-                    child: Text('Camera not available', style: TextStyle(color: Colors.black54)),
+                    child: CircularProgressIndicator(),
                   ),
                 );
               }
-            } else if (snapshot.hasError) {
-              return Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.red.shade100,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Center(
-                  child: Text('Camera error', style: TextStyle(color: Colors.red)),
-                ),
-              );
-            } else {
-              return Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
-            }
-          },
-        ),
+            },
+          ),
+
           const SizedBox(height: 12),
           Center(
             child: Text(
