@@ -428,7 +428,6 @@ void initState() {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screenHeight = MediaQuery.of(context).size.height;
-    // final statusColor = getStatusColor(widget.approved);
     final isApproved = widget.approved.toLowerCase() == 'approved';
     final isRejected =
         widget.approved.toLowerCase() == 'rejected';
@@ -589,12 +588,12 @@ void initState() {
   }
 
   Widget _sectionTitle(String title) {
+    final theme = Theme.of(context);
     return Text(
       title,
-      style: const TextStyle(
-        fontSize: 18,
+      style: theme.textTheme.titleSmall?.copyWith(
+      color: Colors.black,
         fontWeight: FontWeight.bold,
-        color: Colors.black87,
       ),
     );
   }
@@ -610,7 +609,7 @@ void initState() {
             child: Text(
               "$label:",
               style: const TextStyle(
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w400,
                 fontSize: 15,
                 color: Colors.black87,
               ),

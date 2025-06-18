@@ -103,12 +103,9 @@ class LeaveDetailPage extends StatelessWidget {
                         _buildInfoTile(Icons.badge_outlined, "Employee ID", leave['em_id'].toString()),
                         // _buildInfoTile(Icons.credit_card_outlined, "Employee Code", employeeCode),
                         _buildInfoTile(Icons.business_outlined, "Company Name", compFname),
-                        // if (departmentName != null) 
-                          // _buildInfoTile(Icons.group_outlined, "Department", departmentName!),
                         
                         const Divider(height: 32),
                         
-                        // Leave Dates Section
                         _buildSectionHeader(Icons.date_range_outlined, 'Leave Dates'),
                         _buildInfoTile(Icons.play_circle_outline, "Start Date", leave['start_date']),
                         _buildInfoTile(Icons.stop_circle_outlined, "End Date", leave['end_date']),

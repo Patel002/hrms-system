@@ -246,8 +246,7 @@ if(startDate !=null && endDate !=null){
 @override
 Widget build(BuildContext context) {
 return Scaffold(
-  backgroundColor: Colors.transparent,
-
+backgroundColor: Colors.transparent,
 appBar: PreferredSize(
  preferredSize: const Size.fromHeight(kToolbarHeight),
 child: Container(
@@ -269,8 +268,9 @@ child: AppBar(
       ),
     ),
   ),
+
   body: Stack(
-     children: [
+  children: [
   Container(
     decoration: const BoxDecoration(
       gradient: LinearGradient(
@@ -288,7 +288,8 @@ child: AppBar(
           key: _formKey,
           child: RefreshIndicator(
           onRefresh: refreshPage,
-          color: const Color(0xFF4361EE),
+          color: Colors.black,
+          backgroundColor: Colors.white,
           child: ListView(
             children: [
                Padding(

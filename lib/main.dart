@@ -13,6 +13,7 @@ import 'screen/attendance/attendance_history_screen.dart';
 import 'screen/attendance/attendance_out_screen.dart';
 import 'screen/getPass/odPass_screen.dart';
 import 'screen/getPass/odPass_history_screen.dart';
+import 'screen/timeMachine/attendance_report_screen.dart';
 
 void main() async {
   await dotenv.load();
@@ -25,7 +26,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
+      debugShowCheckedModeBanner: true,
       title: 'Flutter Demo',
       theme: ThemeData(
       ),
@@ -43,6 +44,7 @@ class MyApp extends StatelessWidget {
         '/attendance-history': (context) => const AttandanceHistory(),
         '/od-pass': (context) => const ODPassScreen(),
         '/od-history': (context) => const OdHistory(),
+        '/attendance-record': (context) => const AttendanceReportPage(),
       },
 
     );

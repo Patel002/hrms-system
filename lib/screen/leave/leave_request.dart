@@ -74,7 +74,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
     final apiStatus = statusMap[status.toLowerCase()];
     print('API Status: $apiStatus');
 
-    final res = await http.get(Uri.parse('$baseUrl/api/emp-leave/$apiStatus'),
+    final res = await http.get(Uri.parse('$baseUrl/api/emp-leave/list/$apiStatus'),
     headers: {
       'Authorization': 'Bearer $token', 
     });

@@ -4,11 +4,12 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decode/jwt_decode.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:accordion/accordion.dart';
+import 'package:month_picker_dialog/month_picker_dialog.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'dart:convert';
 
 class AttendanceReportPage extends StatefulWidget {
-  const AttendanceReportPage({Key? key}) : super(key: key);
+  const AttendanceReportPage({super.key});
 
   @override
   _AttendanceReportPageState createState() => _AttendanceReportPageState();
@@ -18,8 +19,7 @@ class _AttendanceReportPageState extends State<AttendanceReportPage> {
   late Future<List<dynamic>> futureAttendance;
   final baseUrl = dotenv.env['API_BASE_URL'];
   List<dynamic> attendanceData = [];
-  String? selectedYear;
-  String? openSection;
+  DateTime? selectedMonth;
 
   @override
   void initState() {
@@ -48,41 +48,29 @@ class _AttendanceReportPageState extends State<AttendanceReportPage> {
     }
   }
 
-  String getFinancialYear(DateTime date) {
-    if (date.month >= 4) {
-      return '${date.year}-${date.year + 1}';
-    } else {
-      return '${date.year - 1}-${date.year}';
-    }
-  }
-
-  Map<String, Map<String, List<dynamic>>> groupByFinancialYear(List<dynamic> data) {
-    Map<String, Map<String, List<dynamic>>> grouped = {};
+  Map<DateTime, List<dynamic>> groupByMonth(List<dynamic> data) {
+    Map<DateTime, List<dynamic>> grouped = {};
 
     for (var record in data) {
       DateTime date = DateTime.parse(record['trndate']);
-      String finYear = getFinancialYear(date);
-      String monthKey = "${date.year}-${date.month.toString().padLeft(2, '0')}";
+      DateTime monthKey = DateTime(date.year, date.month);
 
-      if (!grouped.containsKey(finYear)) {
-        grouped[finYear] = {};
+      if (!grouped.containsKey(monthKey)) {
+        grouped[monthKey] = [];
       }
-      if (!grouped[finYear]!.containsKey(monthKey)) {
-        grouped[finYear]![monthKey] = [];
-      }
-      grouped[finYear]![monthKey]!.add(record);
+      grouped[monthKey]!.add(record);
     }
-
     return grouped;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-backgroundColor: Colors.transparent,
-   appBar: PreferredSize(
-  preferredSize: const Size.fromHeight(kToolbarHeight),
-  child: Container(
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: const Color(0xFFF5F7FA),
+    appBar: AppBar(
+      title: const Text("Attendance Record", style: TextStyle(fontWeight: FontWeight.bold)),
+      elevation: 0,
+      flexibleSpace: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
@@ -90,264 +78,288 @@ backgroundColor: Colors.transparent,
             end: Alignment.bottomRight,
           ),
         ),
-        child: AppBar(
-                title: const Text(
-                  "Attendance Record",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              backgroundColor: Colors.transparent, 
-                foregroundColor: Colors.black,
-                elevation: 0,
-              ),
-            ),
-          ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-           colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-            begin: Alignment.center,
-            end: Alignment.topRight,
-          ),
-        ) ,
-      child: FutureBuilder<List<dynamic>>(
-        future: futureAttendance,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No attendance data found.'));
-          }
+      ),
+      foregroundColor: Colors.black,
+    ),
+    body: FutureBuilder<List<dynamic>>(
+      future: futureAttendance,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('No attendance data found.'));
+        }
 
-          attendanceData = snapshot.data!;
-          final groupedData = groupByFinancialYear(attendanceData);
-          final sortedFinYears = groupedData.keys.toList()..sort((a, b) => b.compareTo(a));
+        attendanceData = snapshot.data!;
+        final groupedData = groupByMonth(attendanceData);
+        final sortedMonths = groupedData.keys.toList()..sort((a, b) => b.compareTo(a));
 
-          if (selectedYear == null) {
-            selectedYear = sortedFinYears.first;
-          }
+        if (selectedMonth == null) {
+          selectedMonth = sortedMonths.first;
+        }
 
-          final months = groupedData[selectedYear] ?? {};
-          final sortedMonths = months.keys.toList()..sort((a, b) => b.compareTo(a));
+        final records = groupedData[selectedMonth] ?? [];
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  children: [
-                    const Text('Select Year: ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 12),
-                    DropdownButton<String>(
-                      value: selectedYear,
-                      items: sortedFinYears.map((year) {
-                        return DropdownMenuItem<String>(
-                          value: year,
-                          child: Text(year),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          selectedYear = value;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-             Expanded(
-  child: Accordion(
-    maxOpenSections: 1,
-    headerBackgroundColor: Color(0xFFCBEEF3),
-    headerBackgroundColorOpened:Color(0xFFABC8C0),
-    headerBorderColorOpened: Color(0xFFABC8C0),
-    contentBorderColor: Color(0xFFABC8C0),  
-    scaleWhenAnimating: true,
-    openAndCloseAnimation: true,
-    headerPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-    children: sortedMonths.map((monthKey) {
-      final records = months[monthKey]!;
+        final totalPresent = records.where((r) => r['presabs'] == 'P').length;
+        final totalAbsent = records.where((r) => r['presabs'] == 'A').length;
+        final totalOT = records.fold<double>(0.0, (sum, r) => sum + double.tryParse(r['othrs'])!);
+        final totalWorkHrs = records.fold<double>(0.0, (sum, r) => sum + double.tryParse(r['wrkhrs'])!);
 
-      final totalPresent = records.where((r) => r['presabs'] == 'P').length;
-      final totalAbsent = records.where((r) => r['presabs'] == 'A').length;
-      final totalOT = records.fold<double>(0.0, (sum, r) => sum + double.tryParse(r['othrs'])!);
-      final totalWorkHrs = records.fold<double>(0.0, (sum, r) => sum + double.tryParse(r['wrkhrs'])!);
-
-      return AccordionSection(
-        isOpen: false,
-        header: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              DateFormat('MMMM yyyy').format(DateTime.parse('$monthKey-01')),
-              style: const TextStyle(
-                color: Colors.black, 
-                fontSize: 18, 
-                fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: Column(
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Chip(
-                  label: Text('P: $totalPresent ', style: const TextStyle(color: Colors.white)),
-                  backgroundColor: Colors.green.shade400,
-                ),
-                const SizedBox(width: 5),
-                Chip(
-                  label: Text('A: $totalAbsent', style: const TextStyle(color: Colors.white)),
-                  backgroundColor: Colors.redAccent.shade200,
-                ),
-            const SizedBox(width: 5),
-                Chip(
-                  label: Text('OT: ${totalOT.toStringAsFixed(2)} hrs', style: const TextStyle(color: Colors.white)),
-                  backgroundColor: Colors.orange,
-                ),
-                const SizedBox(width: 5),
-                Chip(
-                  label: Text('Work: ${totalWorkHrs.toStringAsFixed(2)} hrs', style: const TextStyle(color: Colors.white)),
-                  backgroundColor: Colors.blue.shade300,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ...records.map((record) {
-              final punchIn = (record['punchin'] ?? '').isNotEmpty
-              ? DateFormat('HH:mm').format(DateTime.parse(record['punchin']))
-              : '-';
-
-              final punchOut = (record['punchout'] ?? '').isNotEmpty
-              ? DateFormat('HH:mm').format(DateTime.parse(record['punchout']))
-              : '-';
-
-              final trnDate = record['trndate'];
-              final presabs = record['presabs'];
-              final wrkhrs = record['wrkhrs'];
-              final othrs = record['othrs'];
-              final shift = record['master_shift'];
-
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.3),
-                      spreadRadius: 1,
-                      blurRadius: 5,
-                      offset: const Offset(0, 2),
+          
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFFE4EBF5),
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 4,
                     ),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      presabs == 'P' ? Icons.check_circle : Icons.cancel,
-                      color: presabs == 'P' ? Colors.green : Colors.red,
-                      size: 28,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Date: $trnDate ($presabs)',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text.rich(
-                                TextSpan(
-                                  children: [
-                                    const TextSpan(
-                                      text: 'In: ',
-                                      style: TextStyle(fontWeight: FontWeight.w600),
-                                    ),
-                                    TextSpan(
-                                      text: punchIn,
-                                      style: const TextStyle(fontWeight: FontWeight.normal),
-                                    ),
-                                  ],
-                                ),
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                            Expanded(
-                              child: Text.rich(
-                                TextSpan(
-                                  children: [
-                                    const TextSpan(
-                                      text: 'Out: ',
-                                      style: TextStyle(fontWeight: FontWeight.w600),
-                                    ),
-                                    TextSpan(
-                                      text: punchOut,
-                                      style: const TextStyle(fontWeight: FontWeight.normal),
-                                    ),
-                                  ],
-                                ),
-                                style: const TextStyle(fontSize: 14),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Work: $wrkhrs hrs',
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                'OT: $othrs hrs',
-                                style: const TextStyle(fontSize: 14),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Shift: $shift',
-                          style: const TextStyle(fontSize: 14, color: Colors.grey),
-                        ),
-                      ],
+                    onPressed: () async {
+                      final selected = await showMonthPicker(
+                        context: context,
+                        initialDate: selectedMonth ?? DateTime.now(),
+                        firstDate: DateTime(2015),
+                        lastDate: DateTime.now(),
+                      );
+
+                      if (selected != null) {
+                        setState(() {
+                          selectedMonth = DateTime(selected.year, selected.month);
+                        });
+                      }
+                    },
+                    icon: const Icon(Icons.calendar_month),
+                    label: Text(
+                      selectedMonth != null
+                          ? DateFormat('MMMM yyyy').format(selectedMonth!)
+                          : '',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                   ),
+
+                  const SizedBox(height: 30),
+
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.3, 
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: ([
+                        totalPresent.toDouble(),
+                        totalAbsent.toDouble(),
+                        totalOT,
+                        totalWorkHrs,
+                      ].reduce((a, b) => a > b ? a : b)) + 2, 
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    touchTooltipData: BarTouchTooltipData(
+                      tooltipBgColor: Colors.black87,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        String label;
+                        switch (group.x.toInt()) {
+                          case 0:
+                            label = 'Present: ${rod.toY.toInt()}';
+                            break;
+                          case 1:
+                            label = 'Absent: ${rod.toY.toInt()}';
+                            break;
+                          case 2:
+                            label = 'OT: ${rod.toY.toStringAsFixed(1)} hrs';
+                            break;
+                          case 3:
+                            label = 'Work: ${rod.toY.toStringAsFixed(1)} hrs';
+                            break;
+                          default:
+                            label = '';
+                        }
+                        return BarTooltipItem(label, const TextStyle(color: Colors.white));
+                      },
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          switch (value.toInt()) {
+                            case 0:
+                              return const Text('Present', style: TextStyle(fontSize: 12));
+                            case 1:
+                              return const Text('Absent', style: TextStyle(fontSize: 12));
+                            case 2:
+                              return const Text('OT (hrs)', style: TextStyle(fontSize: 12));
+                            case 3:
+                              return const Text('Work (hrs)', style: TextStyle(fontSize: 12));
+                            default:
+                              return const Text('');
+                          }
+                        },
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: true, reservedSize: 30),
+                    ),
+                    rightTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  barGroups: [
+                    BarChartGroupData(x: 0, barRods: [
+                      BarChartRodData(
+                        toY: totalPresent.toDouble(),
+                        color: Colors.green,
+                        width: 20,
+                        borderRadius: BorderRadius.circular(6),
+                        backDrawRodData: BackgroundBarChartRodData(show: true, toY: 0, color: Colors.grey.shade200),
+                      )
+                    ]),
+                    BarChartGroupData(x: 1, barRods: [
+                      BarChartRodData(
+                        toY: totalAbsent.toDouble(),
+                        color: Colors.redAccent,
+                        width: 20,
+                        borderRadius: BorderRadius.circular(6),
+                        backDrawRodData: BackgroundBarChartRodData(show: true, toY: 0, color: Colors.grey.shade200),
+                      )
+                    ]),
+                    BarChartGroupData(x: 2, barRods: [
+                      BarChartRodData(
+                        toY: totalOT,
+                        color: Colors.orange,
+                        width: 20,
+                        borderRadius: BorderRadius.circular(6),
+                        backDrawRodData: BackgroundBarChartRodData(show: true, toY: 0, color: Colors.grey.shade200),
+                      )
+                    ]),
+                    BarChartGroupData(x: 3, barRods: [
+                      BarChartRodData(
+                        toY: totalWorkHrs,
+                        color: Colors.blue,
+                        width: 20,
+                        borderRadius: BorderRadius.circular(6),
+                        backDrawRodData: BackgroundBarChartRodData(show: true, toY: 0, color: Colors.grey.shade200),
+                      )
+                    ]),
                   ],
                 ),
-              );
-            }).toList(),
+                swapAnimationDuration: const Duration(milliseconds: 800), 
+                swapAnimationCurve: Curves.easeOutBack, 
+              ),
+            ),
+            
+            const SizedBox(height: 16),
           ],
         ),
-      );
-    }).toList(),
-  ),
-)
-
-            ],
-          );
-        },
       ),
+            Expanded(
+              child: records.isEmpty
+                  ? const Center(child: Text('No records for this month.'))
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      itemCount: records.length,
+                      itemBuilder: (context, index) {
+                        final record = records[index];
+
+                        final punchIn = (record['punchin'] ?? '').isNotEmpty
+                            ? DateFormat('HH:mm').format(DateTime.parse(record['punchin']))
+                            : '-';
+
+                        final punchOut = (record['punchout'] ?? '').isNotEmpty
+                            ? DateFormat('HH:mm').format(DateTime.parse(record['punchout']))
+                            : '-';
+
+                        final trnDate = record['trndate'];
+                        final presabs = record['presabs'];
+                        final wrkhrs = record['wrkhrs'];
+                        final othrs = record['othrs'];
+                        final shift = record['master_shift'];
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.3),
+                                spreadRadius: 1,
+                                blurRadius: 5,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    presabs == 'P' ? Icons.check_circle : Icons.cancel,
+                                    color: presabs == 'P' ? Colors.green : Colors.redAccent,
+                                    size: 28,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Date: $trnDate ($presabs)',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('In: $punchIn', style: const TextStyle(fontSize: 14)),
+                                  Text('Out: $punchOut', style: const TextStyle(fontSize: 14)),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('Work: $wrkhrs hrs', style: const TextStyle(fontSize: 14)),
+                                  Text('OT: $othrs hrs', style: const TextStyle(fontSize: 14)),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text('Shift: $shift', style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
     ),
-    );
-  }
+  );
+}
+
+// Widget _buildSummaryChip(String label, Color color) {
+//   return Chip(
+//     label: Text(label, style: const TextStyle(color: Colors.white)),
+//     backgroundColor: color,
+//     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+//   );
+// }
 }

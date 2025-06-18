@@ -27,14 +27,32 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
   String? emUsername;
   String? compFname;
   String? departmentName;
+  int initialTabIndex = 0;
+  bool _isControllerInitialized = false;
   final baseUrl = dotenv.env['API_BASE_URL'];
+
 
   @override
   void initState() {
-    _tabController = TabController(length:3, vsync: this);
     super.initState();
     fetchLeaveTypes();
+
+    Future.microtask(() {
+      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+
+       if (args != null) {
+      initialTabIndex = args['tabIndex'] ?? 0;
+      selectedTypeId = args['leavesTypeId'];
+    }
+        _tabController = TabController(length: 3, vsync: this, initialIndex: initialTabIndex);
+        
+      setState(() {
+        _isControllerInitialized = true;
+      });
+    });
+    
   }
+  
 
   Future<void> fetchLeaveTypes() async {
     try {
@@ -101,6 +119,12 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
       return [];
     }
   }
+
+  Future<void> _refreshData() async {
+  await fetchLeaveTypes();
+  setState(() {}); 
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -175,13 +199,28 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
               Tab(text: "Rejected"),
             ],
           ),
-          Expanded(
+                    Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-                buildLeaveList("pending"),
-                buildLeaveList("approved"),
-                buildLeaveList("rejected"),
+                RefreshIndicator(
+                  onRefresh: _refreshData,
+                  child: buildLeaveList("pending"),
+                  color: Colors.black,
+                  backgroundColor: Colors.white,
+                ),
+                RefreshIndicator(
+                  onRefresh: _refreshData,
+                  child: buildLeaveList("approved"),
+                  color: Colors.black,
+                  backgroundColor: Colors.white,
+                ),
+                RefreshIndicator(
+                  onRefresh: _refreshData,
+                  child: buildLeaveList("rejected"),
+                  color: Colors.black,
+                  backgroundColor: Colors.white,
+                ),
               ],
             ),
           ),
@@ -190,50 +229,6 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
     ),
     );
   }
-
-  //  Widget buildLeaveList(String status) {
-  //   return FutureBuilder<List<Map<String, dynamic>>>(
-  //     future: fetchLeaves(status),
-  //     builder: (context, snapshot) {
-  //       if (snapshot.connectionState == ConnectionState.waiting) {
-  //         return Center(child: CircularProgressIndicator());
-  //       } else if (snapshot.hasError) {
-  //         return Center(child: Text("Error loading $status leaves"));
-  //       } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-  //         return Center(child: Text("No $status leaves."));
-  //       }
-
-  //       final leaves = snapshot.data!;
-  //       return ListView.builder(
-  //         itemCount: leaves.length,
-  //         itemBuilder: (context, index) {
-  //           final leave = leaves[index];
-  //           return Card(
-  //             margin: EdgeInsets.all(10),
-  //             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-  //             elevation: 4,
-  //             child: ListTile(
-  //               leading: Icon(Icons.event_note, color: Colors.blue),
-  //               title: Text("${leave['start_date']} → ${leave['end_date']}"),
-  //               subtitle: Text(leave['reason']),
-  //               trailing: Container(
-  //                 padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-  //                 decoration: BoxDecoration(
-  //                   color: statusColor(status),
-  //                   borderRadius: BorderRadius.circular(12),
-  //                 ),
-  //                 child: Text(
-  //                   status.toUpperCase(),
-  //                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-  //                 ),
-  //               ),
-  //             ),
-  //           );
-  //         },
-  //       );
-  //     },
-  //   );
-  // }
 
   Widget buildLeaveList(String status) {
     return FutureBuilder<List<Map<String, dynamic>>>(
@@ -293,7 +288,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
                             emUsername: emUsername ?? '',
                             departmentName: departmentName ?? '',
                             compFname: compFname ?? '',
-                          ),
+                      ),
                     ),
                   );
                 },
@@ -498,6 +493,18 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
           Colors.green,
           Icons.check,
         );
+        
+    setState(() {
+    widget.leave['reason'] = reason;
+    widget.leave['start_date'] = fromDate.toIso8601String();
+    widget.leave['end_date'] = toDate.toIso8601String();
+    widget.leave['leave_duration'] = leaveDuration;
+    widget.leave['leave_type'] = selectedLeaveType;
+    if (_attachmentController != null) {
+      widget.leave['leaveattachment'] = _attachmentController!.path;
+    }
+  });
+
       } else {
         final error = jsonDecode(responseBody);
         _showCustomSnackBar(
@@ -516,6 +523,12 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
         Icons.error,
       );
     }
+  }
+
+  Future<void> _refreshPage() async {
+    await fetchLeaveTypes();
+    // widget.leave['reason'] = reasonController.text;
+    setState(() {});
   }
 
   void _showCustomSnackBar(
@@ -557,8 +570,8 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
         widget.leave['leaveattachment'] != null &&
         widget.leave['leaveattachment'] != '';
 
-    return Scaffold(
-       backgroundColor: Colors.transparent,
+  return Scaffold(
+      backgroundColor: Colors.grey[200],
       appBar: PreferredSize(
  preferredSize: const Size.fromHeight(kToolbarHeight),
 child: Container(
@@ -569,7 +582,7 @@ child: Container(
           end: Alignment.bottomRight,
         ),
       ),
-child: AppBar(
+      child: AppBar(
         title: const Text(
           "Leave Details",
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -588,9 +601,15 @@ child: AppBar(
          end: Alignment.bottomLeft,
       ),
       ),
+      child: RefreshIndicator(
+        onRefresh: _refreshPage,  
+        color: Colors.black,
+        backgroundColor: Colors.white,
       child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(), 
         padding: const EdgeInsets.all(16.0),
         child: Card(
+          color: const Color(0xFFFDFDFD),
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -634,7 +653,6 @@ child: AppBar(
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    // color: Colors.grey.shade100,
                     border: Border.all(color: Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(5),
                   ),
@@ -658,9 +676,9 @@ child: AppBar(
                                 color: Colors.black54,
                               ),
                             ),
-                            iconSize: 20,
+                            iconSize: 22,
                             style: const TextStyle(
-                              fontSize: 13,
+                              fontSize: 14,
                               color: Colors.black87,
                             ),
                             items:
@@ -689,9 +707,9 @@ child: AppBar(
                 ),
                 const Divider(height: 32),
                 Text(
-                  'Employee Information',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: theme.colorScheme.primary,
+                'Employee Information',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: Colors.black,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -715,7 +733,7 @@ child: AppBar(
                 Text(
                   'Leave Dates',
                   style: theme.textTheme.titleSmall?.copyWith(
-                    color: theme.colorScheme.primary,
+                    color: Colors.black,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -779,7 +797,7 @@ child: AppBar(
                 Text(
                   'Reason',
                   style: theme.textTheme.titleSmall?.copyWith(
-                    color: theme.colorScheme.primary,
+                    color: Colors.black,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -796,7 +814,7 @@ child: AppBar(
                 Text(
                   'Leave Attachment',
                   style: theme.textTheme.titleSmall?.copyWith(
-                    color: theme.colorScheme.primary,
+                    color: Colors.black,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -835,8 +853,7 @@ child: AppBar(
                   const SizedBox(height: 16),
                   InkWell(
                     onTap: () async {
-                      final fileUrl =
-                          widget.leave['leaveattachment']?.fl_atrachment;
+                      final fileUrl = widget.leave['leaveattachment'];
 
                       if (fileUrl == null || fileUrl.trim().isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -930,7 +947,8 @@ child: AppBar(
         ),
       ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildDetailRow({

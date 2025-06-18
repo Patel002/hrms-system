@@ -13,16 +13,15 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 class _HomePageState extends State<HomePage> {
-  // bool _isLeaveExpanded = false;
-  // bool _isOutStationExpanded = false;
   String? userRole;
   String? username;
-  String? empId;  String? _expandedTile;
+  String? empId; 
+  String? _expandedTile;
   bool isSupervisor = false;
   Map<DateTime, List<String>> punchDurations = {};
   final baseUrl = dotenv.env['API_BASE_URL'];
   DateTime? selectedDate;
-
+  Map<DateTime, List<Map<String, dynamic>>> leaveDurations = {};
 
 
   @override
@@ -62,6 +61,37 @@ Future<void> loadUserPermissions() async {
       isSupervisor = decoded['isSupervisor'] == true;
     });
     await fetchPunchDurations();
+    await fetchLeaveDurations();
+  }
+}
+
+Future<void> fetchLeaveDurations() async {
+  try {
+    final response = await http.get(Uri.parse('$baseUrl/api/emp-leave/all-calendar-leaves?em_id=$empId&status=Approve'));
+
+    // print('Leave Durations Response: $response');
+
+     if (response.statusCode == 200) {
+      final result = json.decode(response.body);
+      debugPrint('Leave Durations Response: $result');
+      final Map<String, dynamic> data = result['calendarLeaves'];
+
+      print('Leave Durations: $data');
+
+      Map<DateTime, List<Map<String, dynamic>>> tempLeaves = {};
+
+      data.forEach((dateString, leaveList) {
+        DateTime date = DateTime.parse(dateString);
+        tempLeaves[date] = List<Map<String, dynamic>>.from(leaveList);
+      });
+
+      setState(() {
+        leaveDurations = tempLeaves;
+      });
+    }
+  }
+  catch (e) {
+    print('Error fetching leave durations: $e');
   }
 }
 
@@ -69,7 +99,7 @@ Future<void> loadUserPermissions() async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/api/attendance/day-duration/$empId'));
 
-      print('Punch Durations Response: $response');
+      // print('Punch Durations Response: $response');
 
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
@@ -78,13 +108,17 @@ Future<void> loadUserPermissions() async {
         print('Punch Durations: $data');
 
         Map<DateTime, List<String>> tempDurations = {};
-        print('Punch Durations: $tempDurations');
+        // print('Punch Durations: $tempDurations');
 
         for (var item in data) {
           DateTime date = DateTime.parse(item['punch_in']);
           String duration = item['duration'];
 
+          print('Date: $date, Duration: $duration');
+
           DateTime key = DateTime(date.year, date.month, date.day);
+
+          print('Key: $key');
 
           if (tempDurations.containsKey(key)) {
             tempDurations[key]!.add(duration);
@@ -102,12 +136,58 @@ Future<void> loadUserPermissions() async {
     }
   }
 
-
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     Navigator.pushReplacementNamed(context, '/login');
   }
+
+
+int calculateTotalMinutes(List<String> durations) {
+  int totalMinutes = 0;
+
+  for (var duration in durations) {
+    final hourMatch = RegExp(r'(\d+)h').firstMatch(duration);
+    final minMatch = RegExp(r'([\d.]+)m').firstMatch(duration);
+
+    if (hourMatch != null) {
+      totalMinutes += int.parse(hourMatch.group(1)!) * 60;
+    }
+
+    if (minMatch != null) {
+      totalMinutes += double.parse(minMatch.group(1)!).round();
+    }
+  }
+
+  return totalMinutes;
+}
+
+  void _showHalfDayOptions(BuildContext context, DateTime day, DateTime dayKey) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('Select Details for ${day.day}/${day.month}/${day.year}'),
+      content: const Text('This day contains both attendance and leave records.'),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            Navigator.pushNamed(context, '/attendance-history', arguments: {'selectedDate': day});
+          },
+          child: const Text('View Attendance'),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            Navigator.pushNamed(context, '/leave-status', arguments: {'selectedDate': dayKey, 'leavesTypeId': leaveDurations[dayKey]![0]['leaveTypeId'],
+            'tabIndex': 1});
+          },
+          child: const Text('View Leave'),
+        ),
+      ],
+    ),
+  );
+}
 
  @override
   Widget build(BuildContext context) {
@@ -130,8 +210,9 @@ Future<void> loadUserPermissions() async {
 
 Widget buildCalendar() {
   final today = DateTime.now();
-
-  return Padding(
+  return SafeArea(
+  child: SingleChildScrollView(
+  child: Padding(
     padding: const EdgeInsets.all(8.0),
     child: TableCalendar(
       firstDay: DateTime.utc(2025, 1, 1),
@@ -139,40 +220,192 @@ Widget buildCalendar() {
       focusedDay: today,
       rowHeight: 80,
       selectedDayPredicate: (day) => isSameDay(selectedDate, day),
-      onDaySelected: (selectedDay, focusedDay) {
-        Navigator.pushNamed(
-              context,
-              '/attendance-history',
-              arguments: {'selectedDate': selectedDay},
-            );
-      },
-      availableGestures: AvailableGestures.all,
+       availableGestures: AvailableGestures.all,
       calendarFormat: CalendarFormat.month,
+
       eventLoader: (day) {
-        return punchDurations[DateTime(day.year, day.month, day.day)] ?? [];
-      },
+        final dayKey = DateTime(day.year, day.month, day.day);
+        final events = [];
+
+        if (punchDurations.containsKey(dayKey)) {
+          events.addAll(punchDurations[dayKey]!);
+        }
+
+        if (leaveDurations.containsKey(dayKey)) {
+          events.add('Leave'); 
+        }
+
+        return events;
+     },
       calendarBuilders: CalendarBuilders(
         defaultBuilder: (context, day, focusedDay) {
           final isSunday = day.weekday == DateTime.sunday;
           final dayKey = DateTime(day.year, day.month, day.day);
-          final isPresent = punchDurations.containsKey(dayKey);
           final isToday = DateTime(day.year, day.month, day.day) == DateTime(today.year, today.month, today.day);
 
-          Color backgroundColor;
-          Color textColor = Colors.black;
-          BoxBorder? border;
-
-            if (isPresent) {
-            backgroundColor = Colors.green.shade100;
-          } else if (isSunday) {
-            backgroundColor = Colors.blue.shade50;
-          } else if (day.isBefore(today)) {
-            backgroundColor = Colors.grey.shade200;
-          } else {
-            backgroundColor = Colors.white;
+          bool sameDay(DateTime a, DateTime b) {
+          return a.year == b.year && a.month == b.month && a.day == b.day;
           }
 
-          return Container(
+        final punchEntry = punchDurations.entries.firstWhere(
+        (entry) => sameDay(entry.key, dayKey),
+        orElse: () => MapEntry(DateTime(2000), []),
+      );
+
+      final leaveEntry = leaveDurations.entries.firstWhere(
+        (entry) => sameDay(entry.key, dayKey),
+        orElse: () => MapEntry(DateTime(2000), []),
+      );
+
+      final isPresent = punchEntry.value.isNotEmpty;
+      final isLeave = leaveEntry.value.isNotEmpty;
+
+      int totalMinutes = 0;
+
+      if (isPresent) {
+        totalMinutes = calculateTotalMinutes(punchEntry.value);
+      }
+
+      final isHalfDayAttendance = isPresent && totalMinutes < 270;
+
+
+      final isHalfDayLeave = isLeave && leaveEntry.value.any((leave) => leave['isHalfDay'] == true);
+
+      final isSplitDay = isHalfDayAttendance && isHalfDayLeave;
+
+      print('Punch Entry: ${punchEntry.value}');
+      print('Leave Entry: ${leaveEntry.value}');
+      print('Total Minutes: $totalMinutes');
+      print('isHalfDayAttendance: $isHalfDayAttendance');
+      print('isHalfDayLeave: $isHalfDayLeave');
+      print('isSplitDay: $isSplitDay');
+
+
+          final isFullLeave = isLeave && (
+          (!isPresent) ||
+          (isHalfDayLeave && !isHalfDayAttendance)
+        );
+
+        final isFullAttendance = isPresent && (
+          (!isLeave) ||
+          (isHalfDayAttendance && !isHalfDayLeave) 
+        );
+
+      if (isSplitDay) {
+  return GestureDetector(
+    onTap: () => _showHalfDayOptions(context, day, dayKey),
+    child: Container(
+      margin: const EdgeInsets.all(6),
+      height: 60,
+      width: 80,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: isToday ? Colors.redAccent : Colors.grey.shade300,
+          width: isToday ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            blurRadius: 6,
+            offset: const Offset(2, 4),
+          ),
+        ],
+      ),
+      child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.green.shade400, Colors.green.shade200],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              ),
+              alignment: Alignment.center,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '${day.day}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontSize: isToday ? 18 : 16,
+                    ),
+                  ),
+                  const Icon(
+                    Icons.access_time, 
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                ],
+              ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.orange.shade400, Colors.orange.shade200],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
+              ),
+              alignment: Alignment.topCenter,
+               child: const Icon(
+                Icons.beach_access, 
+                size: 14,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+     Color backgroundColor;
+          Color textColor = const Color.fromARGB(255, 0, 0, 0);
+          BoxBorder? border;
+
+          if (isFullLeave) {
+          backgroundColor = Colors.orange.shade200;
+        } else if (isFullAttendance) {
+          backgroundColor = Colors.green.shade100;
+        } else if (isSunday) {
+          backgroundColor = Colors.blue.shade50;
+        } else if (day.isBefore(today)) {
+          backgroundColor = Colors.grey.shade200;
+        } else {
+          backgroundColor = Colors.white;
+        }
+
+        return GestureDetector(
+        onTap: () {
+        if (isFullLeave) {
+          Navigator.pushNamed(context, '/leave-status', arguments: {'selectedDate': dayKey, 'leavesTypeId': leaveDurations[dayKey]![0]['leaveTypeId'],
+          'tabIndex': 1});
+          
+          debugPrint('Leave Type ID: ${leaveDurations[dayKey]![0]['leaveTypeId']}');
+
+        } else if (isFullAttendance) {
+          Navigator.pushNamed(context, '/attendance-history', arguments: {'selectedDate': day});
+        }
+      },
+
+          child: Container(
             margin: const EdgeInsets.all(4.0),
             height: 60,
             width: 80,
@@ -191,6 +424,7 @@ Widget buildCalendar() {
                 fontSize: 16,
               ),
             ),
+          ),
           );
         },
 
@@ -231,7 +465,6 @@ Widget buildCalendar() {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  // color: Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -249,11 +482,14 @@ Widget buildCalendar() {
         },
       ),
     ),
-  );
+  ),
+    ),
+  ) ;
 }
-
       Widget buildDrawer() {
       return Drawer(
+        child: SafeArea(
+        child: SingleChildScrollView(
         child: Column(
           children: [
             Padding(
@@ -397,7 +633,9 @@ Widget buildCalendar() {
             ),
           ],
         ),
-    );
+    ),
+        ),
+      );
   }
 }
 

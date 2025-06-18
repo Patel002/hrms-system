@@ -61,8 +61,21 @@ class _HolidayScreenState extends State<HolidayScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
+           : RefreshIndicator(
+                onRefresh: _fetchHolidays,
+                color: Colors.black,
+                backgroundColor: Colors.white,
+                child: _holidays.isEmpty
+              ? ListView(
+                  children: [
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                      ),
+                    ),
+                  ],
+              )
               : ListView.builder(
-                  padding: const EdgeInsets.all(12),
                   itemCount: _holidays.length,
                   itemBuilder: (context, index) {
                     final holiday = _holidays[index];
@@ -115,6 +128,7 @@ class _HolidayScreenState extends State<HolidayScreen> {
                     );
                   },
                 ),
+    ),
     );
   }
 }

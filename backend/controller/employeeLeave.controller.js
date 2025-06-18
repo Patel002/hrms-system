@@ -1,5 +1,6 @@
 import { EmployeeLeave, Employee, LeaveTypes, Company, EmployeeLeaveBalance } from "../utils/join.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { Op } from "sequelize";
 
 const createLeave = async (req, res) => {
     const {
@@ -89,7 +90,7 @@ const createLeave = async (req, res) => {
               message: `Insufficient leave days for ${leave_type}. Remaining leave days: ${available}`
             });
           }
- }
+        }
        
     //     const usedDays = await EmployeeLeaveBalance.sum("number_of_days", {
     //         where: {
@@ -289,7 +290,7 @@ const updateLeaveApplication = async(req, res) => {
         // console.log("updated id",updateData.update_id);
 
         const updateResult = await leave.update(updateData);
-        
+
         console.log("Leave application updated successfully",updateResult);
 
         res.status(201).json({ message: 'Leave application updated successfully', data: leave });
@@ -434,4 +435,67 @@ try {
     }
 }
 
-export { createLeave, getLeavesByStatusForEmployee ,updateLeaveApplication,approveRejectLeave,getLeaveRequestsBySupervisor};
+
+const getLeaves = async(req, res) => {
+    const { em_id, status, date } = req.query;
+console.log("em_id",em_id,"status",status,"date",date); 
+    try {
+
+      let checkLeave = {
+        em_id,
+      }
+
+      if(status){
+        checkLeave.leave_status = status
+      }
+
+      if(date){
+        checkLeave = {
+          ...checkLeave,
+          start_date: { [Op.lte]: date },
+          end_date: { [Op.gte]: date }
+        }
+         const leaves = await EmployeeLeave.findAll({ where: checkLeave });
+
+      console.log("leaves: ", leaves);  
+      return res.status(200).json({ leaves });
+    
+    }
+
+    const leaves = await EmployeeLeave.findAll({ where: checkLeave });
+    const calendarLeaves = {};
+
+    leaves.forEach(leave => {
+      const fromDate = new Date(leave.start_date);
+      const toDate = new Date(leave.end_date);
+
+      for (let d = new Date(fromDate); d <= toDate; d.setDate(d.getDate() + 1)) {
+      const dateKey = d.toISOString().split('T')[0];
+
+    if (!calendarLeaves[dateKey]) {
+          calendarLeaves[dateKey] = [];
+        }
+
+        calendarLeaves[dateKey].push({
+          leaveId: leave.id,
+          leaveTypeId: leave.typeid,
+          leaveType: leave.leave_type,
+          leaveStatus: leave.status,
+          isHalfDay: leave.leave_duration === '0.5', 
+        });
+      }
+
+    })
+
+    console.log("calendarLeaves: ", calendarLeaves);
+
+    return res.status(200).json({ calendarLeaves });
+      
+    } catch (error) {
+      console.log("Error fetching leaves:", error);
+      return res.status(500).json({ message: "Server error while fetching leaves" });
+    }
+
+  }
+
+export { createLeave, getLeavesByStatusForEmployee ,updateLeaveApplication,approveRejectLeave,getLeaveRequestsBySupervisor,getLeaves};

@@ -9,6 +9,9 @@ const getMonthTrans = async (req, res) => {
             emp_id: emp_id
         }
     });
+
+    console.log(data)
+
     res.status(200).json({ message: "Month Trans fetched successfully", data: data });
 }
 
