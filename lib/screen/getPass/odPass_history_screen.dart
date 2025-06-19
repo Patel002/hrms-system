@@ -131,13 +131,12 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
     );
   }
 
-
    Widget buildOdList(String approved) {
      return FutureBuilder<List<Map<String, dynamic>>>(
     future: fetchOdHistory(approved),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator(color: Colors.black87,));
         } else if (snapshot.hasError) {
           return Center(child: Text("Error loading $approved Od-Pass"));
         } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -326,6 +325,22 @@ void initState() {
       initialDate: isFrom ? fromDate : toDate,
       firstDate: DateTime(DateTime.now().year, DateTime.now().month),
       lastDate: DateTime(2100),
+                builder: (context, child) {
+      return Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFF3C3FD5),
+            onPrimary: Colors.white,
+            onSurface: Colors.black,
+          ),
+
+            textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(foregroundColor: Color(0xFF3C3FD5)),
+          ),
+        ),
+        child: child!,
+      );
+    },
     );
     if (picked != null) {
       setState(() {
@@ -399,6 +414,7 @@ void initState() {
     }
   }
 
+
  void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
     final snackBar = SnackBar(
       content: Row(
@@ -465,7 +481,8 @@ void initState() {
                   children: [
                     Card(
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 8,
+                      color: const Color(0xFFFDFDFD),
+                       elevation: 2,
                       shadowColor: Colors.black26,
                       child: Padding(
                      padding: const EdgeInsets.all(16.0),
@@ -499,21 +516,27 @@ void initState() {
                               ),
                              ),
                             ),
+                            
                             const SizedBox(height: 12),
                             _sectionTitle("Employee Info"),
                             const SizedBox(height: 10),
                             _infoRow("Username", widget.emUsername),
                             _infoRow("Department", widget.departmentName),
                             _infoRow("Company", widget.compFname),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 15),
+
+                            Divider(color: Colors.grey.withOpacity(0.5)),
+                            const SizedBox(height: 15),
+
                             _sectionTitle("OD Duration"),
                             const SizedBox(height: 10),
                             _infoRow("Applied Date", widget.date),
                            _editableDateField("From", fromDate, () => _pickDate(context, true)),
                           _editableDateField("To", toDate, () => _pickDate(context, false)),
 
-                            _infoRow("Duration",'${calculateDuration(fromDate, toDate)} days',),
-                             if (fromDate.difference(toDate).inDays.abs() == 0) ...[
+                          _infoRow("Duration",'${calculateDuration(fromDate, toDate)} days',),
+
+                          if (fromDate.difference(toDate).inDays.abs() == 0) ...[
                           const SizedBox(height: 12),
                           Row(
                             children: [
@@ -542,7 +565,11 @@ void initState() {
                             ],
                           ),
                         ],
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 15),
+
+                              Divider(color: Colors.grey.withOpacity(0.5)),
+
+                            const SizedBox(height: 15),
                             _sectionTitle("Reason"),
                              TextFormField(
                             controller: remarkController,

@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
+// import 'package:flutter_custom_clippers/flutter_custom_clippers.dart';
 
 class AttandanceHistory extends StatefulWidget {
   const AttandanceHistory({super.key});
@@ -14,7 +15,7 @@ class AttandanceHistory extends StatefulWidget {
   State<AttandanceHistory> createState() => _AttandanceHistoryState();
 }
 
-class _AttandanceHistoryState extends State<AttandanceHistory> {
+class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProviderStateMixin {
   final baseUrl = dotenv.env['API_BASE_URL'];
 
   String? emId, emUsername, compFname, compId, department;
@@ -23,13 +24,28 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
   String? errorMessage;
   bool isLoading = true;
   bool isFirstLoadDone = false; 
+  // late final AnimationController _animationController;
+
 
   @override
   void initState() {
     super.initState();
     gettokenData();
     fetchAttendanceData(DateTime.now());
+
+    //   _animationController = AnimationController(
+    //   vsync: this,
+    //   duration: const Duration(seconds: 30),
+    // )..repeat();
+
   }
+
+  // @override 
+  // void dispose(){
+  //    _animationController.dispose();
+  //   super.dispose();
+
+  // }
 
   String getFormattedDate(String dateString) {
     try {
@@ -78,7 +94,7 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
         child: child!,
       );
     },
-    );
+  );
 
     if (picked != null && picked != selectedDate) {
       setState(() {
@@ -103,7 +119,7 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
       print("emp_id: $emId");
 
       final formattedDate =
-          "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+       "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
       print("Formatted Date: $formattedDate");
 
       final url = Uri.parse(
@@ -153,6 +169,31 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
       ).showSnackBar(const SnackBar(content: Text("Could not open map.")));
     }
   }
+
+  //   Widget buildAnimatedStripe({required double speedFactor, required Color color}) {
+  //   return AnimatedBuilder(
+  //     animation: _animationController,
+  //     builder: (context, child) {
+  //       // Move stripe from right to left (diagonally)
+  //       return Transform.translate(
+  //         offset: Offset(
+  //           200 - (_animationController.value * speedFactor * 400),
+  //           _animationController.value * speedFactor * 200,
+  //         ),
+  //         child: child,
+  //       );
+  //     },
+  //     child: Transform.rotate(
+  //       angle: -0.6, 
+  //       child: Container(
+  //         width: 20,
+  //         height: 400,
+  //         color: color,
+  //       ),
+  //     ),
+  //   );
+  // }
+
 
   Widget buildAttendanceCard(Map item) {
     final base64Image = item['punch_img'];
@@ -320,28 +361,6 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
                       ],
                     ),
                     const SizedBox(height: 8),
-          // Row(
-          //   children: [
-          //     Expanded(
-          //       child: Text(
-          //         "$compFname",
-          //         style: const TextStyle(
-          //           fontSize: 10,
-          //           fontWeight: FontWeight.w600,
-          //         ),
-          //       ),
-          //     ),
-          //     Expanded(
-          //       child: Text(
-          //         " $department",
-          //         style: const TextStyle(
-          //           fontSize: 10,
-          //           fontWeight: FontWeight.w400,
-          //         ),
-          //       ),
-          //     ),
-          //   ],
-          // ),
                   ],
                 ),
               ),
@@ -364,17 +383,51 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
   }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Attendance History',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-            )),
-        elevation: 2,
-        backgroundColor: Color(0XFF213448),
-        foregroundColor: Colors.white,
-        centerTitle: false,
-      ),
-      body: Column(
+       backgroundColor: Colors.transparent,
+      appBar: PreferredSize(
+      preferredSize: const Size.fromHeight(kToolbarHeight),
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+             begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: AppBar(
+                title: const Text(
+                  "Attendance History",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              backgroundColor: Colors.transparent, 
+                foregroundColor: Colors.black,
+                elevation: 0,
+              ),
+            ),
+          ),
+      
+      body: Stack( 
+       children: [
+        Container(
+          decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        ),
+
+          // buildAnimatedStripe(
+          //     speedFactor: 1.0, color: Colors.white.withOpacity(0.1)),
+          // buildAnimatedStripe(
+          //     speedFactor: 1.5, color: Colors.grey.withOpacity(0.1)),
+          // buildAnimatedStripe(
+          //     speedFactor: 2.0, color: Colors.white.withOpacity(0.07)),
+          // buildAnimatedStripe(
+          //     speedFactor: 2.5, color: Colors.grey.withOpacity(0.07)),
+
+      Column(
         children: [
          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -385,7 +438,7 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF202A44),
+                    color: const Color(0xFFE4EBF5),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
@@ -398,14 +451,14 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
                     child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.calendar_today_outlined, color: Colors.white, size: 20),
+                      const Icon(Icons.calendar_today_outlined, color: Colors.black87, size: 20),
                       const SizedBox(width: 12),
                       Text(
                       selectedDate == null ?
                       DateFormat('dd MMM yyyy').format(DateTime.now()) 
                     : DateFormat('dd MMM yyyy').format(selectedDate!),
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: Colors.black,
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
                         ),
@@ -416,10 +469,11 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
               ),
             ),
           ),
+
           Expanded(
             child:
                 isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const Center(child: CircularProgressIndicator(color: Colors.black,))
                     : isFirstLoadDone
                     ? attendanceList.isEmpty
                     ? Center(
@@ -447,6 +501,8 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
                       ),
                     )
                     : RefreshIndicator(
+                      color: Colors.black,
+                      backgroundColor: Colors.white,
                       onRefresh: () async {
                         await fetchAttendanceData(
                           selectedDate ?? DateTime.now(),
@@ -463,7 +519,9 @@ class _AttandanceHistoryState extends State<AttandanceHistory> {
                     : const SizedBox(), 
           ),
         ],
-      ),
+      )
+       ],
+      )
     );
   }
 }

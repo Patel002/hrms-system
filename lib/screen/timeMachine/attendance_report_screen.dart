@@ -85,7 +85,7 @@ Widget build(BuildContext context) {
       future: futureAttendance,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator(color: Colors.black,));
         } else if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
         } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -139,7 +139,7 @@ Widget build(BuildContext context) {
                         });
                       }
                     },
-                    icon: const Icon(Icons.calendar_month),
+                    icon: const Icon(Icons.calendar_today_outlined),
                     label: Text(
                       selectedMonth != null
                           ? DateFormat('MMMM yyyy').format(selectedMonth!)

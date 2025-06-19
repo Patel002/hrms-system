@@ -163,31 +163,60 @@ int calculateTotalMinutes(List<String> durations) {
 }
 
   void _showHalfDayOptions(BuildContext context, DateTime day, DateTime dayKey) {
-  showDialog(
+  showModalBottomSheet(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text('Select Details for ${day.day}/${day.month}/${day.year}'),
-      content: const Text('This day contains both attendance and leave records.'),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-            Navigator.pushNamed(context, '/attendance-history', arguments: {'selectedDate': day});
-          },
-          child: const Text('View Attendance'),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    backgroundColor: Colors.white,
+    builder: (context) {
+      return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Container(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(5)),),
+            
+            const SizedBox(height: 16),
+
+            Text('Select Option for', style: TextStyle(fontSize: 18, color: Colors.grey[700])),
+            
+            Text('${day.day}/${day.month}/${day.year}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            
+            const SizedBox(height: 20),
+ 
+            ListTile(
+              leading: const Icon(Icons.access_time, color: Colors.blueAccent),
+              title: const Text('View Attendance', style: TextStyle(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/attendance-history', arguments: {'selectedDate': day});
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.calendar_month, color: Colors.green),
+              title: const Text('View Leave', style: TextStyle(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/leave-status', arguments: {
+                  'selectedDate': dayKey,
+                  'leavesTypeId': leaveDurations[dayKey]![0]['leaveTypeId'],
+                  'tabIndex': 1,
+                });
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.cancel, color: Colors.redAccent),
+              title: const Text('Cancel', style: TextStyle(fontSize: 16)),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
         ),
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-            Navigator.pushNamed(context, '/leave-status', arguments: {'selectedDate': dayKey, 'leavesTypeId': leaveDurations[dayKey]![0]['leaveTypeId'],
-            'tabIndex': 1});
-          },
-          child: const Text('View Leave'),
-        ),
-      ],
-    ),
+      ),
+      );
+    },
   );
 }
+
 
  @override
   Widget build(BuildContext context) {
@@ -215,7 +244,7 @@ Widget buildCalendar() {
   child: Padding(
     padding: const EdgeInsets.all(8.0),
     child: TableCalendar(
-      firstDay: DateTime.utc(2025, 1, 1),
+      firstDay: DateTime.utc(2020, 1, 1),
       lastDay: DateTime.utc(2025, 12, 31),
       focusedDay: today,
       rowHeight: 80,
@@ -232,7 +261,7 @@ Widget buildCalendar() {
         }
 
         if (leaveDurations.containsKey(dayKey)) {
-          events.add('Leave'); 
+          events.add(''); 
         }
 
         return events;
@@ -274,7 +303,7 @@ Widget buildCalendar() {
       final isSplitDay = isHalfDayAttendance && isHalfDayLeave;
 
       print('Punch Entry: ${punchEntry.value}');
-      print('Leave Entry: ${leaveEntry.value}');
+      print('; Entry: ${leaveEntry.value}');
       print('Total Minutes: $totalMinutes');
       print('isHalfDayAttendance: $isHalfDayAttendance');
       print('isHalfDayLeave: $isHalfDayLeave');
@@ -292,83 +321,86 @@ Widget buildCalendar() {
         );
 
       if (isSplitDay) {
-  return GestureDetector(
-    onTap: () => _showHalfDayOptions(context, day, dayKey),
-    child: Container(
-      margin: const EdgeInsets.all(6),
-      height: 60,
-      width: 80,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: isToday ? Colors.redAccent : Colors.grey.shade300,
-          width: isToday ? 2 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            blurRadius: 6,
-            offset: const Offset(2, 4),
+      return GestureDetector(
+        onTap: () => _showHalfDayOptions(context, day, dayKey),
+        child: Container(
+          margin: const EdgeInsets.all(2.0),
+          height: 50,
+          width: 50,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: isToday ? Colors.redAccent : Colors.grey.shade300,
+              width: isToday ? 2 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                blurRadius: 6,
+                offset: const Offset(2, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.green.shade400, Colors.green.shade200],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-              ),
-              alignment: Alignment.center,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '${day.day}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontSize: isToday ? 18 : 16,
+          child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: AnimatedContainer(
+                  height: 6,
+                  duration: const Duration(milliseconds: 300),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.green.shade300, Colors.green.shade200],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                   ),
-                  const Icon(
-                    Icons.access_time, 
-                    size: 14,
-                    color: Colors.white,
+                  alignment: Alignment.center,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${day.day}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontSize: isToday ? 16 : 14,
+                        ),
+                      ),
+                      // const Icon(
+                      //   Icons.access_time, 
+                      //   size: 14,
+                      //   color: Colors.white,
+                      // ),
+                    ],
                   ),
-                ],
-              ),
+                ),
               ),
             ),
-          ),
+            
           Expanded(
             child: AnimatedContainer(
+              height: 6,
               duration: const Duration(milliseconds: 300),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.orange.shade400, Colors.orange.shade200],
+                  colors: [Colors.orange.shade300, Colors.orange.shade200],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
 
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
               ),
-              alignment: Alignment.topCenter,
-               child: const Icon(
-                Icons.beach_access, 
-                size: 14,
-                color: Colors.white,
-              ),
+              // alignment: Alignment.topCenter,
+              //  child: const Icon(
+              //   Icons.beach_access, 
+              //   size: 14,
+              //   color: Colors.white,
+              // ),
             ),
           ),
         ],
@@ -395,7 +427,7 @@ Widget buildCalendar() {
         return GestureDetector(
         onTap: () {
         if (isFullLeave) {
-          Navigator.pushNamed(context, '/leave-status', arguments: {'selectedDate': dayKey, 'leavesTypeId': leaveDurations[dayKey]![0]['leaveTypeId'],
+          Navigator.pushNamed(context, '/leave-status', arguments: {'selectedDate': day, 'leavesTypeId': leaveDurations[dayKey]![0]['leaveTypeId'],
           'tabIndex': 1});
           
           debugPrint('Leave Type ID: ${leaveDurations[dayKey]![0]['leaveTypeId']}');
@@ -406,28 +438,41 @@ Widget buildCalendar() {
       },
 
           child: Container(
-            margin: const EdgeInsets.all(4.0),
-            height: 60,
-            width: 80,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius: BorderRadius.circular(10),
-              border: border,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              '${day.day}',
-              style: TextStyle(
-                color: textColor,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
+          margin: const EdgeInsets.all(2.0), 
+          height: 50,
+          width: 50, 
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(6), 
+            border: border ?? Border.all(color: Colors.grey.shade300), 
           ),
-          );
-        },
-
+          alignment: Alignment.topCenter,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '${day.day}',
+                style: TextStyle(
+                  color: textColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+              ),
+          ),
+          const SizedBox(height: 4),
+          if (isFullLeave)
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: Colors.redAccent, 
+                shape: BoxShape.circle,
+              ),
+            )
+        ],
+      ),
+    ),
+  );
+},
         todayBuilder: (context, day, focusedDay) {
           final dayKey = DateTime(day.year, day.month, day.day);
           final isPresent = punchDurations.containsKey(dayKey);
@@ -437,14 +482,14 @@ Widget buildCalendar() {
           Color textColor = Colors.black;
 
           return Container(
-            margin: const EdgeInsets.all(4.0),
-            height: 60,
-            width: 80,
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            margin: const EdgeInsets.all(2.0),
+            height: 50,
+            width: 50,
+            padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
               color: backgroundColor,
-              borderRadius: BorderRadius.circular(10), 
-              // border: border,
+              borderRadius: BorderRadius.circular(6), 
+              border: border,
             ),
             alignment: Alignment.center,
             child: Text(
@@ -452,7 +497,7 @@ Widget buildCalendar() {
               style: TextStyle(
                 color: textColor,
                 fontWeight: FontWeight.bold,
-                fontSize: 16,
+                fontSize: 14,
               ),
             ),
           );
@@ -465,7 +510,7 @@ Widget buildCalendar() {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   formatDuration(events.first as String),
@@ -638,4 +683,3 @@ Widget buildCalendar() {
       );
   }
 }
-

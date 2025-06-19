@@ -125,7 +125,6 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
   setState(() {}); 
 }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -134,9 +133,9 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
     child: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color.fromARGB(255, 252, 253, 255), Color.fromARGB(255, 234, 239, 245)],
+           colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
             begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
+            end: Alignment.center,
           ),
         ),
       child: AppBar(
@@ -151,9 +150,9 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
       body: Container(
         decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color.fromARGB(255, 252, 253, 255), Color.fromARGB(255, 234, 239, 245)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+              begin: Alignment.bottomRight,
+              end: Alignment.topLeft,
             ),
           ),
 
@@ -175,6 +174,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
                 return ChoiceChip(
                   label: Text(type['name'],),
                   selected: isSelected,
+                  backgroundColor: Color(0xFFF5F7FA),
                   onSelected: (_) {
                     setState(() {
                       selectedTypeId = type['type_id'];
@@ -235,7 +235,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
       future: fetchLeaves(status),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator( color: Colors.black,));
         } else if (snapshot.hasError) {
           return Center(child: Text("Error loading $status leaves"));
         } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -249,6 +249,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
             final leave = leaves[index];
             return Card(
               margin: EdgeInsets.all(10),
+              color:Color(0xFFF5F7FA),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -267,6 +268,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
                     status.toUpperCase(),
                     style: TextStyle(
                       color: Colors.white,
+                      // backgroundColor: Colors.transparent,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -368,6 +370,8 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
 
     selectedLeaveType = widget.leave['leave_type'];
     fetchLeaveTypes();
+
+    
   }
 
   double calculateDuration(DateTime from, DateTime to) {

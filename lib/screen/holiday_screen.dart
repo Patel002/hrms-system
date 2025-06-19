@@ -56,8 +56,37 @@ class _HolidayScreenState extends State<HolidayScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Holiday List')),
-      body: _isLoading
+      backgroundColor: Colors.transparent,
+appBar: PreferredSize(
+ preferredSize: const Size.fromHeight(kToolbarHeight),
+child: Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+child: AppBar(
+        title: const Text(
+          "Holiday",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+       backgroundColor: Colors.transparent, 
+        foregroundColor: Colors.black,
+        elevation: 0,
+      ),
+    ),
+  ),
+      body: Container(
+        decoration:BoxDecoration(
+        gradient: LinearGradient(
+        colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+         begin: Alignment.topRight,
+         end: Alignment.bottomLeft,
+      ),
+        ),
+      child : _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
@@ -76,17 +105,19 @@ class _HolidayScreenState extends State<HolidayScreen> {
                   ],
               )
               : ListView.builder(
+                padding: const EdgeInsets.all(12),
                   itemCount: _holidays.length,
                   itemBuilder: (context, index) {
                     final holiday = _holidays[index];
                     return Card(
-                      elevation: 4,
+                      elevation: 3,
+                      color: Color(0xFFF5F7FA),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      margin: const EdgeInsets.symmetric(vertical: 10),
                       child: ListTile(
                         contentPadding: const EdgeInsets.all(16),
                         leading: CircleAvatar(
-                          backgroundColor: Colors.teal.shade100,
+                          backgroundColor: const Color(0xFFE4EBF5),
                           radius: 24,
                           child: Text(
                             holiday['holiday_name'][0].toUpperCase(),
@@ -128,6 +159,7 @@ class _HolidayScreenState extends State<HolidayScreen> {
                     );
                   },
                 ),
+    ),
     ),
     );
   }
