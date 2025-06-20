@@ -148,55 +148,175 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
 
-  void _confirmApprove(String leaveId) async {
-    bool? confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text("Confirm Approval"),
-        content: Text("Are you sure you want to approve this leave request?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text("Cancel")),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text("Approve")),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      _sendApprovalOrRejection(leaveId, action: 'approve');
-    }
-  }
-
-  void _showRejectDialog(String leaveId) {
-    final TextEditingController reasonController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text("Reject Leave"),
-        content: TextField(
-          controller: reasonController,
-          decoration: InputDecoration(
-            labelText: 'Enter reject reason',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 3,
+  void _confirmApprove(String leaveId) {
+  showModalBottomSheet(
+    context: context,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    isScrollControlled: false,
+    builder: (BuildContext context) {
+      return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.verified_outlined, color: Colors.green.shade400, size: 50),
+            SizedBox(height: 16),
+            Text(
+              "Approve Leave Request?",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 10),
+            Text(
+              "Are you sure you want to approve this leave request?",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.black54),
+            ),
+            SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.grey[800],
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      textStyle: TextStyle(fontSize: 16),
+                    ),
+                    child: Text("Cancel"),
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _sendApprovalOrRejection(leaveId, action: 'approve');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    child: Text("Approve",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
-          ElevatedButton(
-            onPressed: () {
-              final reason = reasonController.text.trim();
-              if (reason.isNotEmpty) {
-                Navigator.pop(context);
-                _sendApprovalOrRejection(leaveId, action: 'reject', reason: reason);
-              }
-            },
-            child: Text("Reject"),
-          ),
-        ],
-      ),
-    );
-  }
+      );
+    },
+  );
+}
+  
+
+ void _showRejectDialog(String leaveId) {
+  final TextEditingController reasonController = TextEditingController();
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (BuildContext context) {
+      return Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20, 
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 50),
+            SizedBox(height: 16),
+            Text(
+              "Reject Leave Request",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 10),
+            Text(
+              "Please provide a reason for rejecting this leave request.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.black54),
+            ),
+            SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'Enter rejection reason',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.grey[800],
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      textStyle: TextStyle(fontSize: 16),
+                    ),
+                    child: Text("Cancel"),
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final reason = reasonController.text.trim();
+                      if (reason.isNotEmpty) {
+                        Navigator.pop(context);
+                        _sendApprovalOrRejection(leaveId, action: 'reject', reason: reason);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    child: Text("Reject",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
 
  Widget _buildList(List<dynamic> list, {bool showActions = false}) {
   if (list.isEmpty) return Center(child: Text("No requests."));

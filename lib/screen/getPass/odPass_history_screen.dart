@@ -39,7 +39,7 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
 
       print('Employee Username: $empId');
       print('Company Name: $compFname');
-      print('Department Name: $departmentName');
+      // print('Department Name: $departmentName');
 
       final statusMap = {
         'pending': 'PENDING',
@@ -184,8 +184,8 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
                   final prefs = await SharedPreferences.getInstance();
                   final token = prefs.getString('token') ?? '';
                   final decoded = Jwt.parseJwt(token);
-                  final emUsername = decoded['em_username'];
-                  final departmentName = decoded['dep_name'];
+                  // final emUsername = decoded['em_username'];
+                  // final departmentName = decoded['dep_name'];
                   // print("department name: $departmentName");
                   // print("od pass id,${leave['id']}");
                   final compFname = decoded['comp_fname'];
@@ -194,8 +194,8 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
                     MaterialPageRoute(
                       builder:
                           (context) => OdDetailsPage(
-                            emUsername: emUsername ?? '',
-                            departmentName: departmentName ?? '',
+                            emUsername: leave['employee_name'],
+                            departmentName: leave['department_name'],
                             compFname: compFname ?? '',
                             fromDate: leave['fromdate'],
                             toDate: leave['todate'],

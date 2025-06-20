@@ -1,6 +1,7 @@
 import OdPass from '../model/odPass.model.js';
-import { Company } from '../utils/join.js';
+import { Company, Department } from '../utils/join.js';
 import { Op } from 'sequelize';
+import { Employee } from '../utils/join.js';
 
 const createOdPass = async(req, res) =>{
     const {
@@ -101,10 +102,49 @@ const getHistoryOfOdPass = async(req, res) =>{
     const {emp_id, approved} = req.query;
     try {
 
-        const odPass = await OdPass.findAll({ where: { emp_id, approved } });
-        if (!odPass) {
-            return res.status(404).json({ message: "Employee not found" });
+        const odPassRecords = await OdPass.findAll({ where: { emp_id, approved },
+        include: [
+            {
+                model: Employee,
+                as: 'employee',
+                attributes: ['em_id','dep_id','em_username'],
+                include: [
+                    {
+                        model: Department,
+                        as: 'department',
+                        attributes: ['id', 'dep_name']
+                    }
+                ]
+            }
+        ]
+        });
+
+        const odPass = odPassRecords.map((od) => ({
+                        id: od.id,
+            emp_id: od.emp_id,
+            comp_id: od.comp_id,
+            add_date: od.add_date,
+            fromdate: od.fromdate,
+            todate: od.todate,
+            oddays: od.oddays,
+            odtype: od.odtype,
+            remark: od.remark,
+            created_at: od.created_at,
+            approved: od.approved,
+            app_type: od.app_type,
+            status: od.status,
+            updated_by: od.updated_by,
+            updated_at: od.updated_at,
+            created_by: od.created_by,
+            approve_step1: od.approve_step1,
+            employee_name: od.employee?.em_username || null,
+            department_name: od.employee?.department?.dep_name || null
+        }));
+
+        if (!odPass || odPass.length === 0) {
+            return res.status(404).json({ message: "No OD Pass history found for the employee" });
         }
+
         res.status(200).json({message:"History of od pass fetched successfully", odPass})
         
     } catch (error) {
