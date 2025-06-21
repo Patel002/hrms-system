@@ -10,10 +10,6 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:image/image.dart' as img;
 import 'package:camera/camera.dart';
-// import 'dart:typed_data';
-// import 'package:image_picker/image_picker.dart';
-// import 'package:flutter/services.dart';
-// import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 
 class AttendanceScreenIN extends StatefulWidget {
@@ -35,31 +31,57 @@ class _AttendanceScreenINState extends State<AttendanceScreenIN> {
   String? base64Image;
   File? _imageFile;
   CameraController? _cameraController;
+  late Future<void> _initializeControllerFuture = Future.value();
+  bool isCameraAvailable = false; 
   final bool _isCapturing = false;
-  final bool _isProcessing = false;
   bool isLoading = false;
   bool isSubmitting = false;
-  late Future<void> _initializeControllerFuture;
 
   @override
   void initState() {
     super.initState();
-    getEmpCodeFromToken();
-    getLocation();
-  
-  //   _faceDetector = FaceDetector(
-  //   options: FaceDetectorOptions(
-  //     performanceMode: FaceDetectorMode.fast,
-  //     enableContours: false,
-  //     enableLandmarks: false,
-  //     enableClassification: true,
-  //     enableTracking: true,
-  //   ),
-  // );
-  
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+    initializePage();
+   });
+  }
+
+  Future<void> initializePage() async {
+  try {
+    await getEmpCodeFromToken();
+
+    bool locationGranted = await requestLocationPermission();
+    bool cameraGranted = await requestCameraPermission();
+
+    if (!locationGranted || !cameraGranted) {
+      _initializeControllerFuture = Future.value();
+      setState(() {});
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
     _initializeControllerFuture = _initializeCamera();
 
+    await getLocation();
+
+   
+    setState(() {
+      isLoading = false;
+    });
+  } catch (e) {
+    debugPrint('Initialization error: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Initialization error: $e')),
+    );
+    _initializeControllerFuture = Future.value();
+    setState(() {
+      isLoading = false;
+    });
   }
+}
+
 
   Future<void> getEmpCodeFromToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -76,35 +98,54 @@ class _AttendanceScreenINState extends State<AttendanceScreenIN> {
     }
   }
 
-  Future<void> getLocation() async {
-    PermissionStatus status = await Permission.location.request();
-    if (status.isGranted) {
-      currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.bestForNavigation,
-      );
-    }
-      else if (status.isDenied) {
-        throw Exception('Location permission denied by user');
-      }
-      else if (status.isPermanentlyDenied) {
-         openAppSettings();
-          throw Exception('Location permission permanently denied. Please enable it from settings.');
-      }else {
-      throw Exception('Location permission not granted');
-    }
-      print('Latitude: ${currentPosition?.latitude}, Longitude: ${currentPosition?.longitude}, Accuracy: ${currentPosition?.accuracy}');
-     } 
+  Future<bool> requestLocationPermission() async {
+  final status = await Permission.location.request();
+
+  if (status.isGranted) {
+    return true;
+  } else if (status.isPermanentlyDenied) {
+    await openAppSettings();
+    return false;
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Location permission is required.')),
+    );
+    return false;
+  }
+}
+
+Future<bool> requestCameraPermission() async {
+  final status = await Permission.camera.request();
+
+  if (status.isGranted) {
+    return true;
+  } else if (status.isPermanentlyDenied) {
+    await openAppSettings();
+    return false;
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Camera permission is required.')),
+    );
+    return false;
+  }
+}
+
+Future<void> getLocation() async {
+  bool isLocationEnabled = await Geolocator.isLocationServiceEnabled();
+
+  if (!isLocationEnabled) {
+    throw Exception('Location services are disabled.');
+  }
+
+  currentPosition = await Geolocator.getCurrentPosition(
+    desiredAccuracy: LocationAccuracy.high,
+  );
+
+  print('Latitude: ${currentPosition?.latitude}, Longitude: ${currentPosition?.longitude}, Accuracy: ${currentPosition?.accuracy}');
+} 
 
 
 Future<void> _initializeCamera() async {
-  final status = await Permission.camera.request();
-  if (status.isDenied) {
-    throw Exception('Camera permission denied.');
-  } else if (status.isPermanentlyDenied) {
-    openAppSettings();
-    return;
-  }
-
   final cameras = await availableCameras();
   final frontCamera = cameras.firstWhere(
     (cam) => cam.lensDirection == CameraLensDirection.front,
@@ -112,19 +153,13 @@ Future<void> _initializeCamera() async {
 
   _cameraController = CameraController(
     frontCamera,
-    ResolutionPreset.high,
-    imageFormatGroup: ImageFormatGroup.yuv420,
+    ResolutionPreset.medium,
     enableAudio: false,
   );
 
   await _cameraController!.initialize();
+}
 
-  await _cameraController!.startImageStream((CameraImage image) {
-    if (!_isCapturing && !_isProcessing) {
-      // _processCameraImage(image);
-    }
-  });
-} 
 Future<void> _captureImage() async {
   try {
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
@@ -155,93 +190,106 @@ Future<void> _captureImage() async {
   }
 }
 
- Future<void> submitAttendance() async {
-  if (isSubmitting) return;
-
-   if (!_formKey.currentState!.validate() || narration == null || field == null) {
-    _showCustomSnackBar(context, "Please fill all fields", Colors.yellow.shade900, Icons.warning_amber_outlined);
-     return;
-   }
-    
-  _formKey.currentState!.save();
-
-  try {
-       if (base64Image == null) {
-      _showCustomSnackBar(context, 'Please capture an image', Colors.teal.shade400, Icons.camera);
-    return;
-  }
-
-  if (currentPosition == null) {
-    _showCustomSnackBar(context, 'Please give access of location', const Color.fromARGB(255, 138, 166, 38), Icons.location_disabled);
-    return;
-  }
-
-    setState(() {
-      isSubmitting = true;
-    });
-
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/attendance/punch'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'emp_id': emId,
-        'comp_id': compId,
-        'punch_remark': narration,
-        'punch_place': field,
-        'punchtype': 'OUTSTATION1',
-        'latitude': currentPosition?.latitude,
-        'longitude': currentPosition?.longitude,
-        'punch_img': base64Image,
-        'created_by': emUsername,
-      }),
-    );
-
-    if (response.statusCode == 201) {
-      final responseData = jsonDecode(response.body);
-
-      if (responseData['warning'] != null) {
-      _showCustomSnackBar(context, responseData['warning'], Colors.orange.shade700, Icons.warning_amber_outlined);
-    }
-      _showCustomSnackBar(context, 'Attendance marked successfully', Colors.green, Icons.check_circle);
-
-      _resetForm();
-
-    } else {
-      final error = jsonDecode(response.body);
-      _showCustomSnackBar(context, "${error['message']}", Colors.red, Icons.error);
-    }
-  } catch (e) {
-     _showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
-  } finally {
-    setState(() {
-      isSubmitting = false;
-    });
-  }
+@override
+void dispose() {
+  _cameraController?.dispose();
+  super.dispose();
 }
 
-Future<void> handlePullToRefresh() async {
-  setState(() {
-    isLoading = true;
-  });
 
-  _resetForm();
+  Future<void> submitAttendance() async {
+    if (isSubmitting) return;
 
-  setState(() {
-    isLoading = false;
-  });
-} 
-
-  void _resetForm() {
-    _formKey.currentState?.reset();
-    _narrationController.clear();
     setState(() {
-    narration = null;
-    field = null;
-    base64Image = null;
-    _imageFile = null;
-    currentPosition = null;
-    });
+    isSubmitting = true;
+  });
+
+
+    if (!_formKey.currentState!.validate() || narration == null || field == null) {
+      _showCustomSnackBar(context, "Please fill all fields", Colors.yellow.shade900, Icons.warning_amber_outlined);
+      setState(() {
+        isSubmitting = false;
+      });
+      return;
+    }
+      
+    _formKey.currentState!.save();
+
+   
+    if (base64Image == null) {
+    _showCustomSnackBar(context, 'Please capture an image', Colors.teal.shade400, Icons.camera);
+     return;
+   }
+
+    if (currentPosition == null) {
+      _showCustomSnackBar(context, 'Please give access of location', const Color.fromARGB(255, 138, 166, 38), Icons.location_disabled);
+      return;
+    }
+
+    try {
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/attendance/punch'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'emp_id': emId,
+          'comp_id': compId,
+          'punch_remark': narration,
+          'punch_place': field,
+          'punchtype': 'OUTSTATION1',
+          'latitude': currentPosition?.latitude,
+          'longitude': currentPosition?.longitude,
+          'punch_img': base64Image,
+          'created_by': emUsername,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+
+        if (responseData['warning'] != null) {
+        _showCustomSnackBar(context, responseData['warning'], Colors.orange.shade700, Icons.warning_amber_outlined);
+      }
+        _showCustomSnackBar(context, 'Attendance marked successfully', Colors.green, Icons.check_circle);
+
+        _resetForm();
+
+      } else {
+        final error = jsonDecode(response.body);
+        _showCustomSnackBar(context, "${error['message']}", Colors.red, Icons.error);
+      }
+    } catch (e) {
+      _showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
+    } finally {
+      setState(() {
+        isSubmitting = false;
+      });
+    }
   }
+
+  Future<void> handlePullToRefresh() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    _resetForm();
+
+    setState(() {
+      isLoading = false;
+    });
+  } 
+
+    void _resetForm() {
+      _formKey.currentState?.reset();
+      _narrationController.clear();
+      setState(() {
+      narration = null;
+      field = null;
+      base64Image = null;
+      _imageFile = null;
+      currentPosition = null;
+      });
+    }
 
  void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
     final snackBar = SnackBar(
@@ -375,10 +423,15 @@ Widget build(BuildContext context) {
 
          const SizedBox(height: 24),
 
-         FutureBuilder<void>(
+          FutureBuilder(
             future: _initializeControllerFuture,
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.done) {
+
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                
+                if (snapshot.connectionState == ConnectionState.done) {
                 if (_cameraController != null && _cameraController!.value.isInitialized) {
                   return ClipRRect(
                     borderRadius: BorderRadius.circular(16),
@@ -398,7 +451,7 @@ Widget build(BuildContext context) {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Center(
-                      child: Text('Camera not available', style: TextStyle(color: Colors.black54)),
+                      child: Text('Camera will be initialized  please wait', style: TextStyle(color: Colors.black54)),
                     ),
                   );
                 }
@@ -464,6 +517,7 @@ Widget build(BuildContext context) {
                       )
                     ],
                   ),
+                  
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child:Transform(
@@ -480,14 +534,15 @@ Widget build(BuildContext context) {
                 ),
               ),
             ],
-
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: isSubmitting? null : submitAttendance,
-            label: const Text("Submit Attendance"),
-            style: greenButtonStyle,
-            icon: const Icon(Icons.send_outlined, size: 20),
-          ),
+                        const SizedBox(height: 32),
+                        ElevatedButton.icon(
+                          onPressed: isSubmitting? null : () async {
+                            await submitAttendance();
+                          },
+                          label: const Text("Submit Attendance"),
+                          style: greenButtonStyle,
+                          icon: const Icon(Icons.send_outlined, size: 20),
+                        ),
                       ],
                     ),
                   ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -11,23 +12,17 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isLoading = false;
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+
   final baseUrl = dotenv.env['API_BASE_URL'];
 
-
   Future<void> login() async {
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text.trim();
-
-    if (username.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter both username and password')),
-      );
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
@@ -37,135 +32,166 @@ class _LoginScreenState extends State<LoginScreen> {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'em_username': username, 'em_password': password}),
+        body: jsonEncode({
+          'em_username': _usernameController.text.trim(),
+          'em_password': _passwordController.text.trim(),
+        }),
       );
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
 
       final data = jsonDecode(response.body);
 
-      final responseBody = await data;
-      
       if (response.statusCode == 200 && data['token'] != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
         await prefs.setString('token', data['token']);
 
         _showCustomSnackBar(context, 'Login successful', Colors.green, Icons.check);
-
         Navigator.pushReplacementNamed(context, '/home');
-
-        
       } else {
-        final error = jsonDecode(responseBody);
-        _showCustomSnackBar(
-          context,
-          "${error['message']}",
-          Colors.red,
-          Icons.error,
-        );
+        _showCustomSnackBar(context, data['message'] ?? 'Invalid login', Colors.red, Icons.error);
       }
     } catch (e) {
       print('Login error: $e');
-      _showCustomSnackBar(context, 'Login failed', Colors.red, Icons.error);
+      _showCustomSnackBar(context, 'Network error. Please try again.', Colors.red, Icons.error);
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
-        final snackBar = SnackBar(
-          content: Row(
-            children: [
-              Icon(icon, color: Colors.white),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  message,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ),
-            ],
+    final snackBar = SnackBar(
+      content: Row(
+        children: [
+          Icon(icon, color: Colors.white),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
           ),
-          backgroundColor: color,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          duration: const Duration(seconds: 2),
-        );
+        ],
+      ),
+      backgroundColor: color,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      duration: const Duration(seconds: 2),
+    );
 
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
 
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Card(
-            elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Center(
+            child: SingleChildScrollView(
               child: Form(
                 key: _formKey,
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.lock, size: 64, color: Color(0XFF213448)), 
-                    const SizedBox(height: 16),
-                    Text(
-                      'Welcome',
-                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Please sign in to continue',
-                      style: theme.textTheme.bodyMedium,
+                    const Center(
+                      child: Icon(Icons.lock_outline, size: 72, color: Color(0XFF213448)),
                     ),
                     const SizedBox(height: 32),
+
+                    Text(
+                      'Login to your account',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0XFF213448),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    Text(
+                      'Welcome back! Please enter your credentials.',
+                      style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 32),
+
+                    /// Username Field
                     TextFormField(
                       controller: _usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Username',
-                        prefixIcon: Icon(Icons.person),
+                      decoration: InputDecoration(
+                        hintText: 'Username',
+                        prefixIcon: const Icon(Icons.person_outline),
+                        filled: true,
+                        fillColor: Colors.grey[100],
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
                         ),
                       ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your username';
+                        }
+                        return null;
+                      },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
+
                     TextFormField(
                       controller: _passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: Icon(Icons.lock),
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        hintText: 'Password',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[100],
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
-                          borderSide: BorderSide(color:Color(0XFF213448) ),
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
                         ),
                       ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your password';
+                        }
+                        return null;
+                      },
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
+
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          backgroundColor: Color(0XFF213448),
+                          backgroundColor: const Color(0XFF213448),
                           foregroundColor: Colors.white,
                         ),
                         onPressed: _isLoading ? null : login,
                         child: _isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text('Login', style: TextStyle(fontSize: 16)),
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
+
                   ],
                 ),
               ),

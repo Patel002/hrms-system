@@ -22,15 +22,16 @@ class _HomePageState extends State<HomePage> {
   final baseUrl = dotenv.env['API_BASE_URL'];
   DateTime? selectedDate;
   Map<DateTime, List<Map<String, dynamic>>> leaveDurations = {};
+  bool isDataLoaded = false;
 
 
   @override
 void initState() {
   super.initState();
   loadUserPermissions();
+  
 }
-   
-  String formatDuration(String rawDuration) {
+   String formatDuration(String rawDuration) {
   try {
     final parts = rawDuration.split(' ');
     final hours = int.parse(parts[0].replaceAll('h', ''));
@@ -46,7 +47,6 @@ void initState() {
   }
 }
 
-
 Future<void> loadUserPermissions() async {
   final prefs = await SharedPreferences.getInstance();
   final token = prefs.getString('token');
@@ -60,16 +60,19 @@ Future<void> loadUserPermissions() async {
       print('Employee Id, $empId');
       isSupervisor = decoded['isSupervisor'] == true;
     });
-    await fetchPunchDurations();
     await fetchLeaveDurations();
+    await fetchPunchDurations();
+
+    setState(() {
+      isDataLoaded = true;
+      
+    });
   }
 }
 
 Future<void> fetchLeaveDurations() async {
   try {
     final response = await http.get(Uri.parse('$baseUrl/api/emp-leave/all-calendar-leaves?em_id=$empId&status=Approve'));
-
-    // print('Leave Durations Response: $response');
 
      if (response.statusCode == 200) {
       final result = json.decode(response.body);
@@ -99,8 +102,6 @@ Future<void> fetchLeaveDurations() async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/api/attendance/day-duration/$empId'));
 
-      // print('Punch Durations Response: $response');
-
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
         final List data = result['data'];
@@ -108,8 +109,7 @@ Future<void> fetchLeaveDurations() async {
         print('Punch Durations: $data');
 
         Map<DateTime, List<String>> tempDurations = {};
-        // print('Punch Durations: $tempDurations');
-
+       
         for (var item in data) {
           DateTime date = DateTime.parse(item['punch_in']);
           String duration = item['duration'];
@@ -205,8 +205,8 @@ int calculateTotalMinutes(List<String> durations) {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.cancel, color: Colors.redAccent),
-              title: const Text('Cancel', style: TextStyle(fontSize: 16)),
+              leading: const Icon(Icons.close, color: Colors.redAccent),
+              title: const Text('Close', style: TextStyle(fontSize: 16)),
               onTap: () => Navigator.pop(context),
             ),
           ],
@@ -219,23 +219,62 @@ int calculateTotalMinutes(List<String> durations) {
 
 
  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: Colors.transparent,
+    appBar: PreferredSize(
+    preferredSize: const Size.fromHeight(kToolbarHeight),
+    child: Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+          begin: Alignment.bottomLeft,
+          end: Alignment.topRight,
+        ),
+      ),
+        child: AppBar(
+        title: const Text(
+          "Dahsboard",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Colors.black87),
             onPressed: _logout,
+            tooltip: 'Logout',
           ),
         ],
+       backgroundColor: Colors.transparent, 
+        foregroundColor: Colors.black,
+        elevation: 0,
       ),
-      drawer: buildDrawer(),
-      body: punchDurations.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : buildCalendar(),
-    );
-  }
+    ),
+  ),
+
+    drawer: buildDrawer(),
+    body: Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+          begin: Alignment.topRight,
+         end: Alignment.bottomLeft,
+        ),
+      ),
+      child: !isDataLoaded
+          ? const Center(
+              child: CircularProgressIndicator(color: Colors.black87),
+            )
+          : Padding(
+              padding: const EdgeInsets.all(16.0), 
+              child: Container(
+                child: buildCalendar(),
+              ),
+            ),
+          ),
+        );
+      }
 
 Widget buildCalendar() {
   final today = DateTime.now();
@@ -426,14 +465,19 @@ Widget buildCalendar() {
 
         return GestureDetector(
         onTap: () {
-        if (isFullLeave) {
-          Navigator.pushNamed(context, '/leave-status', arguments: {'selectedDate': day, 'leavesTypeId': leaveDurations[dayKey]![0]['leaveTypeId'],
-          'tabIndex': 1});
+        if (isFullLeave && leaveDurations[dayKey] != null && leaveDurations[dayKey]!.isNotEmpty) {
+          Navigator.pushNamed(context, '/leave-status', arguments: {
+            'selectedDate': day,
+            'leavesTypeId': leaveDurations[dayKey]![0]['leaveTypeId'],
+            'tabIndex': 1
+          });
           
           debugPrint('Leave Type ID: ${leaveDurations[dayKey]![0]['leaveTypeId']}');
 
         } else if (isFullAttendance) {
           Navigator.pushNamed(context, '/attendance-history', arguments: {'selectedDate': day});
+        } else {
+          _showHalfDayOptions(context, day, dayKey);
         }
       },
 
@@ -504,7 +548,7 @@ Widget buildCalendar() {
         },
 
         markerBuilder: (context, date, events) {
-          if (events.isNotEmpty) {
+          if (events.isNotEmpty && events.first is String && events.first.toString().isNotEmpty) {
             return Positioned(
               bottom: 4,
               child: Container(
@@ -533,8 +577,17 @@ Widget buildCalendar() {
 }
       Widget buildDrawer() {
       return Drawer(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+            ),
+          ),
         child: SafeArea(
         child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
             Padding(
@@ -566,6 +619,7 @@ Widget buildCalendar() {
                 ],
               ),
             ),
+            
 
           Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -672,14 +726,15 @@ Widget buildCalendar() {
                 ListTile(
                   title: const Text('Attendance Record'),
                   onTap: () => Navigator.pushNamed(context, '/attendance-record'),
-                ),
+               ),
               ],
+             ),
             ),
-            ),
-          ],
+           ],
+          ),
+         ),
         ),
-    ),
-        ),
+       ),
       );
-  }
-}
+     }
+    }

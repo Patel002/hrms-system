@@ -11,6 +11,7 @@ import 'package:image/image.dart' as img;
 import 'package:camera/camera.dart';
 import 'dart:math' as math;
 
+
 class AttendanceScreenOut extends StatefulWidget {
   const AttendanceScreenOut({super.key});
 
@@ -23,28 +24,64 @@ class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _narrationController = TextEditingController();
 
-  String? narration;
+String? narration;
   String? field;
   String? emId,emUsername,compFname,compId;
   Position? currentPosition;
   String? base64Image;
   File? _imageFile;
   CameraController? _cameraController;
-  late Future<void> _initializeControllerFuture;
+  late Future<void> _initializeControllerFuture = Future.value();
+  bool isCameraAvailable = false; 
+  final bool _isCapturing = false;
   bool isLoading = false;
   bool isSubmitting = false;
-  final bool _isCapturing = false;
-  final bool _isProcessing = false;
-
 
   @override
-  void initState() {
+   void initState() {
     super.initState();
-    getEmpCodeFromToken();
-    getLocation();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+    initializePage();
+   });
+  }
+
+   Future<void> initializePage() async {
+  try {
+    await getEmpCodeFromToken();
+
+    bool locationGranted = await requestLocationPermission();
+    bool cameraGranted = await requestCameraPermission();
+
+    if (!locationGranted || !cameraGranted) {
+      _initializeControllerFuture = Future.value();
+      setState(() {});
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
 
     _initializeControllerFuture = _initializeCamera();
+
+    await getLocation();
+
+   
+    setState(() {
+      isLoading = false;
+    });
+  } catch (e) {
+    debugPrint('Initialization error: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Initialization error: $e')),
+    );
+    _initializeControllerFuture = Future.value();
+    setState(() {
+      isLoading = false;
+    });
   }
+}
+
 
   Future<void> getEmpCodeFromToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -61,12 +98,53 @@ class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
     }
   }
 
+   Future<bool> requestLocationPermission() async {
+  final status = await Permission.location.request();
+
+  if (status.isGranted) {
+    return true;
+  } else if (status.isPermanentlyDenied) {
+    await openAppSettings();
+    return false;
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Location permission is required.')),
+    );
+    return false;
+  }
+}
+
+Future<bool> requestCameraPermission() async {
+  final status = await Permission.camera.request();
+
+  if (status.isGranted) {
+    return true;
+  } else if (status.isPermanentlyDenied) {
+    await openAppSettings();
+    return false;
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Camera permission is required.')),
+    );
+    return false;
+  }
+}
+
   Future<void> getLocation() async {
     PermissionStatus status = await Permission.location.request();
+
     if (status.isGranted) {
-      currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.bestForNavigation,
-      );
+    bool isLocationEnabled = await Geolocator.isLocationServiceEnabled();
+    
+    if (!isLocationEnabled) {
+      throw Exception('Location services are disabled.');
+    }
+
+    currentPosition = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+    print('Latitude: ${currentPosition?.latitude}, Longitude: ${currentPosition?.longitude}, Accuracy: ${currentPosition?.accuracy}');
+
     }
       else if (status.isDenied) {
         throw Exception('Location permission denied by user');
@@ -82,14 +160,6 @@ class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
 
 
 Future<void> _initializeCamera() async {
-  final status = await Permission.camera.request();
-  if (status.isDenied) {
-    throw Exception('Camera permission denied.');
-  } else if (status.isPermanentlyDenied) {
-    openAppSettings();
-    return;
-  }
-
   final cameras = await availableCameras();
   final frontCamera = cameras.firstWhere(
     (cam) => cam.lensDirection == CameraLensDirection.front,
@@ -97,19 +167,13 @@ Future<void> _initializeCamera() async {
 
   _cameraController = CameraController(
     frontCamera,
-    ResolutionPreset.high,
-    imageFormatGroup: ImageFormatGroup.yuv420,
+    ResolutionPreset.medium,
     enableAudio: false,
   );
 
   await _cameraController!.initialize();
+}
 
-  await _cameraController!.startImageStream((CameraImage image) {
-    if (!_isCapturing && !_isProcessing) {
-      // _processCameraImage(image);
-    }
-  });
-} 
 
 Future<void> _captureImage() async {
   try {
@@ -145,14 +209,21 @@ Future<void> _captureImage() async {
  Future<void> submitAttendance() async {
   if (isSubmitting) return;
 
-   if (!_formKey.currentState!.validate() || narration == null || field == null) {
-    _showCustomSnackBar(context, "Please fill all fields", Colors.yellow.shade900, Icons.warning_amber_outlined);
-     return;
-   }
+   setState(() {
+    isSubmitting = true;
+  });
+
+  if (!_formKey.currentState!.validate() || narration == null || field == null) {
+      _showCustomSnackBar(context, "Please fill all fields", Colors.yellow.shade900, Icons.warning_amber_outlined);
+      setState(() {
+        isSubmitting = false;
+      });
+      return;
+    }
     
   _formKey.currentState!.save();
 
-  try {
+  
       if (base64Image == null) {
       _showCustomSnackBar(context, 'Please capture an image', Colors.teal.shade400, Icons.camera);
     return;
@@ -162,6 +233,8 @@ Future<void> _captureImage() async {
     _showCustomSnackBar(context, 'Please give access of location', Colors.teal.shade400, Icons.pin_drop);
     return;
   }
+
+  try {
     final response = await http.post(
       Uri.parse('$baseUrl/api/attendance/punch'),
       headers: {'Content-Type': 'application/json'},
@@ -179,6 +252,7 @@ Future<void> _captureImage() async {
     );
 
      if (response.statusCode == 201) {
+
       final responseData = jsonDecode(response.body);
 
     if (responseData['warning'] != null) {
@@ -353,9 +427,13 @@ Widget build(BuildContext context) {
 
         const SizedBox(height: 24),
 
-        FutureBuilder<void>(
+        FutureBuilder(
             future: _initializeControllerFuture,
             builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator()); 
+                }
+
               if (snapshot.connectionState == ConnectionState.done) {
                 if (_cameraController != null && _cameraController!.value.isInitialized) {
                   return ClipRRect(
@@ -376,7 +454,7 @@ Widget build(BuildContext context) {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Center(
-                      child: Text('Camera not available', style: TextStyle(color: Colors.black54)),
+                      child: Text('Camera will be initialized  please wait', style: TextStyle(color: Colors.black54)),
                     ),
                   );
                 }
@@ -464,7 +542,9 @@ Widget build(BuildContext context) {
             ],
            const SizedBox(height: 32),
           ElevatedButton.icon(
-            onPressed: isSubmitting? null : submitAttendance,
+            onPressed: isSubmitting? null : ()async {
+              await submitAttendance();
+            } ,
             label: const Text("Submit Attendance"),
             style: greenButtonStyle,
             icon: const Icon(Icons.send_outlined, size: 20),
@@ -502,33 +582,42 @@ Widget build(BuildContext context) {
 }
 
 Widget buildReadOnlyField(String label, String value) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(label, style: labelStyle),
-      const SizedBox(height: 8),
-      Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Text(
-          value,
-          style: inputTextStyle,
+          return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+          Text(
+          label,
+          style: TextStyle(
+          fontSize: 14,
+          color: const Color(0xFF6C757D),
+          fontWeight: FontWeight.w500,
         ),
       ),
-    ],
+          const SizedBox(height: 8),
+          Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Row(
+          children: [
+          Expanded(
+          child: Text(
+          value,
+          style: TextStyle(
+          fontSize: 15,
+          color:  const Color(0xFF212529),
+          ),
+        ),
+        ),
+      ],
+      ),
+    ),
+  ],
   );
-}
+  }
 
 final labelStyle = TextStyle(
   fontSize: 14,
@@ -570,7 +659,7 @@ final primaryButtonStyle = ElevatedButton.styleFrom(
 );
 
 final greenButtonStyle = ElevatedButton.styleFrom(
-  backgroundColor: Colors.green.shade600,
+  backgroundColor: Color(0XFF123458),
   foregroundColor: Colors.white,
   minimumSize: const Size.fromHeight(50),
   shape: RoundedRectangleBorder(

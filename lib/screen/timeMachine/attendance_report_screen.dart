@@ -63,6 +63,12 @@ class _AttendanceReportPageState extends State<AttendanceReportPage> {
     return grouped;
   }
 
+  Future<void> _refreshAttendance() async {
+    setState(() {
+      futureAttendance = fetchAttendance();
+    });
+  }
+
 @override
 Widget build(BuildContext context) {
   return Scaffold(
@@ -81,7 +87,11 @@ Widget build(BuildContext context) {
       ),
       foregroundColor: Colors.black,
     ),
-    body: FutureBuilder<List<dynamic>>(
+    body: RefreshIndicator(
+      onRefresh: _refreshAttendance, 
+      color: Colors.black,
+      backgroundColor: Colors.white,
+    child: FutureBuilder<List<dynamic>>(
       future: futureAttendance,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -347,19 +357,12 @@ Widget build(BuildContext context) {
                         );
                       },
                     ),
-            ),
-          ],
-        );
-      },
-    ),
-  );
-}
-
-// Widget _buildSummaryChip(String label, Color color) {
-//   return Chip(
-//     label: Text(label, style: const TextStyle(color: Colors.white)),
-//     backgroundColor: color,
-//     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-//   );
-// }
+                 ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
 }

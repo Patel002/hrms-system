@@ -160,7 +160,7 @@ class _LeaveBalancePageState extends State<LeaveBalancePage> {
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.chevron_right, color: Colors.grey),
+                              // const Icon(Icons.chevron_right, color: Colors.grey),
                             ],
                           ),
                         ),

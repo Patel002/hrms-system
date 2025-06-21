@@ -67,7 +67,7 @@ child: Container(
           end: Alignment.bottomRight,
         ),
       ),
-child: AppBar(
+        child: AppBar(
         title: const Text(
           "Holiday",
           style: TextStyle(fontWeight: FontWeight.bold),

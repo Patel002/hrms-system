@@ -21,6 +21,7 @@ String? remark;
 DateTime? fromdate, todate;
 String? emUsername, compFname, empId, type;
 bool isLoading = false;
+bool isSubmitting = false;
 
 @override
   void initState() {
@@ -71,9 +72,15 @@ Map<String, dynamic> getODDetails() {
 }
 
  Future<bool> submitOdPass() async {
+    if (isSubmitting) return false;
 
   if (!_formKey.currentState!.validate() || fromdate == null || todate == null) return false; 
+
   _formKey.currentState!.save();
+
+   setState(() {
+      isSubmitting = true;
+    });
 
   final odDetails = getODDetails(); 
 try{
@@ -99,7 +106,9 @@ try{
 
    if (response.statusCode == 201) {
       _showCustomSnackBar(context, 'OD-Pass applied successfully', Colors.green, Icons.check);
+
       _resetForm();
+      
       return true;
     } else {
       final body = jsonDecode(response.body);
@@ -109,6 +118,11 @@ try{
   } catch (e) {
     _showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
     return false;
+
+  } finally {
+    setState(() {
+      isSubmitting = false;
+    });
   }
 }
 Future<void> handlePullToRefresh() async {
@@ -184,7 +198,9 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
               ),
             ),
           ),
-        body: Container(
+        body: Stack(
+          children: [ 
+        Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
@@ -201,7 +217,8 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
               key: _formKey,
               child: RefreshIndicator(
               onRefresh: handlePullToRefresh,
-              color: const Color.fromARGB(255, 28, 123, 202),
+              color: Colors.black87,
+              backgroundColor: Colors.white,
               child: ListView(
                 children: [
                   Padding(
@@ -379,14 +396,15 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                           shadowColor: Colors.transparent,
                         ),
                           icon: const Icon(Icons.send),
-                          label: Text(isLoading ? "Submitting..." : "SAVE",
+                          label: Text(
+                            'Submit',
                             style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.5,
                             ),
                           ),
-                          onPressed: isLoading ? null : submitOdPass,
+                          onPressed: isSubmitting ? null : submitOdPass,
                         ),
                       ),
                     ],
@@ -396,9 +414,29 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
             ),
           ),
         ),
-      )
+      ),
+      if (isSubmitting)
+        Container(
+          color: Colors.black.withOpacity(0.5), 
+          child: const Center(
+            child: Column(
+             mainAxisSize: MainAxisSize.min,
+             children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 16),
+              Text(
+                'Submitting, please wait...',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+                textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ]
+    ),
     );
-  } 
+  }
 }
 
  Widget buildReadOnlyField(String label, String value) {
