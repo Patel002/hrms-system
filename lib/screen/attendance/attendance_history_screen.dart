@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
-// import 'package:flutter_custom_clippers/flutter_custom_clippers.dart';
+import 'package:photo_view/photo_view.dart';
 
 class AttandanceHistory extends StatefulWidget {
   const AttandanceHistory({super.key});
@@ -195,6 +195,61 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
   // }
 
 
+void showImagePreview(BuildContext context, String base64Image) {
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.black.withOpacity(0.7),
+    transitionDuration: const Duration(milliseconds: 400),
+    pageBuilder: (context, animation, secondaryAnimation) {
+      return GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(
+            child: PhotoView(
+              imageProvider: MemoryImage(
+                base64Decode(base64Image.split(',').last),
+              ),
+              backgroundDecoration: const BoxDecoration(
+                color: Colors.transparent,
+              ),
+              minScale: PhotoViewComputedScale.contained,
+              maxScale: PhotoViewComputedScale.contained,
+              initialScale: PhotoViewComputedScale.contained,
+              enableRotation: false,
+            ),
+          ),
+        ),
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      final fadeAnimation = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutQuart,
+        reverseCurve: Curves.easeInQuart,
+      );
+
+      final scaleAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
+        CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+          reverseCurve: Curves.easeInCubic,
+        ),
+      );
+
+      return FadeTransition(
+        opacity: fadeAnimation,
+        child: ScaleTransition(
+          scale: scaleAnimation,
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
   Widget buildAttendanceCard(Map item) {
     final base64Image = item['punch_img'];
     final latitude = item['latitude'];
@@ -227,36 +282,40 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
               color: Colors.black87,
             ),
           ),
+
           const SizedBox(height: 12),
 
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (base64Image != null && base64Image.isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.memory(
-                    base64Decode(base64Image.split(',').last),
-                    height: 80,
-                    width: 80,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              else
-                Container(
-                  height: 130,
-                  width: 130,
-                  decoration: BoxDecoration(
-                    color: Colors.grey,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.image_not_supported,
-                    size: 40,
-                    color: Colors.grey,
-                  ),
-                ),
-
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+          if (base64Image != null && base64Image.isNotEmpty)
+          GestureDetector(
+            onTap: () => showImagePreview(context, base64Image),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.memory(
+                base64Decode(base64Image.split(',').last),
+                height: 80,
+                width: 80,
+                fit: BoxFit.cover,
+              ),
+            ),
+          )
+          else
+          Container(
+            height: 130,
+            width: 130,
+            decoration: BoxDecoration(
+              color: Colors.grey,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.image_not_supported,
+              size: 40,
+              color: Colors.grey,
+            ),
+          ),
+  
               const SizedBox(width: 16),
 
               Expanded(
