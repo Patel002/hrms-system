@@ -430,7 +430,7 @@ Widget build(BuildContext context) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                
+
                 if (snapshot.connectionState == ConnectionState.done) {
                 if (_cameraController != null && _cameraController!.value.isInitialized) {
                   return ClipRRect(
@@ -534,23 +534,25 @@ Widget build(BuildContext context) {
                 ),
               ),
             ],
-                        const SizedBox(height: 32),
-                        ElevatedButton.icon(
-                          onPressed: isSubmitting? null : () async {
-                            await submitAttendance();
-                          },
-                          label: const Text("Submit Attendance"),
-                          style: greenButtonStyle,
-                          icon: const Icon(Icons.send_outlined, size: 20),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+
+              const SizedBox(height: 32),
+
+                ElevatedButton.icon(
+                  onPressed: isSubmitting? null : () async {
+                    await submitAttendance();
+                  },
+                  label: const Text("Submit Attendance"),
+                  style: greenButtonStyle,
+                  icon: const Icon(Icons.send_outlined, size: 20),
+                ),
+              ],
             ),
           ),
-        ),
+        ],
+      ),
+    ),
+  ),
+),
     if (isSubmitting)
         Container(
           color: Colors.black.withOpacity(0.5), 
@@ -569,10 +571,10 @@ Widget build(BuildContext context) {
               ),
             ),
           ),
-      ],
-    ),
-  );
- }
+        ],
+      ),
+    );
+  }
 }
 
  Widget buildReadOnlyField(String label, String value) {

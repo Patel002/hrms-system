@@ -38,10 +38,10 @@ void initState() {
     final rawMinutes = double.parse(parts[1].replaceAll('m', ''));
     final minutes = rawMinutes.round();
 
-    if (hours == 0 && minutes == 0) return '0 min';
-    if (hours == 0) return '$minutes min';
-    if (minutes == 0) return '$hours hr';
-    return '$hours hr $minutes min';
+    if (hours == 0 && minutes == 0) return '0 m';
+    if (hours == 0) return '$minutes m';
+    if (minutes == 0) return '$hours h';
+    return '$hours : $minutes h';
   } catch (e) {
     return rawDuration; 
   }
@@ -234,7 +234,7 @@ Widget build(BuildContext context) {
       ),
         child: AppBar(
         title: const Text(
-          "Dahsboard",
+          "Dashboard",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -339,7 +339,7 @@ Widget buildCalendar() {
 
       final isHalfDayLeave = isLeave && leaveEntry.value.any((leave) => leave['isHalfDay'] == true);
 
-      final isSplitDay = isHalfDayAttendance && isHalfDayLeave;
+      final isSplitDay = !isSunday && isHalfDayAttendance && isHalfDayLeave;
 
       print('Punch Entry: ${punchEntry.value}');
       print('; Entry: ${leaveEntry.value}');
@@ -410,11 +410,6 @@ Widget buildCalendar() {
                           fontSize: isToday ? 16 : 14,
                         ),
                       ),
-                      // const Icon(
-                      //   Icons.access_time, 
-                      //   size: 14,
-                      //   color: Colors.white,
-                      // ),
                     ],
                   ),
                 ),
@@ -434,12 +429,6 @@ Widget buildCalendar() {
 
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
               ),
-              // alignment: Alignment.topCenter,
-              //  child: const Icon(
-              //   Icons.beach_access, 
-              //   size: 14,
-              //   color: Colors.white,
-              // ),
             ),
           ),
         ],
@@ -476,13 +465,13 @@ Widget buildCalendar() {
 
         } else if (isFullAttendance) {
           Navigator.pushNamed(context, '/attendance-history', arguments: {'selectedDate': day});
-        } else {
+        } else if (isSplitDay && punchEntry.value.isNotEmpty && leaveEntry.value.isNotEmpty) {
           _showHalfDayOptions(context, day, dayKey);
         }
       },
 
-          child: Container(
-          margin: const EdgeInsets.all(2.0), 
+      child: Container(
+          margin: const EdgeInsets.all(2.0),
           height: 50,
           width: 50, 
           decoration: BoxDecoration(
@@ -512,14 +501,14 @@ Widget buildCalendar() {
                 shape: BoxShape.circle,
               ),
             )
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-},
+    );
+  },
         todayBuilder: (context, day, focusedDay) {
-          final dayKey = DateTime(day.year, day.month, day.day);
-          final isPresent = punchDurations.containsKey(dayKey);
+          // final dayKey = DateTime(day.year, day.month, day.day);
+          // final isPresent = punchDurations.containsKey(dayKey);
 
           Color backgroundColor = Colors.amber.shade100;
           BoxBorder? border = Border.all(color: Colors.amber.shade700, width: 2);
@@ -572,8 +561,8 @@ Widget buildCalendar() {
       ),
     ),
   ),
-    ),
-  ) ;
+),
+  );
 }
       Widget buildDrawer() {
       return Drawer(
@@ -605,14 +594,19 @@ Widget buildCalendar() {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                        '$username',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pushNamed(context, '/user-info');
+                          },
+                          child: Text(
+                            '$username',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              decoration: TextDecoration.underline,
+                            ),
                           ),
                         ),
-                        SizedBox(height: 4),
                       ],
                     ),
                   ),

@@ -34,13 +34,11 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
       final token = prefs.getString('token') ?? '';
       final decodedToken = Jwt.parseJwt(token);
       final empId = decodedToken['em_id'];
-      // final compFname = decodedToken['comp_fname'];
-      // final departmentName = decodedToken['dep_name'];
 
       print('Employee Username: $empId');
       print('Company Name: $compFname');
-      // print('Department Name: $departmentName');
-
+    
+    
       final statusMap = {
         'pending': 'PENDING',
         'approved': 'APPROVED',

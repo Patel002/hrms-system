@@ -70,6 +70,65 @@ const loginEmployee = async (req, res) => {
     }
 }
 
+const getEmployeeDetails = async(req, res) => {
+    try {
+        const { em_id } = req.params;
+
+        const employee = await Employee.findOne({
+            where: { em_id },
+            include: [
+                { model: Department, attributes: ['dep_name'] },
+                { model: Company, attributes: ['comp_fname', 'comp_id'] }
+            ]
+        });
+
+        if (!employee) {
+            return res.status(404).json({ message: "Employee not found" });
+        }
+
+        console.log("Employee details:", employee);
+
+        return res.status(201).json({ message: "Employee details fetched successfully", data: employee });
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+const updateEmployeeDetails = async (req, res) => {
+    const { em_id } = req.params;
+    const updateData = req.body;
+
+    try {
+        const employee = await Employee.findOne({ where: { em_id } });
+
+        if(!employee ) {
+            return res.status(404).json({ message: "Employee not found" });
+        }  
+        
+        const { department, company, ...allowedUpdates } = updateData;
+        
+        allowedUpdates.updated_at = new Date();
+        allowedUpdates.updated_by = employee.em_id;
+        
+        const updatedEmployee = await employee.update(allowedUpdates);
+
+
+        console.log("Updated Employee:", updatedEmployee);
+
+        return res.status(200).json({ message: "Employee details updated successfully", data: updatedEmployee });
+        
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "Internal Server Error" });
+        
+    }
+
+}
+
 export {
-    loginEmployee
+    loginEmployee,
+    getEmployeeDetails,
+    updateEmployeeDetails
 }

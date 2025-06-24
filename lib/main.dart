@@ -14,6 +14,7 @@ import 'screen/attendance/attendance_out_screen.dart';
 import 'screen/getPass/odPass_screen.dart';
 import 'screen/getPass/odPass_history_screen.dart';
 import 'screen/timeMachine/attendance_report_screen.dart';
+import 'screen/userInfo/user_info_screen.dart';
 
 void main() async {
   await dotenv.load();
@@ -45,6 +46,7 @@ class MyApp extends StatelessWidget {
         '/od-pass': (context) => const ODPassScreen(),
         '/od-history': (context) => const OdHistory(),
         '/attendance-record': (context) => const AttendanceReportPage(),
+        '/user-info': (context) => UserInfo(),
       },
 
     );

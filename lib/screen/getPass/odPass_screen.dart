@@ -139,6 +139,7 @@ Future<void> handlePullToRefresh() async {
 
   void _resetForm() {
   _formKey.currentState?.reset();
+  
   setState(() {
     remark = null;
     fromdate = null;
@@ -171,7 +172,6 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
 
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
-
 
   @override
   Widget build(BuildContext context) {

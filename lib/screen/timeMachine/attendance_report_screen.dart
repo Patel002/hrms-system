@@ -174,7 +174,7 @@ Widget build(BuildContext context) {
                   barTouchData: BarTouchData(
                     enabled: true,
                     touchTooltipData: BarTouchTooltipData(
-                      tooltipBgColor: Colors.black87,
+                      // tooltipBgColor: Colors.black87,
                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                         String label;
                         switch (group.x.toInt()) {
