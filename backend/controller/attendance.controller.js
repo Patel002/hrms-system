@@ -53,6 +53,9 @@ const punchAttendance = async(req, res) => {
         if (punchtype === 'OUTSTATION1') {
             if (lastPunchIn && !punchOutExists) {
                 warning = "Warning: You did not punch out last time. Proceeding with new punch in.";
+
+                // punch_re mark = "Absent last punch out.";
+
                 console.log("Warning",warning);
             }
         }

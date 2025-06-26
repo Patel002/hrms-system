@@ -24,7 +24,7 @@ class _UserInfoState extends State<UserInfo> {
   DateTime? dateOfBirth;
   DateTime? dateOfJoining;
   bool isLoading = true;
-  bool isSubmitting = false;
+  bool isSubmitting = false;  
 
 @override
 void initState() {
@@ -221,30 +221,36 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
       
       body: Stack(
         children: [
-      Container(
-        decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-         begin: Alignment.topRight,
-         end: Alignment.bottomLeft,
+          Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+        ),
       ),
-      ),
+    ),
 
-      child: RefreshIndicator(
+      RefreshIndicator(
         onRefresh: onRefresh,
-        child: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
+            child : SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16.0),
-                child: Card(
-                  color: const Color(0xFFFDFDFD),
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.topCenter,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(top: 60),
+                      child: Card(
+                        color: const Color(0xFFFDFDFD),
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.fromLTRB(16, 95, 16, 16),
                 child: Form(
                   key: _formKey,
                   child: SingleChildScrollView(
@@ -252,14 +258,17 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                      _sectionTitle('Company Information'),
+                     
+                     const SizedBox(height: 8),
+
                       _infoRow('Company Name', companyname ?? 'N/A'),
                       _infoRow('Company ID', companyid ?? 'N/A'),
                       _infoRow('Department', department ?? 'N/A'),
                           
-                      const SizedBox(height: 15),
+                      const SizedBox(height: 12),
 
-                      Divider(color: Colors.grey.withOpacity(0.5)),
-                      const SizedBox(height: 15),
+                      Divider(color: Colors.grey.withOpacity(0.3)),
+                      const SizedBox(height: 12),
 
                 Text(
                 'Personal Information',
@@ -269,6 +278,8 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   ),
                 ),
 
+                const SizedBox(height: 8),
+
                   Row(
                     children: [
                       Expanded(
@@ -277,6 +288,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                           title: 'Username',
                           value: username ?? '',
                           onSaved: (value) => username = value,
+                          enabled: false,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -286,6 +298,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                       title: 'First Name',
                       value: firstname ?? '',
                       onSaved: (value) => firstname = value,
+                      enabled: false,
                     ),
                   ),
                 ],
@@ -299,6 +312,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                       title: 'Father Name',
                       value: fathername ?? '',
                       onSaved: (value) => fathername = value,
+                      enabled: false,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -308,6 +322,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                       title: 'Last Name',
                       value: lastname ?? '',
                       onSaved: (value) => lastname = value,
+                      enabled: false,
                     ),
                   ),
                 ],
@@ -320,14 +335,15 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                             onDateSelected: (newDate) {
                               setState(() => dateOfBirth = newDate);
                             },
+                            enabled: false
                           ),
 
                           _buildGenderDropdown(),
 
-                const SizedBox(height: 15),
+                const SizedBox(height: 12),
 
-              Divider(color: Colors.grey.withOpacity(0.5)),
-              const SizedBox(height: 15),
+              Divider(color: Colors.grey.withOpacity(0.3)),
+              const SizedBox(height: 12),
                   
                 Text(
                 'Contact Information',
@@ -336,11 +352,15 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+
+                const SizedBox(height: 8),
+
                     _inlineEditableField(
                       icon: Icons.email,
                       title: 'Email',
                       value: email ?? '',
                       onSaved: (value) => email = value,
+                      enabled: false
                     ),
 
                     _inlineEditableField(
@@ -348,12 +368,13 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                       title: 'Address',
                       value: address ?? '',
                       onSaved: (value) => address = value,
+                      enabled: false
                     ),
 
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 12),
 
-              Divider(color: Colors.grey.withOpacity(0.5)),
-              const SizedBox(height: 15),
+              Divider(color: Colors.grey.withOpacity(0.3)),
+              const SizedBox(height: 12),
                     
                   Text(
                 'Offical Details',
@@ -363,6 +384,8 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   ),
                 ),
 
+                const SizedBox(height: 8),
+
                   Row(
                   children: [
                     Expanded(
@@ -371,31 +394,26 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                         title: 'Role',
                         value: role ?? '',
                         onSaved: (value) => role = value,
+                        enabled: false
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                    child: _inlineEditableField(
-                      icon: Icons.bloodtype,
-                      title: 'Blood Group',
-                      value: bloodgroup ?? '',
-                      onSaved: (value) => bloodgroup = value,
-                    ),
-                    ),
+                    _buildBloodGroupDropdown(),
                   ],
                 ),
-                    _inlineEditableField(
-                      icon: Icons.attach_money,
-                      title: 'GST Number',
-                      value: gstnumber ?? '',
-                      onSaved: (value) => gstnumber = value,
-                    ),
-                    _inlineEditableField(
-                      icon: Icons.credit_card,
-                      title: 'PAN Number',
-                      value: pannumber ?? '',
-                      onSaved: (value) => pannumber = value,
-                    ),
+                    // _inlineEditableField(
+                    //   icon: Icons.attach_money,
+                    //   title: 'GST Number',
+                    //   value: gstnumber ?? '',
+                    //   onSaved: (value) => gstnumber = value,
+                    //   enabled: false
+                    // ),
+                    // _inlineEditableField(
+                    //   icon: Icons.credit_card,
+                    //   title: 'PAN Number',
+                    //   value: pannumber ?? '',
+                    //   onSaved: (value) => pannumber = value,
+                    //   enabled: false
+                    // ),
 
                     const SizedBox(height: 15),
 
@@ -406,6 +424,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                         onDateSelected: (newDate) {
                           setState(() => dateOfJoining = newDate);
                         },
+                        enabled: false,
                       ),
 
                       const SizedBox(height: 20),
@@ -415,9 +434,11 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                           onPressed: isSubmitting ? null : () async {
                            await updateUserInfo();
                           },
-                          label: const Text('Update Information'),
+                          label: const Text('Update Information',style: TextStyle(color: Colors.black87),),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: Color.fromARGB(255, 245, 247, 250),
+                            iconColor: Colors.black,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -428,16 +449,25 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                       const SizedBox(height: 10),
                     ],
                   ),
-                ),
+                  ),
               ),
             ),
           ),
         ),
+      Positioned( 
+      child: CircleAvatar(
+        radius: 70,
+        backgroundColor: Colors.white,
+        backgroundImage: NetworkImage('https://picsum.photos/200/300'),
       ),
     ),
-     if (isSubmitting)
+      ],
+    ),
+      ),
+      ),
+      if (isSubmitting)
         Container(
-          color: Colors.black.withOpacity(0.5), 
+          color: Colors.black.withOpacity(0.3), 
           child: const Center(
             child: Column(
              mainAxisSize: MainAxisSize.min,
@@ -454,7 +484,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
             ),
           ),
         ],
-      ),
+    ),
     );
   }
 
@@ -480,9 +510,9 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
             child: Text(
               "$label:",
               style: const TextStyle(
-                fontWeight: FontWeight.w400,
+                fontWeight: FontWeight.w600,
                 fontSize: 15,
-                color: Colors.black87,
+                color: Color.fromARGB(221, 0, 0, 0),
               ),
             ),
           ),
@@ -505,6 +535,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
   required String title,
   required DateTime? date,
   required Function(DateTime) onDateSelected,
+  bool enabled = true,
 }) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -520,7 +551,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
               Text(title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
               const SizedBox(height: 4),
               InkWell(
-                onTap: () async {
+                onTap: enabled ? () async {
                   final newDate = await showDatePicker(
                     context: context,
                     initialDate: date ?? DateTime.now(),
@@ -530,7 +561,8 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   if (newDate != null) {
                     onDateSelected(newDate);
                   }
-                },
+                }
+                : null,
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                   decoration: BoxDecoration(
@@ -539,7 +571,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   ),
                   child: Text(
                     date != null ? DateFormat('dd MMM yyyy').format(date) : 'Select Date',
-                    style: const TextStyle(fontSize: 15, color: Colors.black87),
+                    style: TextStyle(fontSize: 15, color: enabled ? Colors.black87 : Colors.grey,),
                   ),
                 ),
               ),
@@ -589,6 +621,7 @@ Widget _buildGenderDropdown() {
                 border: OutlineInputBorder(),
               ),
               onChanged: (value) => setState(() => gender = value),
+              dropdownColor: Colors.white,
               items: const [
                 DropdownMenuItem(value: 'Male', child: Text('Male')),
                 DropdownMenuItem(value: 'Female', child: Text('Female')),
@@ -601,68 +634,113 @@ Widget _buildGenderDropdown() {
   );
 }
 
+Widget _buildBloodGroupDropdown() {
+  String? validatedBloodGroup(){
+    const validBloodGroups = ['A+','A-','B+','B-','O+','O-','AB+','OB+'];
+    if (validBloodGroups.contains(bloodgroup)) {
+      return bloodgroup;
+    }
+    return null;
+  }
+
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: const [
+            Icon(Icons.transgender, size: 20, color: Colors.grey),
+            SizedBox(width: 8),
+            Text(
+              'Blood Group',
+              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+
+        Padding(
+          padding: const EdgeInsets.only(left: 28),
+          child: SizedBox(
+            width: 120,
+            child: DropdownButtonFormField<String>(
+              value: validatedBloodGroup(),
+              decoration: const InputDecoration(
+                isDense: false,
+                contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                border: OutlineInputBorder(),
+              ),
+              dropdownColor: Colors.white,
+              onChanged: (value) => setState(() => bloodgroup = value),
+              items: const [
+                DropdownMenuItem(value: 'A+', child: Text('A+')),
+                DropdownMenuItem(value: 'A-', child: Text('A-')),
+                DropdownMenuItem(value: 'B+', child: Text('B+')),
+                DropdownMenuItem(value: 'B-', child: Text('B-')),
+                DropdownMenuItem(value: 'O+', child: Text('O+')),
+                DropdownMenuItem(value: 'O-', child: Text('O-')),
+                DropdownMenuItem(value: 'AB+', child: Text('AB+')),
+                DropdownMenuItem(value: 'OB+', child: Text('OB+')),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
  Widget _inlineEditableField({
   required IconData icon,
   required String title,
   required String value,
   required FormFieldSetter<String> onSaved,
+  bool enabled = true, 
 }) {
-  final focusNode = FocusNode();
   final controller = TextEditingController(text: value);
 
-  bool isEditing = false;
-
-  return StatefulBuilder(
-    builder: (context, setState) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 20, color: Colors.grey),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
-                  const SizedBox(height: 4),
-                  isEditing
-                      ? TextFormField(
-                          controller: controller,
-                          autofocus: true,
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                            border: OutlineInputBorder(),
-                          ),
-                          onFieldSubmitted: (value) {
-                            setState(() => isEditing = false);
-                          },
-                          onSaved: (newValue) {
-                            onSaved(newValue ?? '');
-                          },
-                        )
-                      : InkWell(
-                          onTap: () {
-                            setState(() => isEditing = true);
-                          },
-                          child: Text(
-                            value.isNotEmpty ? value : 'Tap to edit',
-                            style: TextStyle(fontSize: 15, color: value.isNotEmpty ? Colors.black : Colors.grey),
-                          ),
-                        ),
-                ],
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: Colors.grey),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
+              const SizedBox(height: 4),
+              TextFormField(
+                controller: controller,
+                readOnly: !enabled, 
+                enabled: enabled,
+                style: TextStyle(fontSize: 15,
+                color: enabled ? Colors.black : Colors.blueGrey.shade700,
+                ),
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  border: enabled ?  OutlineInputBorder() : InputBorder.none, 
+                  filled: !enabled,
+                  enabledBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  focusedBorder: const OutlineInputBorder( 
+                    borderSide: BorderSide(color: Colors.deepPurple, width: 1.5),
+                  ),
+                  fillColor: Colors.transparent,
+                ),
+                onSaved: (newValue) => onSaved(newValue ?? ''),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      );
-    },
+      ],
+    ),
   );
 }
-
 
   @override
   void dispose() {

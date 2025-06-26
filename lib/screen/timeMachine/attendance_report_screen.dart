@@ -106,9 +106,7 @@ Widget build(BuildContext context) {
         final groupedData = groupByMonth(attendanceData);
         final sortedMonths = groupedData.keys.toList()..sort((a, b) => b.compareTo(a));
 
-        if (selectedMonth == null) {
-          selectedMonth = sortedMonths.first;
-        }
+        selectedMonth ??= sortedMonths.first;
 
         final records = groupedData[selectedMonth] ?? [];
 

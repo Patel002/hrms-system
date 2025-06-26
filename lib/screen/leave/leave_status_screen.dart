@@ -205,21 +205,21 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
               children: [
                 RefreshIndicator(
                   onRefresh: _refreshData,
+                  color: Colors.black,
+                  backgroundColor: Colors.white,
                   child: buildLeaveList("pending"),
-                  color: Colors.black,
-                  backgroundColor: Colors.white,
                 ),
                 RefreshIndicator(
                   onRefresh: _refreshData,
+                  color: Colors.black,
+                  backgroundColor: Colors.white,
                   child: buildLeaveList("approved"),
-                  color: Colors.black,
-                  backgroundColor: Colors.white,
                 ),
                 RefreshIndicator(
                   onRefresh: _refreshData,
-                  child: buildLeaveList("rejected"),
                   color: Colors.black,
                   backgroundColor: Colors.white,
+                  child: buildLeaveList("rejected"),
                 ),
               ],
             ),

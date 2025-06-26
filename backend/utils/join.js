@@ -4,7 +4,8 @@ import LeaveTypes from "../model/leaveTypes.model.js";
 import Company from "../model/company.model.js";
 import EmployeeLeave from "../model/employeeLeave.model.js";
 import EmployeeLeaveBalance from "../model/employeeLeaveBalance.model.js";
-import MonitorData from "../model/monitorData.model.js";
+import OdPass from "../model/odPass.model.js";
+// import Attendance from "../model/attendance.model.js";
 
 Employee.hasMany(EmployeeLeave, {
   foreignKey: 'em_id',
@@ -49,6 +50,19 @@ LeaveTypes.hasMany(EmployeeLeaveBalance, {
   sourceKey: 'type_id',
 });
 
+OdPass.belongsTo(Employee, {
+  foreignKey: 'emp_id',
+  targetKey: 'em_id'
+});
+// Attendance.belongsTo(EmployeeLeave,{
+//   foreignKey: 'leave_id',
+//   targetKey: 'id'
+// })
+
+// EmployeeLeave.hasMany(Attendance, {
+//   foreignKey: 'leave_id',
+//   sourceKey: 'id'
+// })
 
 
 export {

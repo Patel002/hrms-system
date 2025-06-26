@@ -15,6 +15,7 @@ import 'screen/getPass/odPass_screen.dart';
 import 'screen/getPass/odPass_history_screen.dart';
 import 'screen/timeMachine/attendance_report_screen.dart';
 import 'screen/userInfo/user_info_screen.dart';
+// import 'animated_splash_screen.dart';
 
 void main() async {
   await dotenv.load();
@@ -29,8 +30,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: true,
       title: 'Flutter Demo',
-      theme: ThemeData(
-      ),
+      initialRoute: '/',
       routes: {
         '/': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),

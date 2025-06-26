@@ -30,7 +30,7 @@ const Employee = sequelize.define('employee',{
         allowNull: false
     },
     em_role: {
-        type: DataTypes.STRING,
+        type: DataTypes.ENUM('ADMIN','EMPLOYEE','SUPERVISOR','SUPER ADMIN','TEMPEMP','CANTEEN'),
         allowNull: false
     },
     reporting_auth:{
@@ -72,7 +72,7 @@ const Employee = sequelize.define('employee',{
         // allowNull: false
     },
     em_blood_group: {
-        type: DataTypes.STRING,
+        type: DataTypes.ENUM('A+','A-','B+','B-','O+','O-','AB+','OB+'),
     },
     em_birthday: {
         type: DataTypes.DATEONLY,
@@ -87,6 +87,10 @@ const Employee = sequelize.define('employee',{
     updated_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
+    },
+    em_image: {
+        type: DataTypes.STRING,
+        defaultValue: 'default.png'
     }
 
 },{

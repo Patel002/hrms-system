@@ -39,22 +39,23 @@ dependencies:
   path_provider: ^2.1.5
   open_file: ^3.5.10
   flutter_native_splash: ^2.3.7
-  lottie: ^2.3.1
+  lottie: ^3.3.1
   flutter_dotenv: ^5.1.0
-  geolocator: ^11.0.0
+  geolocator: ^10.1.0
   image_picker: ^1.1.0
-  permission_handler: ^11.3.0
+  permission_handler: ^12.0.0+1
   image: ^4.1.7
   url_launcher: ^6.3.1
-  flutter_launcher_icons: ^0.13.1
-  intl: ^0.18.1
-  camera: ^0.11.1
-  google_mlkit_face_detection: ^0.13.1
-  google_mlkit_commons: ^0.11.0
+  intl: ^0.20.2
+  camera:  ^0.10.5+9
   table_calendar: ^3.0.9
-  syncfusion_flutter_pdf: ^20.4.0
-  syncfusion_flutter_xlsio: ^20.4.0
+  syncfusion_flutter_pdf: ^28.2.12
+  syncfusion_flutter_xlsio: ^28.2.12
   accordion: ^2.5.1
+  month_picker_dialog: ^6.2.1
+  fl_chart: ^1.0.0
+  flutter_custom_clippers: ^2.1.0
+  photo_view: ^0.15.0
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -64,62 +65,60 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
-# flutter_icons:
-#   android: true
-#   ios: true
-#   image_path: "assets/icon/app_icon.png" 
-#   background_color: "#FF123448" 
-  # adaptive_icon_background: "assets/icon/app_icon_foreground.png" 
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path_ios: "assets/icon/image.png"
+  image_path_android: "assets/icon/image.png"
+  adaptive_icon_foreground: "assets/icon/image.png"
+  adaptive_icon_background: "#1A1A1A"
+  remove_alpha_ios: true
 
+ 
+  
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
-
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
   uses-material-design: true
   assets:
     - .env
-    # - assets/icon/app_icon.png
-    # - assets/image/image.png
+    - assets/icon/image.png
 
 flutter_native_splash:
-  # General configuration
-  color: "#121212" # Dark modern background
-  image: assets/images/splash_logo.png # Your logo (transparent PNG recommended)
-  
-  # Android-specific configuration
+  color: "#1A1A1A"
+  image: assets/icon/image.png
   android: true
+  ios: true
+  fullscreen: true
   android_gravity: center
-  android_background_color: "#121212"
+  ios_content_mode: center
+
+
   
-  # Branding configuration (modern style)
-  branding: assets/images/splash_branding.png # Optional: your brand name below logo
-  branding_gravity: bottom
+  # # Branding configuration (modern style)
+  # branding: assets/images/splash_branding.png # Optional: your brand name below logo
+  # branding_gravity: bottom
   
   # Dark mode/light mode adaptation
-  dark_color: "#121212" # Dark background for dark mode
-  light_color: "#FFFFFF" # White background for light mode
-  dark_image: assets/images/splash_logo_dark.png # Optional different logo for dark mode
-  light_image: assets/images/splash_logo_light.png
+  # dark_color: "#121212" # Dark background for dark mode
+  # light_color: "#FFFFFF" # White background for light mode
+  # dark_image: assets/images/splash_logo_dark.png # Optional different logo for dark mode
+  # light_image: assets/images/splash_logo_light.png
   
-  # Status bar customization (modern translucent look)
-  status_bar_color: "transparent"
-  status_bar_icon_brightness: light # or dark depending on your background
+  # # Status bar customization (modern translucent look)
+  # status_bar_color: "transparent"
+  # status_bar_icon_brightness: light # or dark depending on your background
   
-  # Full screen modern look
-  fullscreen: true
-
-    
-
+  # # Full screen modern look
+  # fullscreen: true
