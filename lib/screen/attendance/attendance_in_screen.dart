@@ -65,11 +65,11 @@ class _AttendanceScreenINState extends State<AttendanceScreenIN> {
     _initializeControllerFuture = _initializeCamera();
 
     await getLocation();
-
    
     setState(() {
       isLoading = false;
     });
+
   } catch (e) {
     debugPrint('Initialization error: $e');
     ScaffoldMessenger.of(context).showSnackBar(
@@ -196,14 +196,12 @@ void dispose() {
   super.dispose();
 }
 
-
   Future<void> submitAttendance() async {
     if (isSubmitting) return;
 
     setState(() {
     isSubmitting = true;
   });
-
 
     if (!_formKey.currentState!.validate() || narration == null || field == null) {
       _showCustomSnackBar(context, "Please fill all fields", Colors.yellow.shade900, Icons.warning_amber_outlined);
@@ -250,7 +248,7 @@ void dispose() {
         if (responseData['warning'] != null) {
         _showCustomSnackBar(context, responseData['warning'], Colors.orange.shade700, Icons.warning_amber_outlined);
       }
-        _showCustomSnackBar(context, 'Attendance marked successfully', Colors.green, Icons.check_circle);
+        _showCustomSnackBar(context, 'Punch In marked successfully', Colors.green, Icons.check_circle);
 
         _resetForm();
 
@@ -352,6 +350,7 @@ Widget build(BuildContext context) {
         end: Alignment.bottomLeft,
       ),
     ),
+
       child:Form(
         key: _formKey,
         child: RefreshIndicator(
@@ -426,7 +425,6 @@ Widget build(BuildContext context) {
           FutureBuilder(
             future: _initializeControllerFuture,
             builder: (context, snapshot) {
-
                   if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
@@ -482,6 +480,7 @@ Widget build(BuildContext context) {
           ),
 
           const SizedBox(height: 12),
+
           Center(
             child: Text(
               _isCapturing
@@ -494,13 +493,18 @@ Widget build(BuildContext context) {
               ),
             ),
           ),
+
           const SizedBox(height: 24),
+
           ElevatedButton.icon(
-            onPressed: _captureImage,
+            onPressed: () async {
+              await _captureImage();
+            },
             icon: const Icon(Icons.camera_alt, size: 20),
             label: const Text("Capture Image"),
             style: primaryButtonStyle,
           ),
+
 
           if (_imageFile != null) 
             ...[
@@ -605,15 +609,15 @@ Widget build(BuildContext context) {
           style: TextStyle(
           fontSize: 15,
           color:  const Color(0xFF212529),
-          ),
         ),
-        ),
-      ],
+       ),
       ),
+     ],
     ),
+   ),
   ],
-  );
-  }
+ );
+}
 
 final labelStyle = TextStyle(
   fontSize: 14,
@@ -640,13 +644,13 @@ final inputDecoration = InputDecoration(
   ),
   focusedBorder: OutlineInputBorder(
     borderRadius: BorderRadius.circular(5),
-    borderSide: const BorderSide(color: Color.fromARGB(255, 33, 108, 214), width: 1.5),
+    borderSide: const BorderSide(color: Colors.blueGrey, width: 1.5),
   ),
 );
 
 final primaryButtonStyle = ElevatedButton.styleFrom(
-  backgroundColor: Colors.blue.shade700,
-  foregroundColor: Colors.white,
+  backgroundColor: Colors.blue.shade50,
+  foregroundColor: Colors.blue.shade300,
   minimumSize: const Size.fromHeight(48),
   shape: RoundedRectangleBorder(
     borderRadius: BorderRadius.circular(10),
@@ -655,8 +659,8 @@ final primaryButtonStyle = ElevatedButton.styleFrom(
 );
 
 final greenButtonStyle = ElevatedButton.styleFrom(
-  backgroundColor: Color(0XFF123458),
-  foregroundColor: Colors.white,
+  backgroundColor: Colors.green.shade50,
+  foregroundColor: Colors.green.shade300,
   minimumSize: const Size.fromHeight(48),
   shape: RoundedRectangleBorder(
     borderRadius: BorderRadius.circular(10),

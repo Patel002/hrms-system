@@ -814,7 +814,6 @@ child: Container(
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Leave Attachment Section
                 Text(
                   'Leave Attachment',
                   style: theme.textTheme.titleSmall?.copyWith(
@@ -830,7 +829,7 @@ child: Container(
                   ),
                 if (_attachmentController == null && hasAttachment)
                   Text(
-                  Uri.parse(  widget.leave['leaveattachment'].toString()).pathSegments.last,
+                  Uri.parse(widget.leave['leaveattachment'].toString()).pathSegments.last,
                     style: theme.textTheme.bodyMedium,
                   ),
                 if (_attachmentController == null && !hasAttachment)

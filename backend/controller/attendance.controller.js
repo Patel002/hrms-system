@@ -13,10 +13,10 @@ const punchAttendance = async(req, res) => {
        const punchTime = istNow.toFormat('HH:mm:ss'); 
        const createdAtIst = istNow.toISO();
        
-       console.log("Current IST Date and Time:", istNow);
-       console.log("Punch Date:", punchDate);
-       console.log("Punch Time:", punchTime);
-       console.log("Created At:", createdAtIst);
+        //    console.log("Current IST Date and Time:", istNow);
+        //    console.log("Punch Date:", punchDate);
+        //    console.log("Punch Time:", punchTime);
+        //    console.log("Created At:", createdAtIst);
 
         if (!emp_id || !comp_id || !punch_place || !punch_img || !latitude || !longitude || !created_by) {
             return res.status(400).json({ message: "All fields are required" });
@@ -47,14 +47,42 @@ const punchAttendance = async(req, res) => {
             if (punchOutExists) {
                 return res.status(400).json({ message: "You have already punched out for your last punch in." });
             }
-        }
 
+            let lastInTime;
+            if (typeof lastPunchIn.created_at === 'string') {
+            lastInTime = DateTime.fromSQL(lastPunchIn.created_at, { zone: 'utc' }).setZone('Asia/Kolkata');
+
+            } else {
+             lastInTime = DateTime.fromJSDate(lastPunchIn.created_at, { zone: 'utc' }).setZone('Asia/Kolkata');
+
+            }
+
+            console.log("last in time",lastInTime)
+            console.log("typeof last in time",typeof lastInTime)
+
+            if (!lastInTime.isValid) {
+            console.error("Invalid lastInTime:", lastInTime.invalidExplanation);
+            return res.status(500).json({ message: "Internal error: Invalid punch in time format" });
+            }
+
+
+            const diffTime = istNow.diff(lastInTime,'minutes').minutes;
+            console.log("diffrance time", diffTime)
+
+            if(diffTime < 30){
+                return res.status(400).json({ message: `Cannot punch out within 30 minutes of punch in. Try again after ${Math.ceil(30 - diffTime)} minutes.` });
+            }
+        }
+        
+        let updatePunchRemark = punch_remark;
         let warning = null;
+
         if (punchtype === 'OUTSTATION1') {
             if (lastPunchIn && !punchOutExists) {
+
                 warning = "Warning: You did not punch out last time. Proceeding with new punch in.";
 
-                // punch_re mark = "Absent last punch out.";
+                 updatePunchRemark = (punch_remark || '') + " (Last Punch Out Missing)";
 
                 console.log("Warning",warning);
             }
@@ -75,7 +103,7 @@ const punchAttendance = async(req, res) => {
             punch_time: punchTime,
             punch_place,
             punchtype,
-            punch_remark,
+            punch_remark: updatePunchRemark,
             punch_img,
             latitude,
             longitude,

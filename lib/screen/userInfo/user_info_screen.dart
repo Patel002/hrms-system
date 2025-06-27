@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decode/jwt_decode.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:photo_view/photo_view.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 
@@ -67,9 +68,9 @@ Future<void> fetchUserInfo() async {
           address = data['em_address'];
           gender = data['em_gender'];
           role = data['em_role'];
-          department = data['department']['dep_name'];
+          department = data['department']?['dep_name'];
           companyid = data['comp_id'];
-          companyname = data['company']['comp_fname'];
+          companyname = data['company']?['comp_fname'];
           bloodgroup = data['em_blood_group'];
           gstnumber = data['gst_number'];
           pannumber = data['pancard'];
@@ -92,11 +93,13 @@ Future<void> fetchUserInfo() async {
     context: context,
     applicationName: "Error",
     applicationVersion: "1.0.0",
+    barrierColor: Color(0xFF000000),
+    barrierDismissible: true,
     children: [
       Text("An error occurred while fetching user information: $e"),
-    ],
-  );
-}
+      ],
+    );
+  }
 }
 
  Future<void> updateUserInfo() async {
@@ -161,11 +164,16 @@ Future<void> fetchUserInfo() async {
    }
  }
 
-Future<void> onRefresh() async {
+Future<void> _onRefresh() async {
     setState(() {
       isLoading = true;
     });
+
     await fetchUserInfo();
+
+    setState(() {
+      isLoading = false;
+    });
   }
 
 void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
@@ -198,8 +206,8 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
     return Scaffold(
       backgroundColor: Colors.transparent,
    appBar: PreferredSize(
-  preferredSize: const Size.fromHeight(kToolbarHeight),
-  child: Container(
+    preferredSize: const Size.fromHeight(kToolbarHeight),
+    child: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
@@ -231,8 +239,11 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
       ),
     ),
 
-      RefreshIndicator(
-        onRefresh: onRefresh,
+      isLoading ? const Center(child: CircularProgressIndicator(color: Colors.black,)) 
+      : RefreshIndicator(
+        onRefresh: _onRefresh,
+        backgroundColor: Colors.white,
+        color: Colors.black,
             child : SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16.0),
@@ -249,7 +260,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                         borderRadius: BorderRadius.circular(12),
                       ),
 
-                  child: Padding(
+                child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 95, 16, 16),
                 child: Form(
                   key: _formKey,
@@ -270,13 +281,13 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                       Divider(color: Colors.grey.withOpacity(0.3)),
                       const SizedBox(height: 12),
 
-                Text(
-                'Personal Information',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: Colors.black,
+                    Text(
+                    'Personal Information',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                    color: Colors.black,
                     fontWeight: FontWeight.bold,
-                  ),
-                ),
+                      ),
+                    ),
 
                 const SizedBox(height: 8),
 
@@ -328,19 +339,19 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                 ],
               ),
 
-                   _buildDatePickerField(
-                            icon: Icons.calendar_today,
-                            title: 'Date of Birth',
-                            date: dateOfBirth,
-                            onDateSelected: (newDate) {
-                              setState(() => dateOfBirth = newDate);
-                            },
-                            enabled: false
-                          ),
+          _buildDatePickerField(
+                  icon: Icons.calendar_today,
+                  title: 'Date of Birth',
+                  date: dateOfBirth,
+                  onDateSelected: (newDate) {
+                    setState(() => dateOfBirth = newDate);
+                  },
+                  enabled: false
+                ),
 
-                          _buildGenderDropdown(),
+                _buildGenderDropdown(),
 
-                const SizedBox(height: 12),
+              const SizedBox(height: 12),
 
               Divider(color: Colors.grey.withOpacity(0.3)),
               const SizedBox(height: 12),
@@ -373,16 +384,16 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
 
                     const SizedBox(height: 12),
 
-              Divider(color: Colors.grey.withOpacity(0.3)),
-              const SizedBox(height: 12),
+                    Divider(color: Colors.grey.withOpacity(0.3)),
+                    const SizedBox(height: 12),
                     
-                  Text(
-                'Offical Details',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: Colors.black,
+                    Text(
+                    'Offical Details',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                    color: Colors.black,
                     fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
 
                 const SizedBox(height: 8),
 
@@ -407,13 +418,14 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                     //   onSaved: (value) => gstnumber = value,
                     //   enabled: false
                     // ),
-                    // _inlineEditableField(
-                    //   icon: Icons.credit_card,
-                    //   title: 'PAN Number',
-                    //   value: pannumber ?? '',
-                    //   onSaved: (value) => pannumber = value,
-                    //   enabled: false
-                    // ),
+
+                    _inlineEditableField(
+                      icon: Icons.credit_card,
+                      title: 'PAN Number',
+                      value: pannumber ?? '',
+                      onSaved: (value) => pannumber = value,
+                      enabled: false
+                    ),
 
                     const SizedBox(height: 15),
 
@@ -449,44 +461,100 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                       const SizedBox(height: 10),
                     ],
                   ),
-                  ),
+                ),
               ),
             ),
           ),
         ),
+
       Positioned( 
-      child: CircleAvatar(
-        radius: 70,
-        backgroundColor: Colors.white,
-        backgroundImage: NetworkImage('https://picsum.photos/200/300'),
+         child: GestureDetector(
+    onTap: () {
+      showGeneralDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: 'ImageView',
+        barrierColor: Colors.black.withOpacity(0.6),
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return Center(
+  child: Padding(
+    padding: const EdgeInsets.all(16),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: PhotoView(
+        imageProvider: const NetworkImage('https://picsum.photos/200/300'),
+        backgroundDecoration: const BoxDecoration(
+          color: Colors.transparent,
+        ),
+        enableRotation: false,
+        minScale: PhotoViewComputedScale.contained,
+        maxScale: PhotoViewComputedScale.covered * 2,
+        initialScale: PhotoViewComputedScale.contained,
       ),
     ),
-      ],
+  ),
+);
+
+        },
+        transitionBuilder: (context, animation, secondaryAnimation, child) {
+          return ScaleTransition(
+            scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+            child: FadeTransition(
+              opacity: animation,
+              child: child,
+            ),
+          );
+        },
+      );
+    },
+
+    child: Container(
+      padding: const EdgeInsets.all(4), 
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.blueGrey,
+          width: 2,               
+        ),    
     ),
+        child: CircleAvatar(
+          radius: 70,
+          backgroundColor: Colors.white,
+          backgroundImage: NetworkImage('https://picsum.photos/200/300'),
+          ),
+        ),
       ),
       ),
-      if (isSubmitting)
-        Container(
-          color: Colors.black.withOpacity(0.3), 
-          child: const Center(
-            child: Column(
-             mainAxisSize: MainAxisSize.min,
-             children: [
-              CircularProgressIndicator(color: Colors.white),
-              SizedBox(height: 16),
-              Text(
-                'Updating Information, please wait...',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-                textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
+      ],  
+    ),
+  ),
+),
+
+    if (isSubmitting)
+    Positioned.fill(
+     child: Container(
+        color: Colors.black.withOpacity(0.3), 
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+            CircularProgressIndicator(color: Colors.white),
+            SizedBox(height: 16),
+            Text(
+              'Updating Information, please wait...',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+              textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
-        ],
+        ),
+      ),
+      ],
     ),
-    );
-  }
+  );
+}
 
   Widget _sectionTitle(String title) {
     final theme = Theme.of(context);
@@ -718,7 +786,7 @@ Widget _buildBloodGroupDropdown() {
                 readOnly: !enabled, 
                 enabled: enabled,
                 style: TextStyle(fontSize: 15,
-                color: enabled ? Colors.black : Colors.blueGrey.shade700,
+                color: enabled ? Colors.black : Colors.blueGrey.shade900,
                 ),
                 decoration: InputDecoration(
                   isDense: true,

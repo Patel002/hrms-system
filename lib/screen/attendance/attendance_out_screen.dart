@@ -24,7 +24,7 @@ class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _narrationController = TextEditingController();
 
-String? narration;
+  String? narration;
   String? field;
   String? emId,emUsername,compFname,compId;
   Position? currentPosition;
@@ -65,11 +65,11 @@ String? narration;
     _initializeControllerFuture = _initializeCamera();
 
     await getLocation();
-
    
     setState(() {
       isLoading = false;
     });
+    
   } catch (e) {
     debugPrint('Initialization error: $e');
     ScaffoldMessenger.of(context).showSnackBar(
@@ -131,32 +131,27 @@ Future<bool> requestCameraPermission() async {
 }
 
   Future<void> getLocation() async {
-    PermissionStatus status = await Permission.location.request();
+  bool isLocationEnabled = await Geolocator.isLocationServiceEnabled();
 
-    if (status.isGranted) {
-    bool isLocationEnabled = await Geolocator.isLocationServiceEnabled();
-    
-    if (!isLocationEnabled) {
-      throw Exception('Location services are disabled.');
-    }
+  if (!isLocationEnabled) {
+    await Geolocator.openLocationSettings();
+    return;
+  }
 
-    currentPosition = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-    print('Latitude: ${currentPosition?.latitude}, Longitude: ${currentPosition?.longitude}, Accuracy: ${currentPosition?.accuracy}');
+    LocationPermission permission = await Geolocator.checkPermission();
+  if (permission == LocationPermission.denied) {
+    permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied) {
+      throw Exception('Location permission denied');
+    }
+  }
 
-    }
-      else if (status.isDenied) {
-        throw Exception('Location permission denied by user');
-      }
-      else if (status.isPermanentlyDenied) {
-         openAppSettings();
-          throw Exception('Location permission permanently denied. Please enable it from settings.');
-      }else {
-      throw Exception('Location permission not granted');
-    }
-      print('Latitude: ${currentPosition?.latitude}, Longitude: ${currentPosition?.longitude}, Accuracy: ${currentPosition?.accuracy}');
-     }
+  currentPosition = await Geolocator.getCurrentPosition(
+    desiredAccuracy: LocationAccuracy.high,
+  ).timeout(const Duration(seconds: 10));
+
+  print('Latitude: ${currentPosition?.latitude}, Longitude: ${currentPosition?.longitude}, Accuracy: ${currentPosition?.accuracy}');
+}
 
 
 Future<void> _initializeCamera() async {
@@ -173,7 +168,6 @@ Future<void> _initializeCamera() async {
 
   await _cameraController!.initialize();
 }
-
 
 Future<void> _captureImage() async {
   try {
@@ -205,6 +199,11 @@ Future<void> _captureImage() async {
   }
 }
 
+@override
+void dispose() {
+  _cameraController?.dispose();
+  super.dispose();
+}
 
  Future<void> submitAttendance() async {
   if (isSubmitting) return;
@@ -221,20 +220,27 @@ Future<void> _captureImage() async {
       return;
     }
     
-  _formKey.currentState!.save();
+    _formKey.currentState!.save();
 
   
       if (base64Image == null) {
       _showCustomSnackBar(context, 'Please capture an image', Colors.teal.shade400, Icons.camera);
-    return;
+      setState(() {
+    isSubmitting = false;
+  });
+      return;
   }
 
   if (currentPosition == null) {
     _showCustomSnackBar(context, 'Please give access of location', Colors.teal.shade400, Icons.pin_drop);
+     setState(() {
+    isSubmitting = false;
+ });
     return;
   }
 
   try {
+
     final response = await http.post(
       Uri.parse('$baseUrl/api/attendance/punch'),
       headers: {'Content-Type': 'application/json'},
@@ -252,13 +258,12 @@ Future<void> _captureImage() async {
     );
 
      if (response.statusCode == 201) {
-
       final responseData = jsonDecode(response.body);
 
     if (responseData['warning'] != null) {
     _showCustomSnackBar(context, responseData['warning'], Colors.orange.shade700, Icons.warning_amber_outlined);
   }
-      _showCustomSnackBar(context, 'Attendance marked successfully', Colors.green, Icons.check_circle);
+      _showCustomSnackBar(context, 'Punch Out marked successfully', Colors.green, Icons.check_circle);
 
       _resetForm();
 
@@ -317,7 +322,7 @@ Future<void> handlePullToRefresh() async {
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       margin: const EdgeInsets.all(16),
-      duration: const Duration(seconds: 2),
+      duration: const Duration(seconds: 3),
     );
 
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -382,7 +387,9 @@ Widget build(BuildContext context) {
           const SizedBox(height: 24),
 
           Text("Punch Place*", style: labelStyle),
+
           const SizedBox(height: 8),
+
           DropdownButtonFormField<String>(
             value: field,
             decoration: inputDecoration,
@@ -405,8 +412,11 @@ Widget build(BuildContext context) {
           const SizedBox(height: 24),
 
           Text("Narration*", style: labelStyle),
+
           const SizedBox(height: 8),
+
           TextFormField(
+            controller: _narrationController,
             maxLines: 3,
             style: inputTextStyle,
             decoration: inputDecoration.copyWith(
@@ -498,11 +508,13 @@ Widget build(BuildContext context) {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 24),
 
           ElevatedButton.icon(
-            onPressed: _captureImage,
+            onPressed: () async {
+              await _captureImage();
+            },
             icon: const Icon(Icons.camera_alt, size: 20),
             label: const Text("Capture Image"),
             style: primaryButtonStyle,
@@ -524,6 +536,7 @@ Widget build(BuildContext context) {
                       )
                     ],
                   ),
+
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child:Transform(
@@ -540,23 +553,25 @@ Widget build(BuildContext context) {
                 ),
               ),
             ],
+
            const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: isSubmitting? null : ()async {
-              await submitAttendance();
-            } ,
-            label: const Text("Submit Attendance"),
-            style: greenButtonStyle,
-            icon: const Icon(Icons.send_outlined, size: 20),
-          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+
+                ElevatedButton.icon(
+                  onPressed: isSubmitting? null : ()async {
+                    await submitAttendance();
+                  } ,
+                  label: const Text("Submit Attendance"),
+                  style: greenButtonStyle,
+                  icon: const Icon(Icons.send_outlined, size: 20),
+                ),
+              ],
             ),
           ),
-        ),
+        ],
+      ),
+    ),
+  ),
+),
     if (isSubmitting)
         Container(
           color: Colors.black.withOpacity(0.5), 
@@ -575,10 +590,10 @@ Widget build(BuildContext context) {
               ),
             ),
           ),
-      ],
-    ),
-  );
- }
+        ],
+      ),
+    );
+  }
 }
 
 Widget buildReadOnlyField(String label, String value) {
@@ -610,14 +625,14 @@ Widget buildReadOnlyField(String label, String value) {
           fontSize: 15,
           color:  const Color(0xFF212529),
           ),
-        ),
-        ),
-      ],
+       ),
       ),
+     ],
     ),
+   ),
   ],
-  );
-  }
+ );
+}
 
 final labelStyle = TextStyle(
   fontSize: 14,
@@ -644,13 +659,13 @@ final inputDecoration = InputDecoration(
   ),
   focusedBorder: OutlineInputBorder(
     borderRadius: BorderRadius.circular(12),
-    borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+    borderSide: const BorderSide(color: Colors.blueGrey, width: 1.5),
   ),
 );
 
 final primaryButtonStyle = ElevatedButton.styleFrom(
-  backgroundColor: Colors.blue.shade700,
-  foregroundColor: Colors.white,
+  backgroundColor: Colors.blue.shade50,
+  foregroundColor: Colors.blue.shade300,
   minimumSize: const Size.fromHeight(48),
   shape: RoundedRectangleBorder(
     borderRadius: BorderRadius.circular(12),
@@ -659,11 +674,11 @@ final primaryButtonStyle = ElevatedButton.styleFrom(
 );
 
 final greenButtonStyle = ElevatedButton.styleFrom(
-  backgroundColor: Color(0XFF123458),
-  foregroundColor: Colors.white,
+  backgroundColor: Colors.green.shade50,
+  foregroundColor: Colors.green.shade300,
   minimumSize: const Size.fromHeight(50),
   shape: RoundedRectangleBorder(
     borderRadius: BorderRadius.circular(12),
   ),
-  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
 );

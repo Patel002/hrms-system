@@ -385,7 +385,7 @@ void showImagePreview(BuildContext context, String base64Image) {
                       ],
                     ),
 
-                    /// Second Row: Labels
+                    
                     const SizedBox(height: 4),
                     Row(
                       children: const [
