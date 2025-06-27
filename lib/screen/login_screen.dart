@@ -104,8 +104,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Center(
-                      child: Icon(Icons.lock_outline, size: 72, color: Color(0XFF213448)),
+                    Image(
+                      image: const AssetImage('assets/icon/image.png'),
+                      width: 150,
+                      height: 150,
                     ),
                     const SizedBox(height: 32),
 

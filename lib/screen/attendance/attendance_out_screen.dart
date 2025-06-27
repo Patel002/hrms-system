@@ -191,7 +191,7 @@ Future<void> _captureImage() async {
 
     setState(() {
       _imageFile = File(file.path);
-      base64Image = 'data:image/jpeg;base64,$base64Str';
+      base64Image = 'data:image/png;base64,$base64Str';
     });
     
   } catch (e) {

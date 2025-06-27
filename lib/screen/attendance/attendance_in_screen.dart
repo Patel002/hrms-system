@@ -182,7 +182,7 @@ Future<void> _captureImage() async {
 
     setState(() {
       _imageFile = File(file.path);
-      base64Image = 'data:image/jpeg;base64,$base64Str';
+      base64Image = 'data:image/png;base64,$base64Str';
     });
     
   } catch (e) {
@@ -220,7 +220,14 @@ void dispose() {
    }
 
     if (currentPosition == null) {
+      try{
+      await getLocation();
+      }catch(e){
       _showCustomSnackBar(context, 'Please give access of location', const Color.fromARGB(255, 138, 166, 38), Icons.location_disabled);
+        setState(() {
+          isSubmitting = false;
+        });
+      }
       return;
     }
 

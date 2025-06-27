@@ -23,6 +23,8 @@ class _HomePageState extends State<HomePage> {
   DateTime? selectedDate;
   Map<DateTime, List<Map<String, dynamic>>> leaveDurations = {};
   bool isDataLoaded = false;
+  bool isDateProcessing = false;
+
 
 
   @override
@@ -187,17 +189,18 @@ int calculateTotalMinutes(List<String> durations) {
             ListTile(
               leading: const Icon(Icons.access_time, color: Colors.blueAccent),
               title: const Text('View Attendance', style: TextStyle(fontSize: 16)),
-              onTap: () {
+              onTap: () async {
+                // if (isDateProcessing) return;
                 Navigator.pop(context);
-                Navigator.pushNamed(context, '/attendance-history', arguments: {'selectedDate': day});
+                await Navigator.pushNamed(context, '/attendance-history', arguments: {'selectedDate': day});
               },
             ),
             ListTile(
               leading: const Icon(Icons.calendar_month, color: Colors.green),
               title: const Text('View Leave', style: TextStyle(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/leave-status', arguments: {
+              onTap: () async {
+               Navigator.pop(context);
+               await  Navigator.pushNamed(context, '/leave-status', arguments: {
                   'selectedDate': dayKey,
                   'leavesTypeId': leaveDurations[dayKey]![0]['leaveTypeId'],
                   'tabIndex': 1,
@@ -282,14 +285,14 @@ Widget buildCalendar() {
   child: SingleChildScrollView(
   child: Padding(
     padding: const EdgeInsets.all(8.0),
-    child: TableCalendar(
-      firstDay: DateTime.utc(2020, 1, 1),
-      lastDay: DateTime.utc(2025, 12, 31),
-      focusedDay: today,
-      rowHeight: 80,
-      selectedDayPredicate: (day) => isSameDay(selectedDate, day),
-       availableGestures: AvailableGestures.all,
-      calendarFormat: CalendarFormat.month,
+      child: TableCalendar(
+        firstDay: DateTime.utc(2020, 1, 1),
+        lastDay: DateTime.utc(2025, 12, 31),
+        focusedDay: today,
+        rowHeight: 80,
+        selectedDayPredicate: (day) => isSameDay(selectedDate, day),
+        availableGestures: AvailableGestures.all,
+       availableCalendarFormats: const {CalendarFormat.month: ''},
 
       eventLoader: (day) {
         final dayKey = DateTime(day.year, day.month, day.day);
@@ -453,9 +456,30 @@ Widget buildCalendar() {
         }
 
         return GestureDetector(
-        onTap: () {
+        onTap: () async {
+          if(isDateProcessing) return;
+
+          setState(() {
+            isDateProcessing = true;
+          });
+
+          final color = isFullAttendance ? Colors.green.shade400 : Colors.orange;
+
+         Future.delayed(Duration.zero, (){
+          showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (_) => Center(child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation(color),
+        )),
+      );
+   });  
+
+        await Future.delayed(const Duration(milliseconds: 500));
+
         if (isFullLeave && leaveDurations[dayKey] != null && leaveDurations[dayKey]!.isNotEmpty) {
-          Navigator.pushNamed(context, '/leave-status', arguments: {
+          Navigator.pop(context);
+         await Navigator.pushNamed(context, '/leave-status', arguments: {
             'selectedDate': day,
             'leavesTypeId': leaveDurations[dayKey]![0]['leaveTypeId'],
             'tabIndex': 1
@@ -464,12 +488,19 @@ Widget buildCalendar() {
           debugPrint('Leave Type ID: ${leaveDurations[dayKey]![0]['leaveTypeId']}');
 
         } else if (isFullAttendance) {
-          Navigator.pushNamed(context, '/attendance-history', arguments: {'selectedDate': day});
+          Navigator.pop(context);
+          await Navigator.pushNamed(context, '/attendance-history', arguments: {'selectedDate': day});
         } else if (isSplitDay && punchEntry.value.isNotEmpty && leaveEntry.value.isNotEmpty) {
           _showHalfDayOptions(context, day, dayKey);
+        }else {
+          Navigator.pop(context);
         }
-      },
 
+        setState(() {
+          isDateProcessing = false;
+        });
+      },
+    
       child: Container(
           margin: const EdgeInsets.all(2.0),
           height: 50,
@@ -507,9 +538,6 @@ Widget buildCalendar() {
     );
   },
         todayBuilder: (context, day, focusedDay) {
-          // final dayKey = DateTime(day.year, day.month, day.day);
-          // final isPresent = punchDurations.containsKey(dayKey);
-
           Color backgroundColor = Colors.amber.shade100;
           BoxBorder? border = Border.all(color: Colors.amber.shade700, width: 2);
           Color textColor = Colors.black;
