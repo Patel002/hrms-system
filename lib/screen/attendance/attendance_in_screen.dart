@@ -134,7 +134,17 @@ Future<void> getLocation() async {
   bool isLocationEnabled = await Geolocator.isLocationServiceEnabled();
 
   if (!isLocationEnabled) {
-    throw Exception('Location services are disabled.');
+    await Geolocator.openLocationSettings();
+    return;
+  }
+
+  LocationPermission permission = await Geolocator.checkPermission();
+  
+  if (permission == LocationPermission.denied) {
+    permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied) {
+      throw Exception('Location permission denied');
+    }
   }
 
   currentPosition = await Geolocator.getCurrentPosition(

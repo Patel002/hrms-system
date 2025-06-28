@@ -231,13 +231,17 @@ void dispose() {
       return;
   }
 
-  if (currentPosition == null) {
-    _showCustomSnackBar(context, 'Please give access of location', Colors.teal.shade400, Icons.pin_drop);
-     setState(() {
-    isSubmitting = false;
- });
-    return;
-  }
+     if (currentPosition == null) {
+      try{
+      await getLocation();
+      }catch(e){
+      _showCustomSnackBar(context, 'Please give access of location', const Color.fromARGB(255, 138, 166, 38), Icons.location_disabled);
+        setState(() {
+          isSubmitting = false;
+        });
+      }
+      return;
+    }
 
   try {
 
