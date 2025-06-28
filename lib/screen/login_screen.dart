@@ -94,6 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -126,14 +127,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    /// Username Field
                     TextFormField(
                       controller: _usernameController,
                       decoration: InputDecoration(
                         hintText: 'Username',
                         prefixIcon: const Icon(Icons.person_outline),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: Colors.grey[50],
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -159,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: Colors.grey[50],
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,

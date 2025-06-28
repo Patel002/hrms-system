@@ -21,6 +21,7 @@ class LeaveStatusPage extends StatefulWidget {
 
 class _LeaveStatusPageState extends State<LeaveStatusPage>
     with TickerProviderStateMixin {
+
   List<Map<String, dynamic>> leaveTypes = [];
   dynamic selectedTypeId;
   late TabController _tabController;
@@ -64,8 +65,9 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
         // print('Leave Types: $data');
         // print('Leave Types I.d,${data[0]['type_id']}');
         setState(() {
-          leaveTypes = data.cast<Map<String, dynamic>>();
-          if (leaveTypes.isNotEmpty && selectedTypeId == null) {
+          leaveTypes = [{'type_id': null, 'name': 'All'}, ...data.cast<Map<String, dynamic>>()];
+          
+          if (selectedTypeId == null) {
             selectedTypeId = leaveTypes[0]['type_id'];
           }
         });
@@ -99,16 +101,29 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
       final apiStatus = statusMap[status.toLowerCase()];
       print('API Status: $apiStatus');
 
-      final url = Uri.parse(
-        '$baseUrl/api/emp-leave/list/?leave_type_id=$selectedTypeId&em_username=$emUsername&status=$apiStatus',
-      );
-      print('API URL: $url');
+      final queryParams = {
+        'em_username': emUsername,
+        'status': apiStatus,
+      };
 
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
+      if(selectedTypeId != null) {
+        queryParams['leave_type_id'] = selectedTypeId.toString();
+      }
+
+      final url = Uri.parse(
+        '$baseUrl/api/emp-leave/list/').replace(queryParameters: queryParams,
+      );
+        print('API URL: $url');
+
+        final response = await http.get(url);
+
+        if (response.statusCode == 200) {
+
         final decoded = json.decode(response.body);
         print('Leaves: $decoded');
+
         final List<dynamic> dataList = decoded['leaves'];
+
         return dataList.cast<Map<String, dynamic>>();
       } else {
         print('Failed to fetch leaves: ${response.body}');
@@ -125,14 +140,14 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
   setState(() {}); 
 }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-    appBar: PreferredSize(
-    preferredSize: const Size.fromHeight(kToolbarHeight),
-    child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
+    @override
+    Widget build(BuildContext context) {
+      return Scaffold(
+      appBar: PreferredSize(
+      preferredSize: const Size.fromHeight(kToolbarHeight),
+      child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
            colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
             begin: Alignment.topRight,
             end: Alignment.center,
@@ -147,6 +162,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
       ),
      )
     ),
+
       body: Container(
         decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -168,11 +184,16 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
               separatorBuilder: (_, __) => SizedBox(width: 10),
               itemBuilder: (context, index) {
                 final type = leaveTypes[index];
-                final isSelected =
-                type['type_id'].toString() == selectedTypeId?.toString();
+
+                final List<Map<String, dynamic>> allLeaveTypes = [
+                  {'type_id': null, 'name': 'All'},
+                  ...leaveTypes,
+                ];
+
+                final isSelected = type['type_id'] == selectedTypeId;
                 
                 return ChoiceChip(
-                  label: Text(type['name'],),
+                  label: Text(type['name']),
                   selected: isSelected,
                   backgroundColor: Color(0xFFF5F7FA),
                   onSelected: (_) {
@@ -180,9 +201,9 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
                       selectedTypeId = type['type_id'];
                     });
                   },
-                  selectedColor: Colors.blue.shade300,
+                  selectedColor: Colors.blue.shade400,
                   labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : Colors.black,
+                    color: isSelected ? Colors.white : Colors.black87,
                   ),
                 );
               },
@@ -199,7 +220,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
               Tab(text: "Rejected"),
             ],
           ),
-                    Expanded(
+           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
@@ -227,8 +248,8 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
         ],
       ),
     ),
-    );
-  }
+  );
+}
 
   Widget buildLeaveList(String status) {
     return FutureBuilder<List<Map<String, dynamic>>>(
@@ -577,8 +598,8 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
   return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: PreferredSize(
- preferredSize: const Size.fromHeight(kToolbarHeight),
-child: Container(
+      preferredSize: const Size.fromHeight(kToolbarHeight),
+      child: Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],

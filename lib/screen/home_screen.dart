@@ -475,7 +475,7 @@ Widget buildCalendar() {
       );
    });  
 
-        await Future.delayed(const Duration(milliseconds: 500));
+        await Future.delayed(const Duration(milliseconds: 600));
 
         if (isFullLeave && leaveDurations[dayKey] != null && leaveDurations[dayKey]!.isNotEmpty) {
           Navigator.pop(context);

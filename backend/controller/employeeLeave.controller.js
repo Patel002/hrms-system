@@ -172,17 +172,21 @@ const getLeavesByStatusForEmployee = async (req, res) => {
             return res.status(404).json({ message: "Employee not found" });
         }
 
-        const leaves = await EmployeeLeave.findAll({
-            where: {
-                em_id: employee.em_code,
-                leave_status: status,
-                typeid: leave_type_id
-            },
-        });
+          const whereCondition = {
+          em_id: employee.em_code,
+          leave_status: status,
+        };
+
+        if (leave_type_id) {
+          whereCondition.typeid = leave_type_id;
+        }
+
+        const leaves = await EmployeeLeave.findAll({ where: whereCondition });
+
+        return res.status(200).json({ leaves });
       //   console.log("leave_status",leaves.leave_status);
       //  console.log("leaves: ", leaves);
 
-        return res.status(200).json({ leaves });
     } catch (error) {
         console.error("Error fetching leaves by status for employee:", error);
         return res.status(500).json({ message: "Server error" });
