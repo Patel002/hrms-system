@@ -3,6 +3,8 @@ import {
     Department,
     Company
 } from "../utils/join.js";
+import path from "path";
+import fs from 'fs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
@@ -108,7 +110,8 @@ const updateEmployeeDetails = async (req, res) => {
         }  
         
         const { department, company, ...allowedUpdates } = updateData;
-        
+
+        allowedUpdates.em_image = req.file?.filename;
         allowedUpdates.updated_at = new Date();
         allowedUpdates.updated_by = employee.em_id;
         
@@ -127,8 +130,22 @@ const updateEmployeeDetails = async (req, res) => {
 
 }
 
+const getFileAttachment = async(req, res) => {
+    const filename = req.params.filename;   
+    const filePath = path.resolve('..','uploads','profileImage', filename);
+
+    fs.access(filePath, fs.constants.F_OK, (err) => {
+        if (err) {
+            res.status(404).send('File not found');
+        } 
+        res.sendFile(filePath);
+    });
+
+}
+
 export {
     loginEmployee,
     getEmployeeDetails,
-    updateEmployeeDetails
+    updateEmployeeDetails,
+    getFileAttachment
 }

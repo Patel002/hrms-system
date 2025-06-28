@@ -14,10 +14,11 @@ class HomePage extends StatefulWidget {
 }
 class _HomePageState extends State<HomePage> {
   String? userRole;
-  String? username;
+  String? username,profileImage;
   String? empId; 
   String? _expandedTile;
   bool isSupervisor = false;
+  bool isLoading = false;
   Map<DateTime, List<String>> punchDurations = {};
   final baseUrl = dotenv.env['API_BASE_URL'];
   DateTime? selectedDate;
@@ -49,6 +50,8 @@ void initState() {
   }
 }
 
+
+
 Future<void> loadUserPermissions() async {
   final prefs = await SharedPreferences.getInstance();
   final token = prefs.getString('token');
@@ -64,11 +67,40 @@ Future<void> loadUserPermissions() async {
     });
     await fetchLeaveDurations();
     await fetchPunchDurations();
+    await fetchProfileImage();
 
     setState(() {
       isDataLoaded = true;
       
     });
+  }
+}
+
+Future<void> fetchProfileImage() async {
+  try{
+    final response = await http.get(Uri.parse('$baseUrl/api/employee/info/$empId'),
+        headers: {
+          'Content-Type': 'application/json',
+        });
+
+        debugPrint('Response Status: ${response.body}');
+
+        if(response.statusCode == 201) {
+        final finalData = json.decode(response.body);
+        final data = finalData['data']; 
+
+        profileImage = data['em_image'];
+        
+
+        debugPrint('Profile Image: $profileImage');
+      }
+
+  }catch(e) {
+    showAboutDialog(context: context, children: [Text('$e')]);
+    setState(() {
+    isLoading = false;
+    });
+
   }
 }
 
@@ -611,10 +643,10 @@ Widget buildCalendar() {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 50),
               child: Row(
                 children: [
-                  const CircleAvatar(
+                   CircleAvatar(
                     radius: 28,
                     backgroundImage: NetworkImage(
-                      'https://picsum.photos/200/300', 
+                      '$baseUrl/api/employee/attachment/$profileImage', 
                     ),
                   ),
                   const SizedBox(width: 16),

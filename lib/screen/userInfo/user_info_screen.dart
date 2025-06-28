@@ -5,8 +5,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:photo_view/photo_view.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
-
 
 class UserInfo extends StatefulWidget {
   const UserInfo({super.key});
@@ -20,18 +20,35 @@ class _UserInfoState extends State<UserInfo> {
   final baseUrl = dotenv.env['API_BASE_URL'];
   final _formKey = GlobalKey<FormState>();
   
-  String? username,firstname,lastname,email,fathername,address,gender,role,bloodgroup,gstnumber,pannumber,employeeId;
+  String? username,firstname,lastname,email,fathername,address,gender,role,bloodgroup,gstnumber,pannumber,employeeId,profileImage;
   String? department,companyname,companyid;
   DateTime? dateOfBirth;
   DateTime? dateOfJoining;
   bool isLoading = true;
   bool isSubmitting = false;  
+  late XFile? _imageFile;
 
 @override
 void initState() {
   super.initState();
   fetchUserInfo();
 }
+
+Future<void> updateProfileImage() async {
+  final picker = ImagePicker();
+  final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+  if (pickedFile != null) {
+    setState(() {
+      _imageFile = pickedFile;
+    });
+
+    await updateUserInfo();
+  } else {
+    debugPrint("No image selected.");
+  }
+}
+
 
 Future<void> fetchUserInfo() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -67,6 +84,7 @@ Future<void> fetchUserInfo() async {
           fathername = data['father_name'];
           address = data['em_address'];
           gender = data['em_gender'];
+          profileImage = data['em_image'];
           role = data['em_role'];
           department = data['department']?['dep_name'];
           companyid = data['comp_id'];
@@ -123,32 +141,75 @@ Future<void> fetchUserInfo() async {
    _formKey.currentState!.save();
 
    try {
-     final response = await http.patch(
-       Uri.parse('$baseUrl/api/employee/update/$userId'),
-       headers: {
-         'Content-Type': 'application/json',
-       },
-       body: json.encode({
-         'em_username': username,
-         'first_name': firstname,
-         'last_name': lastname,
-         'em_email': email,
-         'father_name': fathername,
-         'em_address': address,
-         'em_gender': gender,
-         'em_role': role,
-         'em_blood_group': bloodgroup,
-         'gst_number': gstnumber,
-         'pancard': pannumber,
-         'em_birthday': dateOfBirth?.toIso8601String(),
-         'em_joining_date': dateOfJoining?.toIso8601String(),
-       }),
-     );
+    //This is use without any image/documant ecetra ecetra... used for only update user info which have text field
+     
+    //  final response = await http.patch(
+    //    Uri.parse('$baseUrl/api/employee/update/$userId'),
+    //    headers: {
+    //      'Content-Type': 'application/json',
+    //    },
+    //    body: json.encode({
+    //      'em_username': username,
+    //      'first_name': firstname,
+    //      'last_name': lastname,
+    //      'em_email': email,
+    //      'father_name': fathername,
+    //      'em_address': address,
+    //      'em_gender': gender,
+    //      'em_role': role,
+    //      'em_blood_group': bloodgroup,
+    //      'gst_number': gstnumber,
+    //      'pancard': pannumber,
+    //      'em_birthday': dateOfBirth?.toIso8601String(),
+    //      'em_joining_date': dateOfJoining?.toIso8601String(),
+    //    }),
+    //  );
+
+
+
+    //This method of update user info use when user have multiparted form/profile like image/video/documant along with text field like name,address,pin etc etc...
+
+    final uri = Uri.parse('$baseUrl/api/employee/update/$userId');
+    final request = http.MultipartRequest('PATCH', uri);
+
+    request.headers['Content-Type'] = 'application/json';
+    request.headers['Accept'] = 'application/json';
+
+    request.fields['em_username'] = username ?? '';
+    request.fields['first_name'] = firstname ?? '';
+    request.fields['last_name'] = lastname ?? '';
+    request.fields['em_email'] = email ?? '';
+    request.fields['father_name'] = fathername ?? '';
+    request.fields['em_address'] = address ?? '';
+    request.fields['em_gender'] = gender ?? '';
+    request.fields['em_role'] = role ?? '';
+    request.fields['em_blood_group'] = bloodgroup ?? '';
+    request.fields['gst_number'] = gstnumber ?? '';
+    request.fields['pancard'] = pannumber ?? '';
+    request.fields['em_birthday'] = dateOfBirth?.toIso8601String() ?? '';
+    request.fields['em_joining_date'] = dateOfJoining?.toIso8601String() ?? '';
+
+    if (_imageFile != null) {
+      request.files.add(await http.MultipartFile.fromPath(
+        'em_image', 
+        _imageFile!.path,
+      ));
+    }
+    
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
 
      if (response.statusCode == 200) {
        final data = json.decode(response.body);
        debugPrint('User information updated successfully: $data');
         _showCustomSnackBar(context, 'User information updated successfully', Colors.green, Icons.check_circle);
+
+        setState(() {
+        profileImage = data['em_image'] ?? profileImage;
+      });
+
+
      } else {
        debugPrint('Failed to update user information: ${response.body}');
        final errorData = json.decode(response.body);
@@ -469,7 +530,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
 
       Positioned( 
          child: GestureDetector(
-    onTap: () {
+        onTap: () {
       showGeneralDialog(
         context: context,
         barrierDismissible: true,
@@ -483,7 +544,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
     child: ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: PhotoView(
-        imageProvider: const NetworkImage('https://picsum.photos/200/300'),
+        imageProvider: NetworkImage('$baseUrl/api/employee/attachment/$profileImage'),
         backgroundDecoration: const BoxDecoration(
           color: Colors.transparent,
         ),
@@ -509,7 +570,9 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
       );
     },
 
-    child: Container(
+    child: Stack(
+    children: [
+     Container(
       padding: const EdgeInsets.all(4), 
       decoration: BoxDecoration(
         shape: BoxShape.circle,
@@ -521,9 +584,23 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
         child: CircleAvatar(
           radius: 70,
           backgroundColor: Colors.white,
-          backgroundImage: NetworkImage('https://picsum.photos/200/300'),
+          backgroundImage: NetworkImage('$baseUrl/api/employee/attachment/$profileImage'),
+          ),
+      ),
+      Positioned(
+      bottom: 11,
+      right: 11,
+      child: GestureDetector(
+        onTap: updateProfileImage,
+        child: CircleAvatar(
+          radius: 13,
+          backgroundColor: Colors.blueGrey,
+          child: const Icon(Icons.edit, size: 16, color: Colors.white),
           ),
         ),
+        ),
+      ],
+    ),
       ),
       ),
       ],  
