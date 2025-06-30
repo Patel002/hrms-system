@@ -14,15 +14,15 @@ app.use(express.urlencoded({
     extended: true
 }));
 
-const uploadPath = path.resolve('../uploads/profileImage');
-if (!fs.existsSync(uploadPath)) {
-    fs.mkdirSync(uploadPath),
-    {
-        recursive: true
-    };
-}
+// const uploadPath = path.resolve('../uploads/profileImage');
+// if (!fs.existsSync(uploadPath)) {
+//     fs.mkdirSync(uploadPath),
+//     {
+//         recursive: true
+//     };
+// }
 
-app.use('/uploads', express.static(path.resolve('uploads')));
+// app.use('/uploads', express.static(path.resolve('uploads')));
 
 import employeeRoutes from './routes/employee.routes.js';
 import holidayRoutes from './routes/holiday.routes.js';
