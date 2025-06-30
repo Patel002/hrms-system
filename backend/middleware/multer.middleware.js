@@ -3,7 +3,7 @@ import path from 'path';
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, '../uploads/profileImage/'); 
+    cb(null,'uploads','profileImage'); 
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + req.params.em_id + '_' + req.body.em_username;
