@@ -14,13 +14,15 @@ app.use(express.urlencoded({
     extended: true
 }));
 
-// const uploadPath = path.resolve('../uploads/profileImage');
-// if (!fs.existsSync(uploadPath)) {
-//     fs.mkdirSync(uploadPath),
-//     {
-//         recursive: true
-//     };
-// }
+const uploadPath = path.join(process.cwd(),'../uploads/profileImage');
+if (!fs.existsSync(uploadPath)) {
+    fs.mkdirSync(uploadPath),
+    {
+        recursive: true
+    };
+}else{
+    console.error("Failed to created file", err);
+}
 
 // app.use('/uploads', express.static(path.resolve('uploads')));
 
