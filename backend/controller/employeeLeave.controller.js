@@ -273,7 +273,7 @@ const updateLeaveApplication = async(req, res) => {
           const available = (credit || 0) + (debit || 0);
           // console.log("Available Leave Days:", available);
           
-          if (leave_duration > available) {
+          if (leave.leave_duration > available) {
             return res.status(400).json({
               message: `Insufficient leave days for ${leave.leave_type}. Remaining leave days: ${available}`
             });
@@ -288,7 +288,7 @@ const updateLeaveApplication = async(req, res) => {
           
         }
         updateData.update_date = new Date();
-        // console.log("updated date",updateData.update_date);
+       
 
         updateData.update_id = leave.em_id;
         // console.log("updated id",updateData.update_id);
