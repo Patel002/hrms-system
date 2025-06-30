@@ -14,14 +14,15 @@ app.use(express.urlencoded({
     extended: true
 }));
 
-const uploadPath = path.join(process.cwd(),'uploads','profileImage');
-if (!fs.existsSync(uploadPath)) {
-    fs.mkdirSync(uploadPath),
-    {
-        recursive: true
-    };
-}else{
-    console.error("Failed to created file", err);
+const uploadDir = path.join(process.cwd(), 'uploads', 'profileImage');
+
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+    console.log("✅ Upload directory created:", uploadDir);
+  }
+} catch (err) {
+  console.error("❌ Failed to create upload folder:", err);
 }
 
 // app.use('/uploads', express.static(path.resolve('uploads')));
