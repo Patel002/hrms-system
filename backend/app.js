@@ -14,11 +14,11 @@ app.use(express.urlencoded({
     extended: true
 }));
 
-const uploadDir = path.join(process.cwd(), 'uploads', 'profileImage');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+// const uploadDir = path.join(process.cwd(), 'uploads', 'profileImage');
+// if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 
-app.use('/uploads', express.static(path.join(process.cwd(),'uploads')));
+// app.use('/uploads', express.static(path.join(process.cwd(),'uploads')));
 
 import employeeRoutes from './routes/employee.routes.js';
 import holidayRoutes from './routes/holiday.routes.js';
