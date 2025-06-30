@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
 
 const app = express();
 app.use(cors());
@@ -10,6 +12,16 @@ app.use(express.urlencoded({
     limit: '50mb',
     extended: true
 }));
+
+const uploadPath = path.join('uploads/profileImage');
+if (!fs.existsSync(uploadPath)) {
+    fs.mkdirSync(uploadPath),
+    {
+        recursive: true
+    };
+}
+
+app.use('/uploads', express.static(path.join('uploads')));
 
 import employeeRoutes from './routes/employee.routes.js';
 import holidayRoutes from './routes/holiday.routes.js';
