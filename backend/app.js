@@ -14,7 +14,7 @@ app.use(express.urlencoded({
     extended: true
 }));
 
-const uploadPath = path.join(process.cwd(),'../uploads/profileImage');
+const uploadPath = path.join(process.cwd(),'uploads','profileImage');
 if (!fs.existsSync(uploadPath)) {
     fs.mkdirSync(uploadPath),
     {
