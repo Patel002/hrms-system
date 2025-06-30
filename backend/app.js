@@ -13,7 +13,7 @@ app.use(express.urlencoded({
     extended: true
 }));
 
-const uploadPath = path.join('uploads/profileImage');
+const uploadPath = path.resolve('uploads/profileImage');
 if (!fs.existsSync(uploadPath)) {
     fs.mkdirSync(uploadPath),
     {
@@ -21,7 +21,7 @@ if (!fs.existsSync(uploadPath)) {
     };
 }
 
-app.use('/uploads', express.static(path.join('uploads')));
+app.use('/uploads', express.static(path.resolve('uploads')));
 
 import employeeRoutes from './routes/employee.routes.js';
 import holidayRoutes from './routes/holiday.routes.js';
