@@ -15,17 +15,10 @@ app.use(express.urlencoded({
 }));
 
 const uploadDir = path.join(process.cwd(), 'uploads', 'profileImage');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-try {
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-    console.log("✅ Upload directory created:", uploadDir);
-  }
-} catch (err) {
-  console.error("❌ Failed to create upload folder:", err);
-}
 
-// app.use('/uploads', express.static(path.resolve('uploads')));
+app.use('/uploads', express.static(path.join(process.cwd(),'uploads')));
 
 import employeeRoutes from './routes/employee.routes.js';
 import holidayRoutes from './routes/holiday.routes.js';

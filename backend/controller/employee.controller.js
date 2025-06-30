@@ -111,7 +111,10 @@ const updateEmployeeDetails = async (req, res) => {
         
         const { department, company, ...allowedUpdates } = updateData;
 
-        allowedUpdates.em_image = req.file?.filename;
+        if (req.file?.filename) {
+        allowedUpdates.em_image = req.file.filename;
+        }
+
         allowedUpdates.updated_at = new Date();
         allowedUpdates.updated_by = employee.em_id;
         
@@ -120,7 +123,13 @@ const updateEmployeeDetails = async (req, res) => {
 
         console.log("Updated Employee:", updatedEmployee);
 
-        return res.status(200).json({ message: "Employee details updated successfully", data: updatedEmployee });
+        const imageUrl = req.file
+        ? `${req.protocol}://${req.get('host')}/uploads/profileImage/${req.file.filename}`
+        : employee.em_image;
+
+        console.log("Image URL:", imageUrl);
+
+        return res.status(200).json({ message: "Employee details updated successfully", data: updatedEmployee, imageUrl });
         
     } catch (error) {
         console.log(error);
