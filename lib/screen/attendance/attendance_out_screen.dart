@@ -226,10 +226,10 @@ void dispose() {
       if (base64Image == null) {
       _showCustomSnackBar(context, 'Please capture an image', Colors.teal.shade400, Icons.camera);
       setState(() {
-    isSubmitting = false;
-  });
-      return;
-  }
+        isSubmitting = false;
+      });
+          return;
+      }
 
      if (currentPosition == null) {
       try{

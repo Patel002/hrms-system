@@ -80,7 +80,7 @@ const punchAttendance = async(req, res) => {
         if (punchtype === 'OUTSTATION1') {
             if (lastPunchIn && !punchOutExists) {
 
-                warning = "Warning: You did not punch out last time. Proceeding with new punch in.";
+                    // warning = "Warning: You did not punch out last time. Proceeding with new punch in.";
 
                  updatePunchRemark = (punch_remark || '') + " (Last Punch Out Missing)";
 

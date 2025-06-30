@@ -105,12 +105,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Image(
-                      image: const AssetImage('assets/icon/image.png'),
-                      width: 150,
-                      height: 150,
-                    ),
-                    const SizedBox(height: 32),
+                     SizedBox(
+                height: 185,
+                child: Image.asset(
+                  'assets/image/image.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
 
                     Text(
                       'Login to your account',

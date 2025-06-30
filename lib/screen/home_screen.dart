@@ -25,7 +25,7 @@ class _HomePageState extends State<HomePage> {
   Map<DateTime, List<Map<String, dynamic>>> leaveDurations = {};
   bool isDataLoaded = false;
   bool isDateProcessing = false;
-
+  final ValueNotifier<String> profileImageNotifier = ValueNotifier<String>('');
 
 
   @override
@@ -89,8 +89,7 @@ Future<void> fetchProfileImage() async {
         final finalData = json.decode(response.body);
         final data = finalData['data']; 
 
-        profileImage = data['em_image'];
-        
+        profileImageNotifier.value = data['em_image'] ?? '';        
 
         debugPrint('Profile Image: $profileImage');
       }
@@ -168,6 +167,21 @@ Future<void> fetchLeaveDurations() async {
     } catch (e) {
       print('Error fetching punch durations: $e');
     }
+  }
+
+  Future<void> _refreshPage() async {
+
+    // setState(() {
+    //   isLoading = true;
+    // });
+
+    await fetchLeaveDurations();
+    await fetchPunchDurations();
+    await fetchProfileImage();
+    
+    // setState(() {
+    //   isLoading = false;
+    // });
   }
 
   Future<void> _logout() async {
@@ -253,7 +267,7 @@ int calculateTotalMinutes(List<String> durations) {
 }
 
 
- @override
+@override
 Widget build(BuildContext context) {
   return Scaffold(
     backgroundColor: Colors.transparent,
@@ -287,9 +301,15 @@ Widget build(BuildContext context) {
   ),
 
     drawer: buildDrawer(),
-    body: Container(
-      width: double.infinity,
-      height: double.infinity,
+    body: RefreshIndicator(
+    onRefresh: _refreshPage,
+    backgroundColor: Colors.white,
+    color: Colors.black87,
+    child: SingleChildScrollView(
+    physics: const AlwaysScrollableScrollPhysics(),
+    child : Container(
+      height: MediaQuery.of(context).size.height,
+      width: MediaQuery.of(context).size.width,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
@@ -308,13 +328,15 @@ Widget build(BuildContext context) {
               ),
             ),
           ),
-        );
+        ),
+          ),
+  );
       }
 
 Widget buildCalendar() {
   final today = DateTime.now();
   return SafeArea(
-  child: SingleChildScrollView(
+    child: SingleChildScrollView(
   child: Padding(
     padding: const EdgeInsets.all(8.0),
       child: TableCalendar(
@@ -487,9 +509,21 @@ Widget buildCalendar() {
           backgroundColor = Colors.white;
         }
 
-        return GestureDetector(
+       return GestureDetector(
         onTap: () async {
           if(isDateProcessing) return;
+
+          final isFuture = day.isAfter(today);
+          final isAbsent = !isPresent && !isLeave;
+
+            if (isFuture || isAbsent) {
+          final message = isFuture
+              ? 'This is a future date No attendance or leave available.'
+              : 'No attendance or leave data available.';
+          _showCustomSnackBar(context, message, Colors.orange, Icons.warning_amber_outlined);
+          return;
+        }
+
 
           setState(() {
             isDateProcessing = true;
@@ -533,7 +567,8 @@ Widget buildCalendar() {
         });
       },
     
-      child: Container(
+
+          child: Container(
           margin: const EdgeInsets.all(2.0),
           height: 50,
           width: 50, 
@@ -569,6 +604,8 @@ Widget buildCalendar() {
       ),
     );
   },
+
+  
         todayBuilder: (context, day, focusedDay) {
           Color backgroundColor = Colors.amber.shade100;
           BoxBorder? border = Border.all(color: Colors.amber.shade700, width: 2);
@@ -621,9 +658,27 @@ Widget buildCalendar() {
       ),
     ),
   ),
-),
+  ),
   );
 }
+
+void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Row(
+        children: [
+          Icon(icon, color: Colors.white),
+          const SizedBox(width: 12),
+          Expanded(child: Text(message)),
+        ],
+      ),
+      backgroundColor: color,
+      duration: const Duration(seconds: 2),
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
+}
+
       Widget buildDrawer() {
       return Drawer(
         child: Container(
@@ -643,12 +698,17 @@ Widget buildCalendar() {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 50),
               child: Row(
                 children: [
-                   CircleAvatar(
+                ValueListenableBuilder<String>(
+                valueListenable: profileImageNotifier,
+                builder: (context, value, _) {
+                   return CircleAvatar(
                     radius: 28,
                     backgroundImage: NetworkImage(
-                      '$baseUrl/api/employee/attachment/$profileImage', 
+                      '$baseUrl/api/employee/attachment/$value', 
                     ),
-                  ),
+                  );
+                },
+              ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(

@@ -84,7 +84,7 @@ Future<void> fetchUserInfo() async {
           fathername = data['father_name'];
           address = data['em_address'];
           gender = data['em_gender'];
-          profileImage = data['em_image'];
+          profileImage = data['em_image'] ?? '';
           role = data['em_role'];
           department = data['department']?['dep_name'];
           companyid = data['comp_id'];

@@ -226,6 +226,9 @@ void dispose() {
    
     if (base64Image == null) {
     _showCustomSnackBar(context, 'Please capture an image', Colors.teal.shade400, Icons.camera);
+     setState(() {
+          isSubmitting = false;
+      });
      return;
    }
 
@@ -237,8 +240,8 @@ void dispose() {
         setState(() {
           isSubmitting = false;
         });
-      }
       return;
+      }
     }
 
     try {
