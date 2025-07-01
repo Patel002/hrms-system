@@ -11,7 +11,7 @@ router.route('/leave').post(leaveFileUpload.single('leaveattachment'),createLeav
 router.route('/list').get(getLeavesByStatusForEmployee);
 // router.route('/avalibaleLeaves').get(avalibaleLeaves);
 // router.route('/attachment/:filename').get(getFileAttachment);
-router.route('/update/:id').patch(upload.single('leaveattachment'),updateLeaveApplication);
+router.route('/update/:id').patch(leaveFileUpload.single('leaveattachment'),updateLeaveApplication);
 
 router.route('/list/:status').get(authenticateUser,getLeaveRequestsBySupervisor);
 
