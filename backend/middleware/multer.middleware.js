@@ -24,7 +24,7 @@ const leaveFileStorage = multer.diskStorage({
     cb(null,'uploads'); 
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + req.params.em_id + '_' + req.body.em_username;
+    const uniqueSuffix = Date.now() + '-' + req.body.em_id + '_' + req.body.em_username;
     
     cb(null, uniqueSuffix + path.extname(file.originalname));
 
@@ -35,7 +35,6 @@ const leaveFileStorage = multer.diskStorage({
 const leaveFileFilter = (req, file, cb) => {
   cb(null, true); 
 };
-
 
 export const upload = multer({
   storage: storage,
