@@ -288,6 +288,7 @@ class _OdDetailsPageState extends State<OdDetailsPage> {
   late DateTime toDate;
   late String type;
   double duration = 1.0;
+  bool isSubmitting = false;
 
   @override
 void initState() {
@@ -318,28 +319,43 @@ void initState() {
   }
 
   Future<void> _pickDate(BuildContext context, bool isFrom) async {
+  DateTime now = DateTime.now();
+  DateTime firstDate = DateTime(now.year, now.month);
+  DateTime lastDate = DateTime(2100);
+
+  DateTime initDate = isFrom ? fromDate : toDate;
+
+  if (initDate.isBefore(firstDate)) {
+    initDate = firstDate;
+  } else if (initDate.isAfter(lastDate)) {
+    initDate = lastDate;
+  }
+
+  try {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: isFrom ? fromDate : toDate,
-      firstDate: DateTime(DateTime.now().year, DateTime.now().month),
-      lastDate: DateTime(2100),
-                builder: (context, child) {
-      return Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: Color(0xFF3C3FD5),
-            onPrimary: Colors.white,
-            onSurface: Colors.black,
-          ),
-
+      initialDate: initDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF3C3FD5),
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
             textButtonTheme: TextButtonThemeData(
-            style: TextButton.styleFrom(foregroundColor: Color(0xFF3C3FD5)),
+              style: TextButton.styleFrom(
+                foregroundColor: Color.fromARGB(255, 25, 28, 232),
+              ),
+            ),
           ),
-        ),
-        child: child!,
-      );
-    },
+          child: child!,
+        );
+      },
     );
+
     if (picked != null) {
       setState(() {
         if (isFrom) {
@@ -352,9 +368,20 @@ void initState() {
         }
       });
     }
+  } catch (e, stack) {
+    debugPrint("DatePicker error: $e\n$stack");
   }
+}
+
 
     Future<void> _saveUpdates() async {
+
+      if(isSubmitting) return;
+
+      setState(() {
+        isSubmitting = true;
+      });
+
       final id = (widget.id);
       print('OD-Pass ID: $id');
 
@@ -409,11 +436,20 @@ void initState() {
       }
     } catch (e) {
       _showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
+    } finally {
+      setState(() {
+        isSubmitting = false;
+      });
     }
   }
 
 
  void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
+
+  final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+  scaffoldMessenger.clearSnackBars();
+
     final snackBar = SnackBar(
       content: Row(
         children: [
@@ -439,6 +475,7 @@ void initState() {
 
 
   @override
+
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screenHeight = MediaQuery.of(context).size.height;
@@ -455,7 +492,9 @@ void initState() {
         elevation: 0,
         foregroundColor: Colors.black,
       ),
-      body: Container(
+      body: Stack(
+        children: [ 
+      Container(
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
@@ -584,11 +623,11 @@ void initState() {
                              if (!isApproved && !isRejected) ...[
                              const SizedBox(height: 12),
                             ElevatedButton.icon(
-                              onPressed: duration == -1 ? null : ()async {
+                              onPressed: (duration == -1 || isSubmitting) ? null : ()async {
                                 await _saveUpdates();
                               },
                               icon: const Icon(Icons.update),
-                              label: const Text("Save Changes"),
+                              label: const Text("Update"),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
@@ -609,6 +648,31 @@ void initState() {
           ),
         ),
       ),
+      if(isSubmitting)
+  Container(
+    color: Colors.black54.withOpacity(0.5),
+    child: const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(
+            color: Colors.white,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Updating Od Pass..',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          )
+        ],
+      )
+    ),
+  )
+        ]
+    ),
     );
   }
 

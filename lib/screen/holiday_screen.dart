@@ -87,7 +87,9 @@ child: Container(
       ),
         ),
       child : _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(
+            color: Colors.black87,
+          ))
           : _error != null
               ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
            : RefreshIndicator(
@@ -150,7 +152,7 @@ child: Container(
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Year: ${holiday['year']}',
+                              'Year: ${holiday['year'].split('-')[0]}',
                               style: const TextStyle(color: Colors.grey),
                             ),
                           ],

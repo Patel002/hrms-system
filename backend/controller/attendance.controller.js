@@ -94,7 +94,7 @@ const punchAttendance = async(req, res) => {
         }
 
         const enrollId = employee.attcode;
-        console.log("Enroll ID:", enrollId);
+        // console.log("Enroll ID:", enrollId);
 
         const newAttendance = await Attendance.create({
             emp_id,
@@ -119,8 +119,8 @@ const punchAttendance = async(req, res) => {
             verifyMode: 'Selfie'
         });
 
-        console.log("Attendance recorded:", newAttendance,);
-        console.log("Monitor Data recorded:", monitorData,);
+        // console.log("Attendance recorded:", newAttendance,);
+        // console.log("Monitor Data recorded:", monitorData,);
 
         res.status(201).json({
             message: "Attendance recorded successfully",
@@ -170,7 +170,7 @@ const getPunchDurations = async (req, res) => {
       order: [['created_at', 'ASC']],
     });
 
-    console.log('punch in date', punchIns.punch_time);
+    // console.log('punch in date', punchIns.punch_time);
 
     const punchOuts = await Attendance.findAll({
       where: { emp_id: empId, punchtype: 'OUTSTATION2' },
@@ -186,7 +186,7 @@ const getPunchDurations = async (req, res) => {
       let matchedIndex = -1;
       let matchedPunchInTime = null;
 
-     console.log('match punch in time', matchedPunchInTime);
+    //  console.log('match punch in time', matchedPunchInTime);
 
      punchIns.forEach((punchIn, index) => {
     const punchInTime = DateTime.fromISO(punchIn.created_at.replace(' ', 'T'));

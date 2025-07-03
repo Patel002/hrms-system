@@ -301,37 +301,49 @@ Widget build(BuildContext context) {
   ),
 
     drawer: buildDrawer(),
-    body: RefreshIndicator(
-    onRefresh: _refreshPage,
-    backgroundColor: Colors.white,
-    color: Colors.black87,
-    child: SingleChildScrollView(
-    physics: const AlwaysScrollableScrollPhysics(),
-    child : Container(
-      height: MediaQuery.of(context).size.height,
-      width: MediaQuery.of(context).size.width,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-          begin: Alignment.topRight,
-         end: Alignment.bottomLeft,
-        ),
-      ),
-      child: !isDataLoaded
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.black87),
-            )
-          : Padding(
-              padding: const EdgeInsets.all(16.0), 
-              child: Container(
-                child: buildCalendar(),
-              ),
+    body: Stack(
+    children: [
+    RefreshIndicator(
+      onRefresh: _refreshPage,
+      backgroundColor: Colors.white,
+      color: Colors.black87,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Container(
+          height: MediaQuery.of(context).size.height,
+          width: MediaQuery.of(context).size.width,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
             ),
           ),
+          child: !isDataLoaded
+              ? const Center(
+                  child: CircularProgressIndicator(color: Colors.black87),
+                )
+              : Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: buildCalendar(),
+                ),
         ),
+      ),
+    ),
+    
+    if (isDateProcessing)
+      Container(
+        color: Colors.black.withOpacity(0.3),
+        child: const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
           ),
-  );
-      }
+        ),
+      ),
+    ],
+  ),
+ );
+}
 
 Widget buildCalendar() {
   final today = DateTime.now();
@@ -483,7 +495,6 @@ Widget buildCalendar() {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
               ),
             ),
@@ -511,63 +522,77 @@ Widget buildCalendar() {
 
        return GestureDetector(
         onTap: () async {
-          if(isDateProcessing) return;
+          if (isDateProcessing) return;
 
           final isFuture = day.isAfter(today);
           final isAbsent = !isPresent && !isLeave;
 
-            if (isFuture || isAbsent) {
-          final message = isFuture
-              ? 'This is a future date No attendance or leave available.'
-              : 'No attendance or leave data available.';
-          _showCustomSnackBar(context, message, Colors.orange, Icons.warning_amber_outlined);
-          return;
-        }
-
+          if (isFuture || isAbsent) {
+            final message = isFuture
+                ? 'This is a future date. No attendance or leave available.'
+                : 'No attendance or leave data available.';
+            _showCustomSnackBar(
+              context,
+              message,
+              Colors.orange,
+              Icons.warning_amber_outlined,
+            );
+            return;
+          }
 
           setState(() {
             isDateProcessing = true;
           });
 
-          final color = isFullAttendance ? Colors.green.shade400 : Colors.orange;
+          try {
+            await Future.delayed(const Duration(milliseconds: 150));
 
-         Future.delayed(Duration.zero, (){
-          showDialog(
-          context: context,
-          barrierDismissible: true,
-          builder: (_) => Center(child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(color),
-        )),
-      );
-   });  
+            if (isFullLeave && leaveDurations[dayKey]?.isNotEmpty == true) {
+              final leaveData = leaveDurations[dayKey]![0];
 
-        await Future.delayed(const Duration(milliseconds: 600));
+              await Navigator.pushNamed(
+                context,
+                '/leave-status',
+                arguments: {
+                  'selectedDate': day,
+                  'leavesTypeId': leaveData['leaveTypeId'],
+                  'tabIndex': 1,
+                },
+              );
+              debugPrint('Leave Type ID: ${leaveData['leaveTypeId']}');
 
-        if (isFullLeave && leaveDurations[dayKey] != null && leaveDurations[dayKey]!.isNotEmpty) {
-          Navigator.pop(context);
-         await Navigator.pushNamed(context, '/leave-status', arguments: {
-            'selectedDate': day,
-            'leavesTypeId': leaveDurations[dayKey]![0]['leaveTypeId'],
-            'tabIndex': 1
-          });
-          
-          debugPrint('Leave Type ID: ${leaveDurations[dayKey]![0]['leaveTypeId']}');
+            } else if (isFullAttendance) {
+              await Navigator.pushNamed(
+                context,
+                '/attendance-history',
+                arguments: {'selectedDate': day},
+              );
 
-        } else if (isFullAttendance) {
-          Navigator.pop(context);
-          await Navigator.pushNamed(context, '/attendance-history', arguments: {'selectedDate': day});
-        } else if (isSplitDay && punchEntry.value.isNotEmpty && leaveEntry.value.isNotEmpty) {
-          _showHalfDayOptions(context, day, dayKey);
-        }else {
-          Navigator.pop(context);
-        }
+            } else if (isSplitDay &&
+                punchEntry.value.isNotEmpty &&
+                leaveEntry.value.isNotEmpty) {
+              _showHalfDayOptions(context, day, dayKey);
 
-        setState(() {
-          isDateProcessing = false;
-        });
-      },
+            } else {
+              Navigator.pop(context);
+            }
+          } catch (e) {
+            _showCustomSnackBar(
+              context,
+              "Something went wrong. Please try again.",
+              Colors.redAccent,
+              Icons.error_outline,
+            );
+            debugPrint("Navigation error: $e");
+          } finally {
+            if (mounted) {
+              setState(() {
+                isDateProcessing = false;
+              });
+            }
+          }
+        },
     
-
           child: Container(
           margin: const EdgeInsets.all(2.0),
           height: 50,
@@ -663,6 +688,11 @@ Widget buildCalendar() {
 }
 
 void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
+
+  final ScaffoldMessengerState scaffoldMessenger = ScaffoldMessenger.of(context);
+
+  scaffoldMessenger.clearSnackBars();
+
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       content: Row(
@@ -753,7 +783,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   onTap: () => Navigator.pushNamed(context, '/holiday'),
                 ),
                 ListTile(
-                  title: const Text('leave Application'),
+                  title: const Text('Leave Application'),
                   onTap: () => Navigator.pushNamed(context, '/leave'),
                 ),
                 ListTile(

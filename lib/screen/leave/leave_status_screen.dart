@@ -67,9 +67,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
         setState(() {
           leaveTypes = [{'type_id': null, 'name': 'All'}, ...data.cast<Map<String, dynamic>>()];
           
-          if (selectedTypeId == null) {
-            selectedTypeId = leaveTypes[0]['type_id'];
-          }
+          selectedTypeId ??= leaveTypes[0]['type_id'];
         });
       } else {
         print('Failed to load leave types');
@@ -365,6 +363,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
   String? selectedLeaveType;
   double leaveDuration = 1.0;
   final baseUrl = dotenv.env['API_BASE_URL'];
+  bool isSubmitting = false;
 
   bool get hasAttachment =>
       widget.leave['leaveattachment'] != null &&
@@ -412,27 +411,64 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
   }
 
   Future<void> selectDate(BuildContext context, bool isFromDate) async {
-    final DateTime picked =
-        await showDatePicker(
-          context: context,
-          initialDate: isFromDate ? fromDate : toDate,
-          firstDate: DateTime(2000),
-          lastDate: DateTime(2101),
-        ) ??
-        DateTime.now();
+  final DateTime? picked = await showDatePicker(
+    context: context,
+    initialDate: isFromDate ? fromDate : toDate,
+    firstDate: DateTime(2000),
+    lastDate: DateTime(2100),
+    builder: (context, child) {
+      return Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFF3C3FD5),
+            onPrimary: Colors.white,
+            onSurface: Colors.black,
+          ),
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(foregroundColor: Color(0xFF3C3FD5)),
+          ),
+        ),
+        child: child!,
+      );
+    },
+  );
 
-    if (isFromDate) {
-      setState(() {
-        fromDate = picked;
-        leaveDuration = calculateDuration(fromDate, toDate);
-      });
-    } else {
-      setState(() {
-        toDate = picked;
-        leaveDuration = calculateDuration(fromDate, toDate);
-      });
+  if (picked == null) return;
+
+  if (isFromDate) {
+
+    if (picked.isAfter(toDate)) {
+      _showCustomSnackBar(
+        context,
+        "Start date cannot be after end date",
+        Colors.orange,
+        Icons.warning_amber_outlined,
+      );
+      return;
     }
+
+    setState(() {
+      fromDate = picked;
+      leaveDuration = calculateDuration(fromDate, toDate);
+    });
+  } else {
+    if (picked.isBefore(fromDate)) {
+      _showCustomSnackBar(
+        context,
+        "End date cannot be before start date",
+        Colors.orange,
+        Icons.warning_amber_outlined,
+      );
+      return;
+    }
+
+    setState(() {
+      toDate = picked;
+      leaveDuration = calculateDuration(fromDate, toDate);
+    });
   }
+}
+
 
   Future<void> fetchLeaveTypes() async {
     if (leaveTypes.isNotEmpty) return;
@@ -465,6 +501,13 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
   }
 
   Future<void> updateLeaveDetails() async {
+
+    if(isSubmitting) return;
+
+    setState(() {
+      isSubmitting = true;
+    });
+
     final leaveId = widget.leave['id'];
     print('Leave ID: $leaveId');
     final reason = reasonController.text;
@@ -519,16 +562,17 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
           Icons.check,
         );
         
-    setState(() {
-    widget.leave['reason'] = reason;
-    widget.leave['start_date'] = fromDate.toIso8601String();
-    widget.leave['end_date'] = toDate.toIso8601String();
-    widget.leave['leave_duration'] = leaveDuration;
-    widget.leave['leave_type'] = selectedLeaveType;
-    if (_attachmentController != null) {
-      widget.leave['leaveattachment'] = _attachmentController!.path;
-    }
-  });
+        setState(() {
+        widget.leave['reason'] = reason;
+        widget.leave['start_date'] = fromDate.toIso8601String();
+        widget.leave['end_date'] = toDate.toIso8601String();
+        widget.leave['leave_duration'] = leaveDuration;
+        widget.leave['leave_type'] = selectedLeaveType;
+        
+        if (_attachmentController != null) {
+          widget.leave['leaveattachment'] = _attachmentController!.path;
+        }
+      });
 
       } else {
         final error = jsonDecode(responseBody);
@@ -547,6 +591,10 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
         Colors.red,
         Icons.error,
       );
+    }finally {
+      setState(() {
+        isSubmitting = false;
+      });
     }
   }
 
@@ -562,6 +610,10 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
     Color color,
     IconData icon,
   ) {
+
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    scaffoldMessenger.clearSnackBars();
+
     final snackBar = SnackBar(
       content: Row(
         children: [
@@ -579,7 +631,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      duration: const Duration(seconds: 2),
+      duration: const Duration(seconds: 1),
     );
 
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -618,7 +670,9 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
       ),
     ),
   ),
-      body: Container(
+      body:Stack( 
+     children: [
+      Container(
         decoration: const BoxDecoration(
       gradient: LinearGradient(
         colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
@@ -800,14 +854,14 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                       DropdownButton<String>(
                         value: leaveDayType,
                         items:
-                            ['Full Day', 'Half Day']
-                                .map(
-                                  (type) => DropdownMenuItem(
-                                    value: type,
-                                    child: Text(type),
-                                  ),
-                                )
-                                .toList(),
+                       ['Full Day', 'Half Day']
+                        .map(
+                          (type) => DropdownMenuItem(
+                            value: type,
+                            child: Text(type),
+                          ),
+                        )
+                        .toList(),
                         onChanged: (val) {
                           setState(() {
                             leaveDayType = val!;
@@ -903,11 +957,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                         }
                       } catch (e) {
                         print('Download/open error: $e');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Failed to download attachment'),
-                          ),
-                        );
+                        _showCustomSnackBar(context, 'Failed to open attachment', Colors.red.shade400, Icons.error_outline);
                       }
                     },
                     child: Container(
@@ -947,13 +997,13 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                   const SizedBox(height: 10),
                   ElevatedButton.icon(
                     onPressed:
-                        leaveDuration == -1
+                        (leaveDuration == -1 || isSubmitting)
                             ? null
                             : () async {
                               await updateLeaveDetails();
                             },
                     icon: const Icon(Icons.update),
-                    label: const Text('Update'),
+                    label: const Text('Update'),       
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
@@ -962,18 +1012,73 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
+                      iconColor: Colors.black87,
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black87,
                     ),
-                  ),
+//                       child: isSubmitting
+//       ? Row(
+//           mainAxisSize: MainAxisSize.min,
+//           children: const [
+//             SizedBox(
+//               height: 20,
+//               width: 20,
+//               child: CircularProgressIndicator(
+//                 strokeWidth: 2,
+//                 color: Colors.black87,
+//               ),
+//             ),
+//             SizedBox(width: 12),
+//             Text(
+//               'Updating...',
+//               style: TextStyle(color: Colors.black87),
+//             ),
+//           ],
+//         )
+//       : Row(
+//           mainAxisSize: MainAxisSize.min,
+//           children: const [
+//             Icon(Icons.update, color: Colors.black87),
+//             SizedBox(width: 8),
+//             Text('Update'),
+        //   ],
+        // ),
+),
                 ],
               ],
             ),
           ),
         ),
       ),
-      ),
     ),
+  ),
+  if(isSubmitting)
+  Container(
+    color: Colors.black87.withOpacity(0.5),
+    child: const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(
+            color: Colors.white,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Updating Leave...',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          )
+        ],
+      )
+    ),
+  )
+     ],
+)
   );
-  }
+}
 
   Widget _buildDetailRow({
     required IconData icon,
@@ -996,7 +1101,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                 const SizedBox(height: 2),
                 InkWell(
                   onTap: onTap,
-                  child: Text(value, style: TextStyle(color: Colors.black)),
+                  child: Text(value, style: TextStyle(color: Colors.black87)),
                 ),
               ],
             ),

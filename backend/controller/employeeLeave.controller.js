@@ -29,7 +29,7 @@ const createLeave = async (req, res) => {
         const fileUrl = await uploadOnCloudinary(req.file.path);  
         attachment = fileUrl;
 
-      // console.log("fileUrl",fileUrl); 
+         console.log("fileUrl",fileUrl); 
       }
         
     const duration = parseFloat(leave_duration);
@@ -44,7 +44,7 @@ const createLeave = async (req, res) => {
             return res.status(404).json({ message: "Employee not found" });
         }
         const employeeId = employee.em_code;
-        // console.log("Employee ID:", employee.em_code);
+        console.log("Employee ID:", employee.em_code);
 
         const leaveType = await LeaveTypes.findOne({ where: { name: req.body.leave_type } });
         if (!leaveType) return res.status(400).json({ message: "Invalid leave type" });
@@ -56,6 +56,95 @@ const createLeave = async (req, res) => {
         if (!company) {
             return res.status(404).json({ message: "Company not found" });
         }
+
+        const isSingleDayLeave = start_date === end_date;
+        console.log("isSingleDayLeave",isSingleDayLeave);
+
+        if(isSingleDayLeave && parseFloat(leave_duration) === 0.5){
+
+          const existingHalfLeave = await EmployeeLeave.findAll({
+            where: {
+              em_id: employeeId,
+              start_date: start_date,
+              end_date: end_date,
+              leave_status: {
+                [Op.in]: ["Approve", "Not Approve"]
+              }
+            }
+          });
+
+          console.log("existingHalfLeave",existingHalfLeave);
+
+          let totalDuration = 0;
+          let fullDayCount = 0;
+          let halfDayCount = 0;
+          let sameTypeHalfDayLeaveExist = false; 
+
+          existingHalfLeave.forEach((leave) => {
+            
+            const duration = parseFloat(leave.leave_duration);
+            totalDuration += duration;
+
+            if (duration === 1) fullDayCount++;
+            if (duration === 0.5) halfDayCount++;
+
+            if(duration === 0.5 && leave.leave_type === leave_type){
+              sameTypeHalfDayLeaveExist = true;
+            }
+
+          });
+
+          console.log("totalDuration",totalDuration);
+
+        if (totalDuration + 0.5 > 1 || sameTypeHalfDayLeaveExist) {
+        let message = "You have already applied for leave on this date.";
+
+        if (fullDayCount >= 1) {
+          message = "You have already applied for leave in this period of date.";
+        } else if (sameTypeHalfDayLeaveExist) {
+          message = `You have already applied for half day leave of ${leave_type} on this date.`;
+        } else if (halfDayCount >= 1) {
+          message = "You have already applied for half day leave on this date.";
+        }
+
+        return res.status(400).json({ message });
+      }
+        }else {
+        const isLeaveExistsWithSameDate = await EmployeeLeave.findOne({
+          where: {
+            em_id: employeeId,
+            [Op.or]: [
+              {
+                start_date: {
+                  [Op.between]: [start_date, end_date]
+                },
+              },
+              {
+                end_date: {
+                  [Op.between]: [start_date, end_date]
+                },
+              },
+              {
+                start_date: {
+                  [Op.lte]: start_date,
+                },
+                end_date: {
+                  [Op.gte]: end_date,
+                },
+              },
+            ],
+            leave_status: {
+              [Op.in]: ["Approve", "Not Approve"]
+            }
+          },
+        })
+        if(isLeaveExistsWithSameDate){
+            return res.status(400).json({ message: "You have already applied for leave in this period of date" });
+        }
+        console.log("isLeaveExistsWithSameDate",isLeaveExistsWithSameDate);
+      }
+
+        
        if (leaveType.name !== "Leave Without Pay") {
         const credit = await EmployeeLeaveBalance.sum('number_of_days', {
             where: {
@@ -65,7 +154,7 @@ const createLeave = async (req, res) => {
             }
           });
 
-          // console.log("Credit:", credit);
+          console.log("Credit:", credit);
 
         if (credit === null) {
         return res.status(400).json({
@@ -79,11 +168,9 @@ const createLeave = async (req, res) => {
               leave_status: "Debit"
             }
           });
-
-          // console.log("Debit:", debit);
           
           const available = (credit || 0) + (debit || 0);
-          // console.log("Available Leave Days:", available);
+          console.log("Available Leave Days:", available);
           
           if (leave_duration > available) {
             return res.status(400).json({
@@ -92,23 +179,6 @@ const createLeave = async (req, res) => {
           }
         }
        
-    //     const usedDays = await EmployeeLeaveBalance.sum("number_of_days", {
-    //         where: {
-    //             emp_id: employeeId,
-    //             leave_type_id: leaveType.type_id,
-    //             leave_status: "approved",
-    //         },
-    //     });
-
-    //     const totalEntitled = leaveType.balance;
-    //     const used = usedDays || 0;
-    //     const remaining = totalEntitled - used;
-
-    //     if (leave_duration > remaining) {
-    //         return res.status(400).json({
-    //             message: `Insufficient balance for ${leave_type}. Remaining: ${remaining} day(s).`,
-    //         });
-    //     }
 
         const leave = await EmployeeLeave.create({
             em_id: employeeId,
@@ -135,7 +205,7 @@ const createLeave = async (req, res) => {
         console.error("Error creating leave:", error);
         return res.status(500).json({ message: "Server side error" });
     }
-}
+} 
 
 // const rejectLeave = async (req, res) => {
 //     const { id } = req.params;
@@ -183,13 +253,14 @@ const getLeavesByStatusForEmployee = async (req, res) => {
 
         const leaves = await EmployeeLeave.findAll({ where: whereCondition });
 
+        console.log("leave_status",leaves.leave_status);
+       console.log("leaves: ", leaves);
         return res.status(200).json({ leaves });
-      //   console.log("leave_status",leaves.leave_status);
-      //  console.log("leaves: ", leaves);
 
     } catch (error) {
         console.error("Error fetching leaves by status for employee:", error);
-        return res.status(500).json({ message: "Server error" });
+        
+        return res.status(500).json({ message: "Server error from get leaves by status for employee" });
     }
 };
 
@@ -216,23 +287,102 @@ const updateLeaveApplication = async(req, res) => {
             return res.status(404).json({ message: "Leave not found" });
         }
         
-        // console.log("leave",updateData);
+        console.log("leave",updateData);
 
         const updatedLeaveTypeName = updateData.leave_type || leave.leave_type;
 
-        // console.log("updatedLeaveTypeName",updatedLeaveTypeName);
+        console.log("updatedLeaveTypeName",updatedLeaveTypeName);
+
+        const hasDateChange =
+        updateData.start_date ||
+        updateData.end_date ||
+        updateData.leave_duration ||
+        updateData.leave_type;
+
+        if(hasDateChange){
 
         let updatedLeaveDuration = updateData.leave_duration || leave.leave_duration;
 
         updatedLeaveDuration = parseFloat(updatedLeaveDuration);
 
-        if (!(updatedLeaveDuration === 0.5 || updatedLeaveDuration >= 1))
+        if (isNaN(updatedLeaveDuration) || !(updatedLeaveDuration === 0.5 || updatedLeaveDuration >= 1))
             {
-                // console.log("Invalid input:", updatedLeaveDuration);
+                console.log("Invalid input:", updatedLeaveDuration);
             return res.status(400).json({
                 message: "Leave duration must be at least 1 day or exactly 0.5 for half-day leave.",
             });
         }
+
+        const updatedStartDate = updateData.start_date || leave.start_date;
+
+        const updatedEndDate = updateData.end_date || leave.end_date;
+
+        console.log("updated start date", updatedStartDate);
+        console.log("update end date", updatedEndDate);
+
+        const isSingleDay = updatedStartDate === updatedEndDate;
+
+        if (isSingleDay && updatedLeaveDuration === 0.5) {
+        const existingLeaves = await EmployeeLeave.findAll({
+          where: {
+            em_id: leave.em_id,
+            start_date: updatedStartDate,
+            end_date: updatedEndDate,
+            leave_status: { [Op.in]: ["Approve", "Not Approve"] },
+            id: { [Op.ne]: leave.id } 
+          }
+        });
+
+        let totalDuration = 0;
+        let fullDayCount = 0;
+        let halfDayCount = 0;
+        let sameTypeHalfDayLeaveExist = false;
+
+        existingLeaves.forEach((existingLeave) => {
+          const dur = parseFloat(existingLeave.leave_duration);
+          totalDuration += dur;
+
+          if (dur === 1) fullDayCount++;
+          if (dur === 0.5) halfDayCount++;
+          if (dur === 0.5 && existingLeave.leave_type === updatedLeaveTypeName) {
+        sameTypeHalfDayLeaveExist = true;
+      }
+        });
+
+        if (totalDuration + 0.5 > 1 || sameTypeHalfDayLeaveExist) {
+          let message = "You have already applied for leave on this date.";
+          if (fullDayCount >= 1) {
+            message = "You have already applied for leave in this period of date.";
+          } else if (sameTypeHalfDayLeaveExist) {
+            message = `You have already applied for half day leave of ${updatedLeaveTypeName} on this date.`;
+          } else if (halfDayCount >= 1) {
+            message = "You have already applied for half day leave on this date.";
+          }
+          return res.status(400).json({ message });
+        }
+
+      } else {
+          const overlapping = await EmployeeLeave.findOne({
+            where: {
+              em_id: leave.em_id,
+              leave_status: { [Op.in]: ["Approve", "Not Approve"] },
+              id: { [Op.ne]: leave.id },
+              [Op.or]: [
+                { start_date: { [Op.between]: [updatedStartDate, updatedEndDate] } },
+                { end_date: { [Op.between]: [updatedStartDate, updatedEndDate] } },
+                {
+                  start_date: { [Op.lte]: updatedStartDate },
+                  end_date: { [Op.gte]: updatedEndDate }
+                }
+            ]
+          }
+        });
+
+        if (overlapping) {
+          return res.status(400).json({ message: "You have already applied for leave in this period of date." });
+        }
+      }
+    }
 
         const leaveType = await LeaveTypes.findOne({ where: { name: updatedLeaveTypeName } });
         if (!leaveType) {
@@ -271,7 +421,7 @@ const updateLeaveApplication = async(req, res) => {
           // console.log("Debit:", debit);
           
           const available = (credit || 0) + (debit || 0);
-          // console.log("Available Leave Days:", available);
+          console.log("Available Leave Days:", available);
           
           if (leave.leave_duration > available) {
             return res.status(400).json({
@@ -283,7 +433,7 @@ const updateLeaveApplication = async(req, res) => {
           const result = await uploadOnCloudinary(req.file.path);
           if(result && result.secure_url){
             updateData.leaveattachment = result.secure_url;
-            // console.log("updated attachment",updateData.leaveattachment);
+            console.log("updated attachment",updateData.leaveattachment);
           }
           
         }
@@ -291,7 +441,7 @@ const updateLeaveApplication = async(req, res) => {
        
 
         updateData.update_id = leave.em_id;
-        // console.log("updated id",updateData.update_id);
+        console.log("updated id",updateData.update_id);
 
         const updateResult = await leave.update(updateData);
 

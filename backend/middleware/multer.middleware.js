@@ -3,7 +3,7 @@ import path from 'path';
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null,'uploads','profileImage'); 
+    cb(null,'../uploads/profileImage'); 
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + req.params.em_id + '_' + req.body.em_username;
@@ -18,13 +18,19 @@ const fileFilter = (req, file, cb) => {
   cb(null, true); 
 };
 
+export const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+});
+
+
 
 const leaveFileStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null,'uploads'); 
+    cb(null,'','uploads'); 
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() +  '_' + req.body.em_username;
+    const uniqueSuffix = Date.now() + '_' + (Math.random() * 1e9);
     
     cb(null, uniqueSuffix + path.extname(file.originalname));
 
@@ -36,14 +42,10 @@ const leaveFileFilter = (req, file, cb) => {
   cb(null, true); 
 };
 
-export const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-});
 
 export const leaveFileUpload = multer({
-  leaveFileStorage: leaveFileStorage,
-  leaveFileFilter: leaveFileFilter,
+  storage: leaveFileStorage,
+  fileFilter: leaveFileFilter,
 });
 
 

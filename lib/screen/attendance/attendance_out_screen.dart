@@ -684,5 +684,5 @@ final greenButtonStyle = ElevatedButton.styleFrom(
   shape: RoundedRectangleBorder(
     borderRadius: BorderRadius.circular(12),
   ),
-  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
+  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
 );

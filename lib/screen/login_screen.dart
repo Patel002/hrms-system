@@ -45,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.clear();
         await prefs.setString('token', data['token']);
 
-        _showCustomSnackBar(context, 'Login successful', Colors.green, Icons.check);
+        _showCustomSnackBar(context, 'Login successful', Colors.green, Icons.verified_outlined);
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         _showCustomSnackBar(context, data['message'] ?? 'Invalid login', Colors.red, Icons.error);
@@ -59,6 +59,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
+
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    scaffoldMessenger.clearSnackBars();
+
     final snackBar = SnackBar(
       content: Row(
         children: [
@@ -76,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      duration: const Duration(seconds: 2),
+      duration: const Duration(seconds: 1),
     );
 
     ScaffoldMessenger.of(context).showSnackBar(snackBar);

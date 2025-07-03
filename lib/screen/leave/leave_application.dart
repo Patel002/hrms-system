@@ -171,10 +171,8 @@ if(startDate !=null && endDate !=null){
           Colors.green,
           Icons.check_circle,
         );
-         Future.delayed( const Duration(seconds: 2), () {
-           setState(() { 
-           });
-         });
+
+        await Future.delayed(const Duration(seconds: 1));
 
            _resetForm();
 
@@ -186,9 +184,14 @@ if(startDate !=null && endDate !=null){
           Colors.red,
           Icons.error,
         );
+
+       await Future.delayed(const Duration(seconds: 1));
+
       }
     }catch(e){
       _showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
+      await Future.delayed(const Duration(seconds: 1));
+    }finally {
       setState(() {
         isSubmitting = false;
       });
@@ -220,6 +223,10 @@ if(startDate !=null && endDate !=null){
 }
 
   void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    scaffoldMessenger.clearSnackBars();
+
     final snackBar = SnackBar(
       content: Row(
         children: [
@@ -237,11 +244,12 @@ if(startDate !=null && endDate !=null){
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       margin: const EdgeInsets.all(16),
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 1),
     );
 
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
+
 
 @override
 Widget build(BuildContext context) {
@@ -259,7 +267,7 @@ child: Container(
       ),
 child: AppBar(
         title: const Text(
-          "Leave Request",
+          "Leave Application",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
        backgroundColor: Colors.transparent, 
@@ -367,19 +375,26 @@ child: AppBar(
                               );
                             },
                                 );
-                                if (picked != null) {
-                          setState(() {
-                            startDate = picked;
-                            if (endDate != null) {
-                              final diff = endDate!.difference(startDate!).inDays;
-                              if (diff > 0) {
-                                type = diff > 1 ? 'More than One Day' : null; 
+                           if (picked != null) {
+                              if (endDate != null && picked.isAfter(endDate!)) {
+                                _showCustomSnackBar(context, "Start date cannot be after end date", Colors.yellow.shade900, Icons.date_range_outlined);
+
+                                setState(() {
+                                  startDate = null;
+                                });
+                                
+                                return;
+                              } 
+                                setState(() {
+                                  startDate = picked;
+                                  if (endDate != null) {
+                                    final diff = endDate!.difference(startDate!).inDays;
+                                    type = diff > 1 ? 'More than One Day' : null;
+                                  }
+                                });
                               }
-                            }
-                          });
-                        }
-                      },
-                              child: buildDateTile("Start Date", startDate ),
+                            },
+                          child: buildDateTile("Start Date", startDate ),
                             ),
                           ),
                           const SizedBox(width: 5),
@@ -406,17 +421,24 @@ child: AppBar(
                             },
                                 );
                               if (picked != null) {
-                              setState(() {
-                                endDate = picked;
-                                if (startDate != null) {
-                                  final diff = endDate!.difference(startDate!).inDays;
-                                  if (diff > 0) {
-                                    type = diff > 1 ? 'More than One Day' : null;
-                                  }
+                                if (startDate != null && picked.isBefore(startDate!)) {
+                                  _showCustomSnackBar(context, "End date cannot be before start date", Colors.yellow.shade900, Icons.date_range_outlined);
+
+                                  setState(() {
+                                    endDate = null;
+                                  });
+
+                                  return;
+                                } 
+                                  setState(() {
+                                    endDate = picked;
+                                    if (startDate != null) {
+                                      final diff = endDate!.difference(startDate!).inDays;
+                                      type = diff > 1 ? 'More than One Day' : null;
+                                    }
+                                  });
                                 }
-                              });
-                            }
-                          },
+                              },
                       child: buildDateTile("End Date", endDate),
                     ),
                   ),
@@ -536,7 +558,7 @@ child: AppBar(
                             letterSpacing: 0.5,
                             ),
                           ),
-                          onPressed: submitForm,
+                          onPressed: isSubmitting ? null : submitForm,
                         ),
                       ),
                     ],
@@ -625,26 +647,26 @@ child: AppBar(
   );
   }
 
-                  Widget buildDateTile(String label, DateTime? date) {
-                  return Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                  decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(5),
-                  color: Colors.white60,
-                  ),
-                  child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                  Icon(Icons.calendar_today, color: const Color(0xFF4361EE)),
-                  Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 4),
-                  Text(
-                  date != null ? date.toLocal().toString().split(' ')[0] : 'Select',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF212529)),
-                  ),
-                  ],
-                  ),
-                  );
-                }
-              }
+        Widget buildDateTile(String label, DateTime? date) {
+        return Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(5),
+        color: Colors.white60,
+        ),
+        child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+        Icon(Icons.calendar_today, color: const Color(0xFF4361EE)),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 4),
+        Text(
+        date != null ? date.toLocal().toString().split(' ')[0] : 'Select',
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF212529)),
+        ),
+       ],
+      ),
+     );
+    }
+   }

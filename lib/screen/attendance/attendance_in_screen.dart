@@ -263,11 +263,11 @@ void dispose() {
       );
 
       if (response.statusCode == 201) {
-        final responseData = jsonDecode(response.body);
+        // final responseData = jsonDecode(response.body);
 
-        if (responseData['warning'] != null) {
-        _showCustomSnackBar(context, responseData['warning'], Colors.orange.shade700, Icons.warning_amber_outlined);
-      }
+      //   if (responseData['warning'] != null) {
+      //   _showCustomSnackBar(context, responseData['warning'], Colors.orange.shade700, Icons.warning_amber_outlined);
+      // }
         _showCustomSnackBar(context, 'Punch In marked successfully', Colors.green, Icons.check_circle);
 
         _resetForm();
@@ -588,7 +588,7 @@ Widget build(BuildContext context) {
               SizedBox(height: 16),
               Text(
                 'Submitting, please wait...',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+                style: TextStyle(color: Colors.white, fontSize: 16,),
                 textAlign: TextAlign.center,
                   ),
                 ],

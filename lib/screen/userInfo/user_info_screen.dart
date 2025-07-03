@@ -26,7 +26,7 @@ class _UserInfoState extends State<UserInfo> {
   DateTime? dateOfJoining;
   bool isLoading = true;
   bool isSubmitting = false;  
-  late XFile? _imageFile;
+  XFile? _imageFile;
 
 @override
 void initState() {
@@ -550,7 +550,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
         ),
         enableRotation: false,
         minScale: PhotoViewComputedScale.contained,
-        maxScale: PhotoViewComputedScale.covered * 2,
+        maxScale: PhotoViewComputedScale.contained,
         initialScale: PhotoViewComputedScale.contained,
       ),
     ),

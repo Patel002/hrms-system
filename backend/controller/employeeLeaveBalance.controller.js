@@ -4,6 +4,7 @@ import {
   LeaveTypes
 } from '../utils/join.js';
 
+
 const getEmployeeLeaveBalance = async (req, res) => {
   const { em_code } = req.params;
 
@@ -36,7 +37,9 @@ const getEmployeeLeaveBalance = async (req, res) => {
         leave_type_id: b.leave_type_id,
         leave_type_name: b.leave_type.name, 
         leave_short_name: b.leave_type.leave_short_name,
-        available_balance: credit - debit
+        available_balance: credit - debit,
+        credit: credit, 
+        debit: debit
       };
     });
 

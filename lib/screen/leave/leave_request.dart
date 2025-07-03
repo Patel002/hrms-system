@@ -419,7 +419,9 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
     return DefaultTabController(
       length: 3,
       child: Scaffold(
+      backgroundColor: Colors.white,
         appBar: AppBar(
+          backgroundColor: Colors.white,
           title: Text("Leave Requests"),
           bottom: TabBar(
             controller: _tabController,
