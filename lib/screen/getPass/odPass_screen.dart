@@ -150,6 +150,11 @@ Future<void> handlePullToRefresh() async {
 }
 
 void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
+
+  final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+  scaffoldMessenger.clearSnackBars();
+  
     final snackBar = SnackBar(
       content: Row(
         children: [
@@ -426,7 +431,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
               SizedBox(height: 16),
               Text(
                 'Submitting, please wait...',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold ),
                 textAlign: TextAlign.center,
                   ),
                 ],

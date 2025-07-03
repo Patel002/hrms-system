@@ -238,6 +238,11 @@ Future<void> _onRefresh() async {
   }
 
 void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
+
+  final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+  scaffoldMessenger.clearSnackBars();
+  
     final snackBar = SnackBar(
       content: Row(
         children: [

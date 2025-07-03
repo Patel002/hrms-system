@@ -543,8 +543,8 @@ child: AppBar(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          backgroundColor:  Color(0XFF123458),
-                          foregroundColor: Colors.white,
+                          backgroundColor: Color(0xFFF5F7FA), 
+                          foregroundColor: Color(0XFF123458),
                           elevation: 1,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           shadowColor: Colors.transparent,

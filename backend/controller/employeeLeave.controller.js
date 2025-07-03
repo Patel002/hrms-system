@@ -1,6 +1,9 @@
 import { EmployeeLeave, Employee, LeaveTypes, Company, EmployeeLeaveBalance } from "../utils/join.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Op } from "sequelize";
+import fs from "fs";
+
+const MAX_FILE_SIZE_MB = 10;
 
 const createLeave = async (req, res) => {
     const {
@@ -24,14 +27,7 @@ const createLeave = async (req, res) => {
     // console.log("Request Body:", req.body);
 
     try {
-
-      if(req.file){
-        const fileUrl = await uploadOnCloudinary(req.file.path);  
-        attachment = fileUrl;
-
-         console.log("fileUrl",fileUrl); 
-      }
-        
+  
     const duration = parseFloat(leave_duration);
     if (isNaN(duration) || !(duration === 0.5 || duration >= 1)) {
         return res.status(400).json({
@@ -178,6 +174,27 @@ const createLeave = async (req, res) => {
             });
           }
         }
+
+        if(req.file){
+
+        const fileStats = fs.statSync(req.file.path);
+        const fileSizeInMB = fileStats.size / (1024 * 1024);
+
+        if (fileSizeInMB > MAX_FILE_SIZE_MB) {
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({
+          message: `Attachment exceeds 10MB limit (${fileSizeInMB.toFixed(2)} MB)`,
+        });
+      }
+
+        const fileUrl = await uploadOnCloudinary(req.file.path); 
+        if (!fileUrl || !fileUrl.url) {
+        return res.status(500).json({ message: "Cloudinary upload failed" });
+      } 
+        attachment = fileUrl;
+
+         console.log("fileUrl",fileUrl); 
+      }
        
 
         const leave = await EmployeeLeave.create({

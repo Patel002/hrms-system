@@ -598,9 +598,18 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
     }
   }
 
+  Future<void> _refreshData() async {
+    widget.leave['reason'] = reasonController.text;
+    widget.leave['start_date'] = fromDate.toIso8601String();
+    widget.leave['end_date'] = toDate.toIso8601String();
+    widget.leave['leave_duration'] = leaveDuration;
+    widget.leave['leave_type'] = selectedLeaveType;
+    widget.leave['leaveattachment'] = _attachmentController?.path;
+  }
+
   Future<void> _refreshPage() async {
     await fetchLeaveTypes();
-    // widget.leave['reason'] = reasonController.text;
+    _refreshData();
     setState(() {});
   }
 
