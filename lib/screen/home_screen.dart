@@ -380,18 +380,50 @@ leaveDurations.forEach((date, leaves) {
    final calendarDataSource = _InlineAppointmentDataSource(appointments);
 
   return SafeArea(
-    child: Padding(
-      padding: const EdgeInsets.all(8.0),
+    child: Column(
+    children: [
+     SizedBox(
+      width: double.infinity,
+      height: MediaQuery.of(context).size.height * 0.48,
       child: SfCalendar(
         view: CalendarView.month,
         initialDisplayDate: today,
         initialSelectedDate: today,
         showNavigationArrow: true,
-        monthViewSettings: const MonthViewSettings(
-          showAgenda: false,
-          appointmentDisplayMode: MonthAppointmentDisplayMode.indicator,
-        ),
+        // monthViewSettings: const MonthViewSettings(
+        //   showAgenda: false,
+        //   appointmentDisplayMode: MonthAppointmentDisplayMode.indicator,
+        // ),
         dataSource: calendarDataSource as CalendarDataSource,
+            headerStyle: CalendarHeaderStyle(
+            textAlign: TextAlign.center,
+            backgroundColor:  Color(0xFFF5F7FA),
+            textStyle: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          viewHeaderStyle: ViewHeaderStyle(
+            backgroundColor: Colors.teal.shade50,
+            dayTextStyle: const TextStyle(
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
+          ),
+        monthViewSettings: MonthViewSettings(
+        showAgenda: false,
+        appointmentDisplayMode: MonthAppointmentDisplayMode.indicator,
+        numberOfWeeksInView: 6,
+        dayFormat: 'EEE',
+        monthCellStyle: MonthCellStyle(
+          textStyle: const TextStyle(fontSize: 11, color: Colors.black87),
+          trailingDatesTextStyle: TextStyle(color: Colors.grey.shade400, fontSize: 10),
+          leadingDatesTextStyle: TextStyle(color: Colors.grey.shade400, fontSize: 10),
+        ),
+      ),
+      
+
         onTap: (CalendarTapDetails details) async {
           if (details.targetElement == CalendarElement.calendarCell && details.date != null) {
             final DateTime tappedDate = details.date!;
@@ -457,15 +489,50 @@ leaveDurations.forEach((date, leaves) {
               if (mounted) {
                 setState(() {
                   isDateProcessing = false;
-                });
+               });
+                }
               }
             }
-          }
-        },
+          },
+        ),
       ),
-    ),
+      const SizedBox(height: 8),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            buildLegendItem(Colors.green.shade300, 'Present'),
+            buildLegendItem(Colors.orangeAccent, 'Half Day'),
+            buildLegendItem(Colors.redAccent, 'Leave'),
+          ],
+        ),
+      ),
+    ],
+  ),
+);
+}
+
+Widget buildLegendItem(Color color, String label) {
+  return Row(
+    children: [
+      Container(
+        width: 12,
+        height: 12,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+        ),
+      ),
+      const SizedBox(width: 6),
+      Text(
+        label,
+        style: const TextStyle(fontSize: 12),
+      ),
+    ],
   );
 }
+
 
 void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
 
@@ -488,7 +555,6 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
     ),
   );
 }
-
       Widget buildDrawer() {
       return Drawer(
         child: Container(

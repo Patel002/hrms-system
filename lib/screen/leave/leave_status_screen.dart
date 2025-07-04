@@ -27,6 +27,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
   late TabController _tabController;
   String? emUsername;
   String? compFname;
+  String? rejectedReason;
   String? departmentName;
   int initialTabIndex = 0;
   bool _isControllerInitialized = false;
@@ -309,6 +310,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
                             emUsername: emUsername ?? '',
                             departmentName: departmentName ?? '',
                             compFname: compFname ?? '',
+                            rejectedReason: leave['rejected_reason'] ?? '',
                       ),
                     ),
                   );
@@ -340,6 +342,7 @@ class LeaveDetailPage extends StatefulWidget {
   final String emUsername;
   final String departmentName;
   final String compFname;
+  final String rejectedReason;
 
   const LeaveDetailPage({
     super.key,
@@ -347,6 +350,7 @@ class LeaveDetailPage extends StatefulWidget {
     required this.emUsername,
     required this.departmentName,
     required this.compFname,
+    required this.rejectedReason,
   });
 
   @override
@@ -656,6 +660,9 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
         widget.leave['leaveattachment'] != null &&
         widget.leave['leaveattachment'] != '';
 
+    final bool isReadOnly = isApproved || isRejected;
+
+
   return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: PreferredSize(
@@ -734,6 +741,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -833,7 +841,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                         icon: Icons.date_range_outlined,
                         title: 'From',
                         value: "${fromDate.toLocal()}".split(' ')[0],
-                        onTap: () => selectDate(context, true),
+                        onTap: isReadOnly ? null : () => selectDate(context, true),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -842,7 +850,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                         icon: Icons.date_range_outlined,
                         title: 'To',
                         value: "${toDate.toLocal()}".split(' ')[0],
-                        onTap: () => selectDate(context, false),
+                        onTap: isReadOnly ? null : () => selectDate(context, false),
                       ),
                     ),
                   ],
@@ -871,7 +879,9 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                           ),
                         )
                         .toList(),
-                        onChanged: (val) {
+                        onChanged: isReadOnly 
+                          ? null
+                        : (val) {
                           setState(() {
                             leaveDayType = val!;
                             leaveDuration = calculateDuration(fromDate, toDate);
@@ -889,15 +899,21 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+               
+               
                 const SizedBox(height: 16),
+               
                 TextField(
                   controller: reasonController,
+                  readOnly: isReadOnly,
                   decoration: InputDecoration(
                     labelText: 'Leave Reason',
                     border: OutlineInputBorder(),
                   ),
                 ),
+                
                 const SizedBox(height: 16),
+                
                 Text(
                   'Leave Attachment',
                   style: theme.textTheme.titleSmall?.copyWith(
@@ -918,10 +934,17 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                   ),
                 if (_attachmentController == null && !hasAttachment)
                   Text('No file selected', style: theme.textTheme.bodyMedium),
+                
                 const SizedBox(height: 8),
+
+                if(!isReadOnly) ...[
                 ElevatedButton.icon(
                   icon: const Icon(Icons.attach_file),
                   label: const Text('Select File'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFE4EBF5),
+                    foregroundColor: Colors.black87,
+                  ),
                   onPressed:
                       (isApproved || isRejected)
                           ? null
@@ -935,6 +958,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                             }
                           },
                 ),
+              ],
 
                 if (hasAttachment) ...[
                   const SizedBox(height: 16),
@@ -1002,6 +1026,32 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                     ),
                   ),
                 ],
+                
+                if (isRejected && widget.leave['reject_reason'] != null && widget.leave['reject_reason'].toString().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Reject Reason',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.05),
+                    border: Border.all(color: Colors.red.shade200),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    widget.leave['reject_reason'],
+                    style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red.shade700),
+                  ),
+                ),
+              ],
+
                 if (!isApproved && !isRejected) ...[
                   const SizedBox(height: 10),
                   ElevatedButton.icon(
@@ -1053,6 +1103,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
         //   ],
         // ),
 ),
+
                 ],
               ],
             ),

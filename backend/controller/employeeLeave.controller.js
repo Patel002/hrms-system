@@ -74,7 +74,7 @@ const createLeave = async (req, res) => {
           let totalDuration = 0;
           let fullDayCount = 0;
           let halfDayCount = 0;
-          let sameTypeHalfDayLeaveExist = false; 
+          // let sameTypeHalfDayLeaveExist = false; 
 
           existingHalfLeave.forEach((leave) => {
             
@@ -84,21 +84,23 @@ const createLeave = async (req, res) => {
             if (duration === 1) fullDayCount++;
             if (duration === 0.5) halfDayCount++;
 
-            if(duration === 0.5 && leave.leave_type === leave_type){
-              sameTypeHalfDayLeaveExist = true;
-            }
+            // if(duration === 0.5 && leave.leave_type === leave_type){
+            //   sameTypeHalfDayLeaveExist = true;
+            // }
 
           });
 
           console.log("totalDuration",totalDuration);
 
-        if (totalDuration + 0.5 > 1 || sameTypeHalfDayLeaveExist) {
+        // if (totalDuration + 0.5 > 1 || sameTypeHalfDayLeaveExist) {
+        // let message = "You have already applied for leave on this date.";
+        if (totalDuration + 0.5 > 1) {
         let message = "You have already applied for leave on this date.";
 
         if (fullDayCount >= 1) {
           message = "You have already applied for leave in this period of date.";
-        } else if (sameTypeHalfDayLeaveExist) {
-          message = `You have already applied for half day leave of ${leave_type} on this date.`;
+        // } else if (sameTypeHalfDayLeaveExist) {
+        //   message = `You have already applied for half day leave of ${leave_type} on this date.`;
         } else if (halfDayCount >= 1) {
           message = "You have already applied for half day leave on this date.";
         }
@@ -313,8 +315,8 @@ const updateLeaveApplication = async(req, res) => {
         const hasDateChange =
         updateData.start_date ||
         updateData.end_date ||
-        updateData.leave_duration ||
-        updateData.leave_type;
+        updateData.leave_duration ;
+        // updateData.leave_type;
 
         if(hasDateChange){
 
@@ -324,7 +326,7 @@ const updateLeaveApplication = async(req, res) => {
 
         if (isNaN(updatedLeaveDuration) || !(updatedLeaveDuration === 0.5 || updatedLeaveDuration >= 1))
             {
-                console.log("Invalid input:", updatedLeaveDuration);
+            console.log("Invalid input:", updatedLeaveDuration);
             return res.status(400).json({
                 message: "Leave duration must be at least 1 day or exactly 0.5 for half-day leave.",
             });
@@ -353,7 +355,7 @@ const updateLeaveApplication = async(req, res) => {
         let totalDuration = 0;
         let fullDayCount = 0;
         let halfDayCount = 0;
-        let sameTypeHalfDayLeaveExist = false;
+        // let sameTypeHalfDayLeaveExist = false;
 
         existingLeaves.forEach((existingLeave) => {
           const dur = parseFloat(existingLeave.leave_duration);
@@ -361,17 +363,19 @@ const updateLeaveApplication = async(req, res) => {
 
           if (dur === 1) fullDayCount++;
           if (dur === 0.5) halfDayCount++;
-          if (dur === 0.5 && existingLeave.leave_type === updatedLeaveTypeName) {
-        sameTypeHalfDayLeaveExist = true;
-      }
+      //     if (dur === 0.5 && existingLeave.leave_type === updatedLeaveTypeName) {
+      //   sameTypeHalfDayLeaveExist = true;
+      // }
         });
 
-        if (totalDuration + 0.5 > 1 || sameTypeHalfDayLeaveExist) {
+        // if (totalDuration + 0.5 > 1 || sameTypeHalfDayLeaveExist) {
+        //   let message = "You have already applied for leave on this date.";
+        if (totalDuration + 0.5 > 1) {
           let message = "You have already applied for leave on this date.";
           if (fullDayCount >= 1) {
             message = "You have already applied for leave in this period of date.";
-          } else if (sameTypeHalfDayLeaveExist) {
-            message = `You have already applied for half day leave of ${updatedLeaveTypeName} on this date.`;
+          // } else if (sameTypeHalfDayLeaveExist) {
+          //   message = `You have already applied for half day leave of ${updatedLeaveTypeName} on this date.`;
           } else if (halfDayCount >= 1) {
             message = "You have already applied for half day leave on this date.";
           }
