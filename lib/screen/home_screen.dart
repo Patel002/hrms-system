@@ -5,6 +5,9 @@ import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;  
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:curved_labeled_navigation_bar/curved_navigation_bar.dart';
+import 'package:curved_labeled_navigation_bar/curved_navigation_bar_item.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,7 +29,10 @@ class _HomePageState extends State<HomePage> {
   bool isDataLoaded = false;
   bool isDateProcessing = false;
   final ValueNotifier<String> profileImageNotifier = ValueNotifier<String>('');
+  
+   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+   late int _currentIndex;
 
   @override
 void initState() {
@@ -270,7 +276,9 @@ int calculateTotalMinutes(List<String> durations) {
 @override
 Widget build(BuildContext context) {
   return Scaffold(
-    backgroundColor: Colors.transparent,
+    key: _scaffoldKey,
+    extendBody: true,
+    backgroundColor:   Colors.transparent,
     appBar: PreferredSize(
     preferredSize: const Size.fromHeight(kToolbarHeight),
     child: Container(
@@ -286,6 +294,7 @@ Widget build(BuildContext context) {
           "Dashboard",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.black87),
@@ -293,9 +302,6 @@ Widget build(BuildContext context) {
             tooltip: 'Logout',
           ),
         ],
-       backgroundColor: Colors.transparent, 
-        foregroundColor: Colors.black,
-        elevation: 0,
       ),
     ),
   ),
@@ -331,7 +337,7 @@ Widget build(BuildContext context) {
       ),
     ),
     
-    if (isDateProcessing)
+  if (isDateProcessing)
   Positioned.fill(
     child: Container(
       color: Colors.black.withOpacity(0.3),
@@ -344,7 +350,52 @@ Widget build(BuildContext context) {
   ),
     ],
   ),
- );
+  floatingActionButton: GestureDetector(
+  onTap: () {
+    Navigator.pushNamed(context, '/user-info');
+  },
+  child: Material(
+    elevation: 6,
+    shape: const CircleBorder(),
+    clipBehavior: Clip.antiAlias,
+    child: ValueListenableBuilder<String>(
+      valueListenable: profileImageNotifier,
+      builder: (context, value, _) {
+        return CircleAvatar(
+          radius: 28,
+          backgroundColor: Colors.white,
+          backgroundImage: value.isNotEmpty
+              ? NetworkImage('$baseUrl/api/employee/attachment/$value')
+              : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
+        );
+      },
+    ),
+  ),
+),
+ 
+ floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+
+  bottomNavigationBar: BottomAppBar(
+      shape: const CircularNotchedRectangle(),
+      notchMargin: 5,
+      shadowColor: Colors.blueGrey,
+      color: Colors.white,
+      elevation: 8,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black87),
+            onPressed: () {
+              _scaffoldKey.currentState?.openDrawer( 
+              );
+            },
+          ),
+          const SizedBox(width: 48),
+        ],
+      ),
+    ),
+  );
 }
 
 Widget buildCalendar() {
@@ -383,8 +434,8 @@ leaveDurations.forEach((date, leaves) {
     child: Column(
     children: [
      SizedBox(
-      width: double.infinity,
-      height: MediaQuery.of(context).size.height * 0.48,
+      width: MediaQuery.of(context).size.width * 0.9,
+      height: MediaQuery.of(context).size.height * 0.55,
       child: SfCalendar(
         view: CalendarView.month,
         initialDisplayDate: today,
@@ -405,7 +456,7 @@ leaveDurations.forEach((date, leaves) {
             ),
           ),
           viewHeaderStyle: ViewHeaderStyle(
-            backgroundColor: Colors.teal.shade50,
+            backgroundColor: const Color.fromRGBO(224, 242, 241, 1),
             dayTextStyle: const TextStyle(
               fontWeight: FontWeight.w500,
               color: Colors.black87,
@@ -422,7 +473,6 @@ leaveDurations.forEach((date, leaves) {
           leadingDatesTextStyle: TextStyle(color: Colors.grey.shade400, fontSize: 10),
         ),
       ),
-      
 
         onTap: (CalendarTapDetails details) async {
           if (details.targetElement == CalendarElement.calendarCell && details.date != null) {
@@ -590,26 +640,21 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.pushNamed(context, '/user-info');
-                          },
-                          child: Text(
+                           Text(
                             '$username',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
-                              decoration: TextDecoration.underline,
+                              // decoration: TextDecoration.underline,
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            
+              
 
           Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -716,6 +761,26 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                 ListTile(
                   title: const Text('Attendance Record'),
                   onTap: () => Navigator.pushNamed(context, '/attendance-record'),
+               ),
+              ],
+             ),
+            ),
+
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),          
+            child: ExpansionTile(
+              key: Key('Payroll${_expandedTile == 'Payroll'}'),
+              title: const Text('Payroll',style: TextStyle(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.currency_rupee),
+              initiallyExpanded: _expandedTile == 'Payroll',
+              onExpansionChanged: (expanded) {
+              setState(() { _expandedTile = expanded ? 'Payroll' : null; });
+              },
+              childrenPadding: const EdgeInsets.only(left: 25, right: 16, bottom: 5), 
+              children: [
+                ListTile(
+                  title: const Text('Payslips'),
+                  onTap: () => Navigator.pushNamed(context, '/payslips'),
                ),
               ],
              ),

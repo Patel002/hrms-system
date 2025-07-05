@@ -100,7 +100,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
+      body: Container(
+    width: double.infinity,
+    height: double.infinity, 
+    color: Colors.white,
+     child: SafeArea(
+      bottom: true,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Center(
@@ -207,6 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 }
