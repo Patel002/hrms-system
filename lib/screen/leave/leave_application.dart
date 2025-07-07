@@ -1,10 +1,12 @@
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decode/jwt_decode.dart';
-import 'package:file_selector/file_selector.dart';
+import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:io';
 
 class LeaveApplicationPage extends StatefulWidget {
 const LeaveApplicationPage({super.key});
@@ -36,13 +38,39 @@ fetchLeaveTypes();
 }
 
 Future<void> pickFile() async {
-final file = await openFile();
-if (file != null) {
-setState(() {
-selectedFile = file;
-});
+  try{
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'doc', 'docx','jpg','png'],
+      withData: false
+    );
+
+if (result != null && result.files.single.path != null) {
+  final fileName = File(result.files.single.path!);
+  final fileSizeInMB  = await fileName.length()/(1024 * 1024); 
+
+ if (fileSizeInMB > 10) {
+        _showCustomSnackBar(
+          context,
+          'File must be less than 10MB (${fileSizeInMB.toStringAsFixed(2)} MB)',
+          Colors.orange,
+          Icons.warning,
+        );
+        return;
+      }
+
+  setState(() {
+  selectedFile = XFile(fileName.path);
+  });
+  }
+}catch(e){
+debugPrint('File selection error: $e');
+    _showCustomSnackBar(context, 'Error selecting file', Colors.red, Icons.error);
+
 }
 }
+
 Future<void> loadTokenData() async {
 final prefs = await SharedPreferences.getInstance();
 final token = prefs.getString('token');

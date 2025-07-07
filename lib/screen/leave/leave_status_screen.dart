@@ -1,4 +1,3 @@
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -10,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class LeaveStatusPage extends StatefulWidget {
@@ -35,6 +35,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
 
 
   @override
+
   void initState() {
     super.initState();
     fetchLeaveTypes();
@@ -360,7 +361,7 @@ class LeaveDetailPage extends StatefulWidget {
 class _LeaveDetailPageState extends State<LeaveDetailPage> {
   late DateTime fromDate, toDate;
   late TextEditingController reasonController;
-  late XFile? _attachmentController;
+  File? _attachmentFile;
   TextEditingController attachmentController = TextEditingController();
   late String leaveDayType;
   List<String> leaveTypes = [];
@@ -381,9 +382,9 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
     reasonController = TextEditingController(text: widget.leave['reason']);
 
     if (hasAttachment) {
-      _attachmentController = XFile(widget.leave['leaveattachment'].toString());
+      _attachmentFile = File(widget.leave['leaveattachment'].toString());
     } else {
-      _attachmentController = null;
+      _attachmentFile = null;
     }
 
     final duration = widget.leave['leave_duration'];
@@ -518,7 +519,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
     final leaveDuration = calculateDuration(fromDate, toDate);
     print('Leave Duration: $leaveDuration');
 
-    final file = _attachmentController;
+    final file = _attachmentFile;
     if (file == null) {
       print("No file selected");
     }
@@ -542,13 +543,13 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
         request.fields['leave_type'] = selectedLeaveType!;
       }
 
-      if (_attachmentController != null &&
-          File(_attachmentController!.path).existsSync()) {
+      if (_attachmentFile != null && await _attachmentFile!.exists()) {
+       {
         request.files.add(
           await http.MultipartFile.fromPath(
             'leaveattachment',
-            _attachmentController!.path,
-            filename: _attachmentController!.name,
+            _attachmentFile!.path,
+            filename: _attachmentFile!.path.split('/').last,
             contentType: mediaType,
           ),
         );
@@ -573,8 +574,8 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
         widget.leave['leave_duration'] = leaveDuration;
         widget.leave['leave_type'] = selectedLeaveType;
         
-        if (_attachmentController != null) {
-          widget.leave['leaveattachment'] = _attachmentController!.path;
+        if (_attachmentFile != null) {
+          widget.leave['leaveattachment'] = _attachmentFile!.path;
         }
       });
 
@@ -587,6 +588,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
           Icons.error,
         );
       }
+    }
     } catch (e) {
       print('Error updating leave details: $e');
       _showCustomSnackBar(
@@ -608,7 +610,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
     widget.leave['end_date'] = toDate.toIso8601String();
     widget.leave['leave_duration'] = leaveDuration;
     widget.leave['leave_type'] = selectedLeaveType;
-    widget.leave['leaveattachment'] = _attachmentController?.path;
+    widget.leave['leaveattachment'] = _attachmentFile?.path;
   }
 
   Future<void> _refreshPage() async {
@@ -922,18 +924,18 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (_attachmentController != null)
-                  Text(
-                    _attachmentController!.name,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                if (_attachmentController == null && hasAttachment)
-                  Text(
-                  Uri.parse(widget.leave['leaveattachment'].toString()).pathSegments.last,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                if (_attachmentController == null && !hasAttachment)
-                  Text('No file selected', style: theme.textTheme.bodyMedium),
+                Text(
+                () {
+                  if (_attachmentFile != null) {
+                    return _attachmentFile!.path.split('/').last;
+                  } else if (hasAttachment) {
+                    return Uri.parse(widget.leave['leaveattachment'] ?? '').pathSegments.last;
+                  } else {
+                    return 'No file selected';
+                  }
+                }(),
+                style: theme.textTheme.bodyMedium,
+              ),
                 
                 const SizedBox(height: 8),
 
@@ -949,16 +951,32 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                       (isApproved || isRejected)
                           ? null
                           : () async {
-                            final file = await openFile();
-                            if (file != null) {
-                              setState(() {
-                                _attachmentController = file;
-                                attachmentController.text = file.path;
-                              });
-                            }
-                          },
-                ),
-              ],
+                            final result = await FilePicker.platform.pickFiles(
+                              type: FileType.custom,
+                              allowedExtensions: ['pdf', 'doc', 'docx','jpg','png'],
+                              withData: false
+                            );
+                            if (result != null && result.files.single.path != null) {
+                            final file = File(result.files.single.path!);
+                            final fileSizeInMB = await file.length() / (1024 * 1024);
+  
+                            if (fileSizeInMB > 10) {
+                          _showCustomSnackBar(
+                            context,
+                            'File must be less than 10MB (${fileSizeInMB.toStringAsFixed(2)} MB)',
+                            Colors.orange.shade700,
+                            Icons.warning_amber_outlined,
+                          );
+                          return;
+                        }
+
+                        setState(() {
+                          _attachmentFile = file;
+                          attachmentController.text = file.path;
+                        });
+                      }
+                    },
+                          ),
 
                 if (hasAttachment) ...[
                   const SizedBox(height: 16),
@@ -1105,6 +1123,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
 ),
 
                 ],
+              ],
               ],
             ),
           ),

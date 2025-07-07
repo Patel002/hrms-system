@@ -1,6 +1,9 @@
 import multer from 'multer';
 import path from 'path';
 
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_IN_BYTES = MAX_FILE_SIZE_MB*1024*1024;
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null,'../uploads/profileImage'); 
@@ -46,6 +49,7 @@ const leaveFileFilter = (req, file, cb) => {
 export const leaveFileUpload = multer({
   storage: leaveFileStorage,
   fileFilter: leaveFileFilter,
+  limits: { fileSize: MAX_FILE_SIZE_IN_BYTES },
 });
 
 

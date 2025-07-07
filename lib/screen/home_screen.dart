@@ -57,7 +57,6 @@ void initState() {
 }
 
 
-
 Future<void> loadUserPermissions() async {
   final prefs = await SharedPreferences.getInstance();
   final token = prefs.getString('token');
@@ -615,7 +614,6 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
               end: Alignment.bottomLeft,
             ),
           ),
-        child: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
         child: Column(
@@ -789,9 +787,8 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
           ),
          ),
         ),
-       ),
-      );
-     }
+       );
+      }
     }
   
   class _InlineAppointmentDataSource extends CalendarDataSource {  
