@@ -418,7 +418,7 @@ const updateLeaveApplication = async(req, res) => {
         const credit = await EmployeeLeaveBalance.sum('number_of_days', {
             where: {
               emp_id: leave.em_id,
-              leave_type_id: leaveType.type_id,
+              leave_type_id: updateData.typeid,
               leave_status: "Credit"
             }
           });
@@ -434,22 +434,40 @@ const updateLeaveApplication = async(req, res) => {
           const debit = await EmployeeLeaveBalance.sum('number_of_days', {
             where: {
               emp_id: leave.em_id,
-              leave_type_id: leaveType.type_id,
+              leave_type_id: updateData.typeid,
               leave_status: "Debit"
             }
           });
 
+          console.log("Debit:", debit);
+          console.log("typeid",updateData.typeid);
+
           // console.log("Debit:", debit);
+          const creditLeave = parseFloat(credit || 0)
+          const debitLeave = parseFloat(debit || 0) 
+
+          console.log({
+            creditLeave,
+            debitLeave
+          })
           
-          const available = (credit || 0) + (debit || 0);
+          const available = creditLeave + debitLeave;
           console.log("Available Leave Days:", available);
+          console.log("Leave Duration:", updateData.leave_duration);
+
+          let availableLeave = parseFloat(available);
+          console.log("availableLeave",availableLeave);
+
+          let updatedLeaveDuration = parseFloat(updateData.leave_duration || leave.leave_duration);
+
+          console.log("Updated Leave Duration:", updatedLeaveDuration);
           
-          if (leave.leave_duration > available) {
-            return res.status(400).json({
-              message: `Insufficient leave days for ${leave.leave_type}. Remaining leave days: ${available}`
-            });
-          }
- }    
+          if (updatedLeaveDuration > available) {
+        return res.status(400).json({
+          message: `Insufficient leave days for ${leaveType.name}. Remaining leave days: ${available}`
+        });
+      }
+}
         if(req.file){
           const result = await uploadOnCloudinary(req.file.path);
           if(result && result.secure_url){

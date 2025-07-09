@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:lottie/lottie.dart';
 
 class AttandanceHistory extends StatefulWidget {
   const AttandanceHistory({super.key});
@@ -541,14 +542,15 @@ void showImagePreview(BuildContext context, String base64Image) {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.event_busy,
-                              size: 100,
-                              color: Colors.grey.shade300,
+                            Lottie.asset(
+                              'assets/image/Animation.json',
+                              width: 180,
+                              height: 180,
+                              repeat: true,
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 5),
                             const Text(
-                              "No Attendance Records Found",
+                              "No Attendance Records Found !",
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,

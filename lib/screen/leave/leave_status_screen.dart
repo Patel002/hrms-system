@@ -8,9 +8,10 @@ import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:lottie/lottie.dart';
+import 'dart:io';
 
 class LeaveStatusPage extends StatefulWidget {
   const LeaveStatusPage({super.key});
@@ -440,14 +441,18 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
 
   if (picked == null) return;
 
-  if (isFromDate) {
+  final pickedDateOnly = DateTime(picked.year, picked.month, picked.day);
+  final fromDateOnly = DateTime(fromDate.year, fromDate.month, fromDate.day);
+  final toDateOnly = DateTime(toDate.year, toDate.month, toDate.day);
 
-    if (picked.isAfter(toDate)) {
+
+  if (isFromDate) {
+    if (pickedDateOnly.isAfter(toDateOnly)) {
       _showCustomSnackBar(
         context,
         "Start date cannot be after end date",
         Colors.orange,
-        Icons.warning_amber_outlined,
+        'assets/image/Animation1.json',
       );
       return;
     }
@@ -457,12 +462,12 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
       leaveDuration = calculateDuration(fromDate, toDate);
     });
   } else {
-    if (picked.isBefore(fromDate)) {
+    if (pickedDateOnly.isBefore(fromDateOnly)) {
       _showCustomSnackBar(
         context,
         "End date cannot be before start date",
         Colors.orange,
-        Icons.warning_amber_outlined,
+        'assets/image/Animation1.json',
       );
       return;
     }
@@ -483,7 +488,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
         context,
         'Invalid date range',
         Colors.red,
-        Icons.error,
+        'assets/image/Animation4.json',
       );
       return;
     }
@@ -514,10 +519,12 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
     });
 
     final leaveId = widget.leave['id'];
-    print('Leave ID: $leaveId');
+    // print('Leave ID: $leaveId');
+
     final reason = reasonController.text;
+
     final leaveDuration = calculateDuration(fromDate, toDate);
-    print('Leave Duration: $leaveDuration');
+    // print('Leave Duration: $leaveDuration');
 
     final file = _attachmentFile;
     if (file == null) {
@@ -528,12 +535,6 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
       final uri = Uri.parse('$baseUrl/api/emp-leave/update/$leaveId');
       final request = http.MultipartRequest('PATCH', uri);
 
-      final mimeType = lookupMimeType(file?.path ?? '');
-      final mediaType =
-          mimeType != null
-              ? MediaType.parse(mimeType)
-              : MediaType('application', 'octet-stream');
-
       request.fields['reason'] = reason;
       request.fields['start_date'] = fromDate.toIso8601String();
       request.fields['end_date'] = toDate.toIso8601String();
@@ -543,8 +544,15 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
         request.fields['leave_type'] = selectedLeaveType!;
       }
 
-      if (_attachmentFile != null && await _attachmentFile!.exists()) {
+      if (_attachmentFile != null && File(_attachmentFile!.path).existsSync()) {
        {
+
+        final mimeType = lookupMimeType(_attachmentFile!.path);
+        final mediaType = mimeType != null
+        ? MediaType.parse(mimeType)
+        : MediaType('application', 'octet-stream');
+
+        
         request.files.add(
           await http.MultipartFile.fromPath(
             'leaveattachment',
@@ -554,6 +562,8 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
           ),
         );
       }
+    }
+
       final response = await request.send();
       print('Status: ${response.statusCode}');
       print('Response: ${response.reasonPhrase}');
@@ -564,7 +574,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
           context,
           'Leave details updated successfully',
           Colors.green,
-          Icons.check,
+          'assets/image/Animation0.json',
         );
         
         setState(() {
@@ -585,17 +595,16 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
           context,
           "${error['message']}",
           Colors.red,
-          Icons.error,
+          'assets/image/Animation4.json',
         );
       }
-    }
     } catch (e) {
       print('Error updating leave details: $e');
       _showCustomSnackBar(
         context,
         'Failed to update leave details',
         Colors.red,
-        Icons.error,
+        'assets/image/Animation4.json',
       );
     }finally {
       setState(() {
@@ -619,38 +628,41 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
     setState(() {});
   }
 
-  void _showCustomSnackBar(
-    BuildContext context,
-    String message,
-    Color color,
-    IconData icon,
-  ) {
+ void _showCustomSnackBar(
+  BuildContext context,
+  String message,
+  Color color,
+  String lottieAsset,
+) {
+  if (!context.mounted) return;
 
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    scaffoldMessenger.clearSnackBars();
+  final scaffoldMessenger = ScaffoldMessenger.of(context);
+  scaffoldMessenger.clearSnackBars();
 
-    final snackBar = SnackBar(
-      content: Row(
-        children: [
-          Icon(icon, color: Colors.white),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-            ),
+  final snackBar = SnackBar(
+    content: Row(
+      children: [
+      Lottie.asset(lottieAsset, width: 35, height: 35),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            message,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
           ),
-        ],
-      ),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      duration: const Duration(seconds: 1),
-    );
+        ),
+      ],
+    ),
+    backgroundColor: color,
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+    duration: const Duration(seconds: 3),
+    // dismissDirection: DismissDirection.horizontal,
+  );
 
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  }
+  scaffoldMessenger.showSnackBar(snackBar);
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -664,8 +676,9 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
 
     final bool isReadOnly = isApproved || isRejected;
 
+    // print('Leave Reject: ${widget.leave['rejected_reason']}');
 
-  return Scaffold(
+   return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: PreferredSize(
       preferredSize: const Size.fromHeight(kToolbarHeight),
@@ -688,7 +701,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
       ),
     ),
   ),
-      body:Stack( 
+     body:Stack( 
      children: [
       Container(
         decoration: const BoxDecoration(
@@ -843,7 +856,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                         icon: Icons.date_range_outlined,
                         title: 'From',
                         value: "${fromDate.toLocal()}".split(' ')[0],
-                        onTap: isReadOnly ? null : () => selectDate(context, true),
+                        onTap: () => isReadOnly ? null : selectDate(context, true),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -852,7 +865,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                         icon: Icons.date_range_outlined,
                         title: 'To',
                         value: "${toDate.toLocal()}".split(' ')[0],
-                        onTap: isReadOnly ? null : () => selectDate(context, false),
+                        onTap: () => isReadOnly ? null : selectDate(context, false),
                       ),
                     ),
                   ],
@@ -881,9 +894,8 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                           ),
                         )
                         .toList(),
-                        onChanged: isReadOnly 
-                          ? null
-                        : (val) {
+                        onChanged: isReadOnly ? null
+                         : (val) {
                           setState(() {
                             leaveDayType = val!;
                             leaveDuration = calculateDuration(fromDate, toDate);
@@ -901,21 +913,18 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-               
-               
                 const SizedBox(height: 16),
-               
                 TextField(
                   controller: reasonController,
                   readOnly: isReadOnly,
                   decoration: InputDecoration(
                     labelText: 'Leave Reason',
                     border: OutlineInputBorder(),
+                    fillColor: isReadOnly ? Colors.grey[100] : null,
+                    filled: isReadOnly,
                   ),
                 ),
-                
                 const SizedBox(height: 16),
-                
                 Text(
                   'Leave Attachment',
                   style: theme.textTheme.titleSmall?.copyWith(
@@ -936,9 +945,8 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                 }(),
                 style: theme.textTheme.bodyMedium,
               ),
-                
-                const SizedBox(height: 8),
 
+                const SizedBox(height: 8),
                 if(!isReadOnly) ...[
                 ElevatedButton.icon(
                   icon: const Icon(Icons.attach_file),
@@ -947,10 +955,11 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                     backgroundColor: Color(0xFFE4EBF5),
                     foregroundColor: Colors.black87,
                   ),
+                
                   onPressed:
                       (isApproved || isRejected)
                           ? null
-                          : () async {
+                                                   : () async {
                             final result = await FilePicker.platform.pickFiles(
                               type: FileType.custom,
                               allowedExtensions: ['pdf', 'doc', 'docx','jpg','png'],
@@ -965,7 +974,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                             context,
                             'File must be less than 10MB (${fileSizeInMB.toStringAsFixed(2)} MB)',
                             Colors.orange.shade700,
-                            Icons.warning_amber_outlined,
+                            'assets/image/Animation1.json',
                           );
                           return;
                         }
@@ -976,7 +985,8 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                         });
                       }
                     },
-                          ),
+                  ),
+                ],
 
                 if (hasAttachment) ...[
                   const SizedBox(height: 16),
@@ -1008,7 +1018,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                         }
                       } catch (e) {
                         print('Download/open error: $e');
-                        _showCustomSnackBar(context, 'Failed to open attachment', Colors.red.shade400, Icons.error_outline);
+                        _showCustomSnackBar(context, 'Failed to open attachment', Colors.red.shade400, 'assets/image/Animation4.json');
                       }
                     },
                     child: Container(
@@ -1122,8 +1132,8 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
         // ),
 ),
 
+
                 ],
-              ],
               ],
             ),
           ),
@@ -1154,7 +1164,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
       )
     ),
   )
-     ],
+ ],
 )
   );
 }
