@@ -294,6 +294,7 @@ Widget build(BuildContext context) {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         automaticallyImplyLeading: false,
+        forceMaterialTransparency: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.black87),
@@ -484,11 +485,14 @@ leaveDurations.forEach((date, leaves) {
 
             final isHalfDayAttendance = isPresent && totalMinutes < 270;
             final isHalfDayLeave = isLeave && leaveDurations[dayKey]!.any((leave) => leave['isHalfDay'] == true);
-            final isSplitDay = isHalfDayAttendance && isHalfDayLeave;
-
-            final isFullLeave = isLeave && (!isPresent || (isHalfDayLeave && !isHalfDayAttendance));
             
-            final isFullAttendance = isPresent && (!isLeave || (isHalfDayAttendance && !isHalfDayLeave));
+            final isSplitDay = isPresent && isLeave;
+
+            final isFullLeave = isLeave && !isSplitDay && (!isPresent || (isHalfDayLeave && !isHalfDayAttendance));
+
+            
+            final isFullAttendance = isPresent && !isSplitDay && (!isLeave || (isHalfDayAttendance && !isHalfDayLeave));
+
 
             // final isFuture = tappedDate.isAfter(today);
 
