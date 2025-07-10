@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decode/jwt_decode.dart';
 import 'package:dio/dio.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
@@ -1008,7 +1008,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
                         final filePath = '${dir.path}/$fileName';
 
                         await Dio().download(fileUrl, filePath);
-                        final result = await OpenFile.open(filePath);
+                        final result = await OpenFilex.open(filePath);
                         if (result.type != ResultType.done) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(

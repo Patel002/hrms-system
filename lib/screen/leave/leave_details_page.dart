@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 // import 'dart:io';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -135,7 +135,7 @@ class LeaveDetailPage extends StatelessWidget {
                       final dir = await getTemporaryDirectory();
                       final filePath = '${dir.path}/$fileName';
                       await Dio().download(fileUrl, filePath);
-                      final result = await OpenFile.open(filePath);
+                      final result = await OpenFilex.open(filePath);
                         if (result.type != ResultType.done) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Could not open attachment')),
