@@ -23,10 +23,14 @@ const PaySlip = sequelize.define('payslip',{
         type: DataTypes.DATEONLY,
         allowNull: false
     },
+    process_status: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
     diduction_pattern: {
         type: DataTypes.STRING,
         allowNull: false
-    }
+    },
     },
     {
         tableName: 't_salary',

@@ -4,9 +4,7 @@ import 'package:jwt_decode/jwt_decode.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:lottie/lottie.dart';  
 import 'package:shimmer/shimmer.dart';
 import 'package:toastification/toastification.dart';
@@ -41,7 +39,7 @@ class _PayslipScreenState extends State<PayslipScreen> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
-    print("token: $token");
+    // print("token: $token");
 
     if (token != null) {
       Map<String, dynamic> payload = Jwt.parseJwt(token);
@@ -57,20 +55,26 @@ class _PayslipScreenState extends State<PayslipScreen> {
         isLoading = true;
       });
       final response = await http.get(Uri.parse('$baseUrl/api/payslip/payslip?emp_id=$empId'));
-      final decoded = json.decode(response.body);
-      final List<dynamic> data = decoded['data'];
 
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final List<dynamic> data = decoded['data'];
 
-      print("pay slip data: $data");
+        // print('Payslip List: $data');
 
-      data.sort((a, b) => b['salarydate'].compareTo(a['salarydate']));
+        data.sort((a, b) => b['salarydate'].compareTo(a['salarydate']));
 
-      setState(() {
-        payslipList = data.cast<Map<String, dynamic>>();
-        isLoading = false;
-      });
+        setState(() {
+          payslipList = data.cast<Map<String, dynamic>>();
+        });
+
+        print('Payslip List: $payslipList');
+      } else {
+        showToast("Failed to load payslips", ToastificationType.error);
+      }
     }catch(e){
       print(e); 
+      showToast("Error: ${e.toString()}", ToastificationType.error);
       setState(() {
         isLoading = false;
       });
@@ -81,23 +85,13 @@ class _PayslipScreenState extends State<PayslipScreen> {
   }
 }
 
-Future <void> _refeshPage() async {
+Future <void> _refreshPage() async {
   setState(() {
     isLoading = true;
   });
   await fetchPaySlipDate();
-   if (context != null && mounted) {
-      toastification.show(
-        context: context,
-        title: const Text('Payslip Refreshed'),
-        type: ToastificationType.success,
-        style: ToastificationStyle.flatColored,
-        alignment: Alignment.bottomCenter,
-        autoCloseDuration: const Duration(seconds: 2),
-        icon: const Icon(Icons.check_circle, color: Colors.white),
-        showProgressBar: true,
-      );
-    }
+  showToast("Payslip list refreshed", ToastificationType.success);
+
   setState(() {
     isLoading = false;
   });
@@ -125,158 +119,227 @@ Future<void> downloadAndOpenPdf(BuildContext context, String url, String fileNam
     if (Platform.isAndroid) {
      var status = await Permission.manageExternalStorage.request();
 
-      if (status.isDenied || status.isPermanentlyDenied) {
-      await openAppSettings();
-      return;
-    }
-
-      if (!status.isGranted) {
-        toastification.show(
-          context: context,
-          title: const Text("Permission Denied"),
-          description: const Text("Storage access is required to save the file."),
-          type: ToastificationType.error,
-        );
-        return;
+             if (!status.isGranted) {
+          openAppSettings();
+          return;
+        }
       }
-    }
+      
 
     final dir = await getApplicationDocumentsDirectory();
     final filePath = '${dir.path}/$fileName';
 
     await Dio().download(url, filePath);
 
-    // toastification.show(
-    //   context: context,
-    //   title: const Text("Download Complete"),
-    //   description: Text("File saved to:\n$filePath"),
-    //   type: ToastificationType.success,
-    //   autoCloseDuration: const Duration(seconds: 3),
-    // );
-
     await OpenFilex.open(filePath);
   } catch (e) {
-    toastification.show(
-      context: context,
-      title: const Text("Download Failed"),
-      description: Text(e.toString()),
-      type: ToastificationType.error,
-    );
+    showToast("Failed to open PDF: ${e.toString()}", ToastificationType.error);
+
   }
 }
 
 
+void showToast(String message, ToastificationType type) {
+    if (!mounted) return;
+    toastification.show(
+      context: context,
+      title: Text(message),
+      type: type,
+      style: ToastificationStyle.flatColored,
+      alignment: Alignment.bottomCenter,
+      autoCloseDuration: const Duration(seconds: 2),
+    );
+  }
 
 
   @override
   Widget build(BuildContext context) {
-   if (isLoading) {
-  return Scaffold(
-    body: ListView.builder(
-      itemCount: 6,
-      itemBuilder: (context, index) {
-        return Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Shimmer.fromColors(
-            baseColor: Colors.grey.shade300,
-            highlightColor: Colors.grey.shade100,
-            child: Card(
-              child: ListTile(
-                leading: Container(width: 40, height: 40, color: Colors.white),
-                title: Container(height: 16, width: double.infinity, color: Colors.white),
-                subtitle: Container(height: 12, width: 100, color: Colors.white),
-                trailing: Container(width: 30, height: 30, color: Colors.white),
+    return Scaffold(
+      extendBody: true,
+      backgroundColor: Colors.lightBlueAccent.shade100,
+      appBar: PreferredSize(
+      preferredSize: const Size.fromHeight(kToolbarHeight),
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+            begin: Alignment.bottomLeft,
+            end: Alignment.topRight,
+          ),
+        ),
+        child: AppBar(
+                title: const Text(
+                  "Payslips",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              backgroundColor: Colors.transparent, 
+                foregroundColor: Colors.black,
+                elevation: 0,
               ),
             ),
           ),
-        );
-      },
-    ),
-  );
-}
-
-
-if (payslipList.isEmpty) {
-  return Scaffold(
-    body: Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Lottie.asset(
-            'assets/image/Animation.json',
-            width: 250,
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            "No payslips available.",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+      body:Container (
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
       ),
     ),
-  );
-}
+      child:isLoading
+      ? _buildShimmerList()
+        : payslipList.isEmpty
+          ? _buildEmptyState()
+            : RefreshIndicator(
+              onRefresh: _refreshPage,
+              color: Colors.black87,
+              backgroundColor: Colors.white,
+              child: ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              itemCount: payslipList.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final payslip = payslipList[index];
+                final salaryDate = payslip['salarydate'];
+                final payslipId = payslip['id'];
 
-    return Scaffold(
-      appBar: AppBar(title: const Text("Payslips")),
+                final formattedMonth =
+                    DateFormat('MMMM yyyy').format(DateTime.parse(salaryDate));
 
-      body:RefreshIndicator(
-      onRefresh: _refeshPage,
-      color: Colors.black87,
-      backgroundColor: Colors.white,
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: payslipList.length,
-        itemBuilder: (context, index) {
-          final payslip = payslipList[index];
-          final salaryDate = payslip['salarydate'];
-          final payslipId = payslip['id'];
-          final formattedMonth = DateFormat('MMMM yyyy').format(DateTime.parse(salaryDate));
+                final url = 'https://gbihr.org/images/docs/test.pdf'; 
+                
+                final fileName =
+                    'Payslip-${DateFormat('MM-yyyy').format(DateTime.parse(salaryDate))}.pdf';
 
-          return Card(
-          margin: const EdgeInsets.all(12),
-          child: ListTile(
-            leading: const Icon(Icons.calendar_month),
-            title: Text("$formattedMonth"),
-            subtitle: Text("Salary Date: $salaryDate"),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
+              return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                IconButton(
-                icon: const Icon(Icons.picture_as_pdf_outlined, color: Colors.redAccent),
-                tooltip: 'Download Payslip',
-                onPressed: () {
-                  final encodedId = base64Url.encode(utf8.encode(payslipId.toString()));
-                  final url = 'https://morth.nic.in/sites/default/files/dd12-13_0.pdf';
-                  final fileName = 'Payslip_${DateFormat('MM-yyyy').format(DateTime.parse(salaryDate))}.pdf';
+              Card(
+                elevation: 4,
+                color: Colors.white,
+                shadowColor: Colors.grey.withOpacity(0.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
 
-                  downloadAndOpenPdf(context, url, fileName);
-                },
-               ),
-              ]
-             ),
-            ),
-           );
-          },
-         ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.calendar_month_rounded,
+                          size: 32,
+                          color: Colors.indigo,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                formattedMonth,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Icon(Icons.event, size: 16, color: Colors.grey),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "Salary Date: ${DateFormat('dd MMM yyyy').format(DateTime.parse(salaryDate))}",
+                                    style: TextStyle(
+                                      color: Colors.grey[700],
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.payments_rounded, size: 16, color: Colors.grey),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "Paid Date: ${DateFormat('dd MMM yyyy').format(DateTime.parse(payslip['paid_date'] ?? salaryDate))}",
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.redAccent, size: 28),
+                            tooltip: 'Download Payslip',
+                            onPressed: () => downloadAndOpenPdf(context, url, fileName),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
-       );
-      }
-     }
+      ),
+    );
+  }
 
-// class PdfViewerScreen extends StatelessWidget {
-//   final String pdfUrl;
+  Widget _buildShimmerList() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: 6,
+      itemBuilder: (_, index) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Shimmer.fromColors(
+          baseColor: Colors.grey.shade300,
+          highlightColor: Colors.grey.shade100,
+          child: Container(
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-//   const PdfViewerScreen({super.key, required this.pdfUrl});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(title: const Text("Payslip PDF")),
-//       body: SfPdfViewer.network(pdfUrl),
-//     );
-//   }
-// }
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Lottie.asset('assets/image/Animation.json', width: 220, repeat: false),
+            const SizedBox(height: 16),
+            const Text(
+              "No payslips available yet.",
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              "Swipe down to refresh or check back later.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

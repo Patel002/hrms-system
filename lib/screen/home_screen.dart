@@ -5,9 +5,7 @@ import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;  
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:curved_labeled_navigation_bar/curved_navigation_bar.dart';
-import 'package:curved_labeled_navigation_bar/curved_navigation_bar_item.dart';
-
+import './widgets/attendanceSummary_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,17 +20,25 @@ class _HomePageState extends State<HomePage> {
   String? _expandedTile;
   bool isSupervisor = false;
   bool isLoading = false;
-  Map<DateTime, List<String>> punchDurations = {};
   final baseUrl = dotenv.env['API_BASE_URL'];
   DateTime? selectedDate;
   Map<DateTime, List<Map<String, dynamic>>> leaveDurations = {};
   bool isDataLoaded = false;
   bool isDateProcessing = false;
+  int? totalWorkingDays = 0;
+  int? presentDays = 0;
+  int? leaveDays = 0;
+  int? absentDays = 0;
+  int selectedMonth = DateTime.now().month;
+  int selectedYear = DateTime.now().year;
+
+
+
   final ValueNotifier<String> profileImageNotifier = ValueNotifier<String>('');
+  Map<DateTime, List<String>> punchDurations = {};
+  
   
    final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-   late int _currentIndex;
 
   @override
 void initState() {
@@ -73,6 +79,7 @@ Future<void> loadUserPermissions() async {
     await fetchLeaveDurations();
     await fetchPunchDurations();
     await fetchProfileImage();
+    await fetchAttendanceSummary(selectedMonth, selectedYear);
 
     setState(() {
       isDataLoaded = true;
@@ -174,15 +181,45 @@ Future<void> fetchLeaveDurations() async {
     }
   }
 
+  Future<void> fetchAttendanceSummary(int month, int year) async {
+
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/attendance/summary/$empId?month=${month.toString().padLeft(2, '0')}&year=$year'));
+
+
+      print("month & year, $month & $year, $empId");
+      print("response,$response");
+      print('Response Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+
+        final Map<String, dynamic> summary = result['data'];
+        print('Summary: $summary'); 
+       
+      setState(() {
+      totalWorkingDays = summary['totalWorkingDays'];
+      presentDays = summary['present'];
+      leaveDays = summary['approvedLeave'];
+      absentDays = summary['absent'];
+    });
+          }
+    } catch (e) {
+      print('Error fetching punch durations: $e');
+    }
+  }
+
   Future<void> _refreshPage() async {
 
-    // setState(() {
-    //   isLoading = true;
-    // });
-
-    await fetchLeaveDurations();
-    await fetchPunchDurations();
-    await fetchProfileImage();
+    setState(() {
+      isLoading = true;
+    });
+    
+    await Future.wait([
+      fetchLeaveDurations(),
+      fetchPunchDurations(),
+      fetchAttendanceSummary(selectedMonth, selectedYear)
+    ]);
     
     // setState(() {
     //   isLoading = false;
@@ -241,7 +278,6 @@ int calculateTotalMinutes(List<String> durations) {
               leading: const Icon(Icons.access_time, color: Colors.blueAccent),
               title: const Text('View Attendance', style: TextStyle(fontSize: 16)),
               onTap: () async {
-                // if (isDateProcessing) return;
                 Navigator.pop(context);
                 await Navigator.pushNamed(context, '/attendance-history', arguments: {'selectedDate': day});
               },
@@ -277,7 +313,7 @@ Widget build(BuildContext context) {
   return Scaffold(
     key: _scaffoldKey,
     extendBody: true,
-    backgroundColor:   Colors.transparent,
+    backgroundColor: const Color(0xFFF5F7FA),
     appBar: PreferredSize(
     preferredSize: const Size.fromHeight(kToolbarHeight),
     child: Container(
@@ -316,8 +352,8 @@ Widget build(BuildContext context) {
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         child: Container(
-          height: MediaQuery.of(context).size.height,
-          width: MediaQuery.of(context).size.width,
+          height: MediaQuery.of(context).size.height - kToolbarHeight - MediaQuery.of(context).padding.top,
+          width: double.infinity,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
@@ -329,11 +365,31 @@ Widget build(BuildContext context) {
               ? const Center(
                   child: CircularProgressIndicator(color: Colors.black87),
                 )
-              : Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: buildCalendar(),
-                ),
+              :  Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height -
+                  kToolbarHeight - MediaQuery.of(context).padding.top,
+            ),
+            child: IntrinsicHeight(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AttendanceSummaryWidget(
+              workingHours: totalWorkingDays.toString(), 
+              presentDays: presentDays ?? 0,        
+              leaveDays: leaveDays ?? 0,            
+              absentDays: absentDays ?? 0,    
+            ),
+            const SizedBox(height: 20),
+            buildCalendar(),
+          ],
         ),
+      ),
+        ),
+      ),
+    ),
       ),
     ),
     
@@ -366,7 +422,7 @@ Widget build(BuildContext context) {
           backgroundColor: Colors.white,
           backgroundImage: value.isNotEmpty
               ? NetworkImage('$baseUrl/api/employee/attachment/$value')
-              : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
+              :  AssetImage('assets/icon/face-id.png'),
         );
       },
     ),
@@ -397,6 +453,7 @@ Widget build(BuildContext context) {
     ),
   );
 }
+
 
 Widget buildCalendar() {
   final today = DateTime.now();
@@ -435,16 +492,27 @@ leaveDurations.forEach((date, leaves) {
     children: [
      SizedBox(
       width: MediaQuery.of(context).size.width * 0.9,
-      height: MediaQuery.of(context).size.height * 0.55,
+      height: MediaQuery.of(context).size.height * 0.45,
       child: SfCalendar(
         view: CalendarView.month,
         initialDisplayDate: today,
         initialSelectedDate: today,
         showNavigationArrow: true,
-        // monthViewSettings: const MonthViewSettings(
-        //   showAgenda: false,
-        //   appointmentDisplayMode: MonthAppointmentDisplayMode.indicator,
-        // ),
+          onViewChanged: (ViewChangedDetails details) {
+          final DateTime currentMonthDate = details.visibleDates[details.visibleDates.length ~/ 2];
+
+          final int newMonth = currentMonthDate.month;
+          final int newYear = currentMonthDate.year;
+
+          if (newMonth != selectedMonth || newYear != selectedYear) {
+            setState(() {
+              selectedMonth = newMonth;
+              selectedYear = newYear;
+            });
+            fetchAttendanceSummary(newMonth, newYear);
+          }
+        },
+
         dataSource: calendarDataSource as CalendarDataSource,
             headerStyle: CalendarHeaderStyle(
             textAlign: TextAlign.center,

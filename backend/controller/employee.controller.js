@@ -42,7 +42,7 @@ const loginEmployee = async (req, res) => {
             }
         });
 
-        console.log("this is supervised employees",supervisedEmployees);
+        // console.log("this is supervised employees",supervisedEmployees);
 
         const isSupervisor = supervisedEmployees !== null;
         console.log("Is this employee a supervisor for others?", isSupervisor);
@@ -62,7 +62,7 @@ const loginEmployee = async (req, res) => {
             { expiresIn: '4h' }
         );
         
-        console.log("token", token);
+        // console.log("token", token);
 
         return res.status(200).json({ message: "Login successful", token, data: employee });
 
@@ -88,7 +88,7 @@ const getEmployeeDetails = async(req, res) => {
             return res.status(404).json({ message: "Employee not found" });
         }
 
-        console.log("Employee details:", employee);
+        // console.log("Employee details:", employee);
 
         return res.status(201).json({ message: "Employee details fetched successfully", data: employee });
 
@@ -121,13 +121,13 @@ const updateEmployeeDetails = async (req, res) => {
         const updatedEmployee = await employee.update(allowedUpdates);
 
 
-        console.log("Updated Employee:", updatedEmployee);
+        // console.log("Updated Employee:", updatedEmployee);
 
         const imageUrl = req.file
         ? `${req.protocol}://${req.get('host')}/uploads/profileImage/${req.file.filename}`
         : employee.em_image;
 
-        console.log("Image URL:", imageUrl);
+        // console.log("Image URL:", imageUrl);
 
         return res.status(200).json({ message: "Employee details updated successfully", data: updatedEmployee, imageUrl });
         

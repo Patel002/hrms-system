@@ -1,8 +1,9 @@
 import Attendance from "../model/attendance.model.js";
 import { DateTime } from "luxon";
-import { Employee } from "../utils/join.js";
+import { Employee, EmployeeLeave } from "../utils/join.js";
 import MonitorData from "../model/monitorData.model.js";
 import { Op } from "sequelize";
+import holiday from "../model/holiday.model.js";
 
 const punchAttendance = async(req, res) => {
     try {
@@ -57,8 +58,8 @@ const punchAttendance = async(req, res) => {
 
             }
 
-            console.log("last in time",lastInTime)
-            console.log("typeof last in time",typeof lastInTime)
+            // console.log("last in time",lastInTime)
+            // console.log("typeof last in time",typeof lastInTime)
 
             if (!lastInTime.isValid) {
             console.error("Invalid lastInTime:", lastInTime.invalidExplanation);
@@ -138,7 +139,7 @@ const punchAttendance = async(req, res) => {
     }
 }
 
-const getAttendance = async (req, res) => {
+const getAttendance = async(req, res) => {
     const { emp_id, punch_date } = req.query;
     if (!emp_id) {
         return res.status(400).json({ message: "Employee ID is required" });
@@ -161,7 +162,7 @@ const getAttendance = async (req, res) => {
 }
 
 
-const getPunchDurations = async (req, res) => {
+const getPunchDurations = async(req, res) => {
   const { empId } = req.params;
 
   try {
@@ -225,8 +226,166 @@ const getPunchDurations = async (req, res) => {
 };
 
 
+const getAttendanceSummary = async(req, res) => {
+    const { empId } = req.params;
+    const { month, year } = req.query;
+
+    try {
+        const employee = await Employee.findOne({
+            where: { em_id: empId },
+            attributes: ['em_joining_date']
+        })
+
+        if (!employee) return res.status(404).json({ message: 'Employee not found' });
+
+        const joiningDate = DateTime.fromISO(employee.em_joining_date);
+        const startDate = DateTime.local(+year, +month, 1);
+        const endDate = startDate.endOf('month');
+        const effectiveStart = joiningDate > startDate ? joiningDate : startDate;
+
+        const holidays = await holiday.findAll({
+            where: {
+                [Op.or]: [
+                    {
+                        from_date: {
+                            [Op.between]: [
+                                effectiveStart.toISODate(),
+                                endDate.toISODate()
+                            ]
+                        },
+                    },
+                      {
+                          to_date: {
+                            [Op.between]: [
+                                effectiveStart.toISODate(),
+                                endDate.toISODate()
+                            ]
+                        },
+                    },
+                    {
+                        from_date: {
+                            [Op.lte]: effectiveStart.toISODate()
+                        },
+                        to_date: {
+                            [Op.gte]: endDate.toISODate()
+                        }
+                    }
+                ]
+            },
+            attributes: ['from_date', 'to_date']
+        });
+
+        const holidayDates = new Set();
+
+        for (const holiday of holidays) {
+        let from = DateTime.fromISO(holiday.from_date);
+        let to = DateTime.fromISO(holiday.to_date);
+        for (let d = from; d <= to; d = d.plus({ days: 1 })) {
+            if (d >= effectiveStart && d <= endDate) {
+            holidayDates.add(d.toISODate());
+            }
+        }
+     }
+
+
+        const leaves = await EmployeeLeave.findAll({
+            where: {
+             em_id: empId,
+             leave_status: 'Approve',
+             [Op.or]: [
+                {
+                    start_date: {
+                        [Op.between]: [
+                            effectiveStart.toISODate(),
+                            endDate.toISODate()
+                        ]
+                    },
+                },
+                {
+                    end_date: {
+                        [Op.between]: [
+                            effectiveStart.toISODate(),
+                            endDate.toISODate()
+                        ]
+                    },
+                },
+                {
+                    start_date: {
+                        [Op.lte]: effectiveStart.toISODate()
+                    },
+                    end_date: {
+                        [Op.gte]: endDate.toISODate()
+                    }
+                }
+             ]
+            },
+            attributes: ['start_date', 'end_date']
+        });
+
+        // console.log("leaves: ", leaves); 
+
+        const leaveDates = new Set();
+        for (const leave of leaves) {
+        let from = DateTime.fromISO(leave.start_date);
+        let to = DateTime.fromISO(leave.end_date);
+        for (let d = from; d <= to; d = d.plus({ days: 1 })) {
+            if (d >= effectiveStart && d <= endDate) {
+            leaveDates.add(d.toISODate());
+            }
+        }
+        }
+
+    const workingDays = [];
+    for (let d = effectiveStart; d <= endDate; d = d.plus({ days: 1 })) {
+      const isWeekend = [7].includes(d.weekday); 
+      const isHoliday = holidayDates.has(d.toISODate());
+      if (!isWeekend && !isHoliday) {
+        workingDays.push(d.toISODate());
+      }
+    }
+
+        const attendance = await Attendance.findAll({
+        where: {
+            emp_id: empId,
+            punch_date: {
+            [Op.between]: [effectiveStart.toISODate(), endDate.toISODate()]
+            }
+        },
+        attributes: ['punch_date'],
+        group: ['punch_date']
+        });
+
+        console.log("Attendance: ", attendance);
+
+        const presentDates = new Set(attendance.map(a => a.punch_date));
+
+        const presentCount = presentDates.size;
+        const totalWorking = workingDays.length;
+        const approvedLeaveCount = [...workingDays].filter(d => leaveDates.has(d)).length;
+        const absentCount = [...workingDays].filter(d => !presentDates.has(d) && !leaveDates.has(d)).length;
+
+        res.status(200).json({
+        message: 'Attendance summary fetched successfully',
+        data: {
+            totalWorkingDays: totalWorking,
+            present: presentCount,
+            approvedLeave: approvedLeaveCount,
+            absent: absentCount,
+            holidays: holidayDates.size,
+            month: `${year}-${month.padStart?.(2, '0') || String(month).padStart(2, '0')}`
+        }
+        });
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "Internal Server Error From Getting Attendance Summary" });
+    }
+}
+
+
 export {
     punchAttendance,
     getAttendance,
-    getPunchDurations
+    getPunchDurations,
+    getAttendanceSummary
 }
