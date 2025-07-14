@@ -34,10 +34,8 @@ dependencies:
   dio: ^5.8.0+1
   mime: ^2.0.0
   http: ^1.4.0
-  file_selector: ^1.0.3
   jwt_decode: ^0.3.1
   path_provider: ^2.1.5
-  open_file: ^3.5.10
   flutter_native_splash: ^2.3.7
   lottie: ^3.3.1
   flutter_dotenv: ^5.1.0
@@ -48,19 +46,25 @@ dependencies:
   url_launcher: ^6.3.1
   intl: ^0.20.2
   camera:  ^0.10.5+9
-  table_calendar: ^3.0.9
+  syncfusion_flutter_calendar: ^28.2.12
+  syncfusion_flutter_charts: ^28.2.12
   syncfusion_flutter_pdf: ^28.2.12
   syncfusion_flutter_xlsio: ^28.2.12
-  accordion: ^2.5.1
+  syncfusion_flutter_pdfviewer: ^28.2.12
   month_picker_dialog: ^6.2.1
   fl_chart: ^1.0.0
   flutter_custom_clippers: ^2.1.0
   photo_view: ^0.15.0
+  curved_labeled_navigation_bar: ^2.0.6
+  shimmer: ^3.0.0
+  toastification: ^3.0.3
+  open_filex: ^4.7.0  
 
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  file_picker: ^10.2.0
 
 dev_dependencies:
   flutter_test:
@@ -80,7 +84,7 @@ flutter_launcher_icons:
   image_path_ios: "assets/icon/image.png"
   image_path_android: "assets/icon/image.png"
   adaptive_icon_foreground: "assets/icon/image.png"
-  adaptive_icon_background: "#1A1A1A"
+  adaptive_icon_background: "#FFFFFF"
   remove_alpha_ios: true
 
  
@@ -94,9 +98,17 @@ flutter:
   assets:
     - .env
     - assets/icon/image.png
+    - assets/icon/face-id.png
+    - assets/image/image.png
+    - assets/image/Animation.json
+    - assets/image/Animation0.json
+    - assets/image/Animation1.json
+    - assets/image/Animation4.json
+    - assets/image/FaceId.json
+    - assets/icon/user.json
 
 flutter_native_splash:
-  color: "#1A1A1A"
+  color: "#FFFFFF"
   image: assets/icon/image.png
   android: true
   ios: true
