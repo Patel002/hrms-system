@@ -5,7 +5,13 @@ import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;  
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:curved_labeled_navigation_bar/curved_navigation_bar.dart';
+import 'package:curved_labeled_navigation_bar/curved_navigation_bar_item.dart';
 import './widgets/attendanceSummary_screen.dart';
+import 'attendance/attendance_in_screen.dart';
+import 'attendance/attendance_out_screen.dart';
+import 'userInfo/user_info_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,25 +20,31 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 class _HomePageState extends State<HomePage> {
+  final baseUrl = dotenv.env['API_BASE_URL'];
+
   String? userRole;
   String? username,profileImage;
   String? empId; 
   String? _expandedTile;
-  bool isSupervisor = false;
-  bool isLoading = false;
-  final baseUrl = dotenv.env['API_BASE_URL'];
   DateTime? selectedDate;
-  Map<DateTime, List<Map<String, dynamic>>> leaveDurations = {};
-  bool isDataLoaded = false;
-  bool isDateProcessing = false;
   int? totalWorkingDays = 0;
   int? presentDays = 0;
   int? leaveDays = 0;
   int? absentDays = 0;
+  bool isDataLoaded = false;
+  bool isDateProcessing = false;
+  bool isSupervisor = false;
+  bool _isNavigating = false;
+  bool isLoading = false;
+  int _currentIndex = 2;
+
+  Map<DateTime, List<Map<String, dynamic>>> leaveDurations = {};
+
   int selectedMonth = DateTime.now().month;
   int selectedYear = DateTime.now().year;
 
-
+  late final Widget attendanceInPage;
+  late final Widget attendanceOutPage;
 
   final ValueNotifier<String> profileImageNotifier = ValueNotifier<String>('');
   Map<DateTime, List<String>> punchDurations = {};
@@ -40,12 +52,15 @@ class _HomePageState extends State<HomePage> {
   
    final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+
   @override
 void initState() {
   super.initState();
   loadUserPermissions();
-  
+  attendanceInPage = const AttendanceScreenIN();
+  attendanceOutPage = const AttendanceScreenOut();
 }
+
    String formatDuration(String rawDuration) {
   try {
     final parts = rawDuration.split(' ');
@@ -264,7 +279,7 @@ int calculateTotalMinutes(List<String> durations) {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(5)),),
+            Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(5))),
             
             const SizedBox(height: 16),
 
@@ -352,7 +367,9 @@ Widget build(BuildContext context) {
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         child: Container(
-          height: MediaQuery.of(context).size.height - kToolbarHeight - MediaQuery.of(context).padding.top,
+          height: !isDataLoaded ?
+          MediaQuery.of(context).size.height - kToolbarHeight - MediaQuery.of(context).padding.top
+          :null,
           width: double.infinity,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -362,36 +379,75 @@ Widget build(BuildContext context) {
             ),
           ),
           child: !isDataLoaded
-              ? const Center(
-                  child: CircularProgressIndicator(color: Colors.black87),
+              ? Shimmer.fromColors(
+                  baseColor: Colors.grey[300]!,
+                  highlightColor: Colors.grey[100]!,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        // Shimmerr AttendanceSummaryWidget
+                        Container(
+                          height: 120,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Shimmer for calendar or other content
+                        GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: 42,
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 7,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                          childAspectRatio: 1,
+                        ),
+                        itemBuilder: (context, index) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          );
+                        },
+              ),
+                      ],
+                    ),
+                  ),
                 )
-              :  Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height -
-                  kToolbarHeight - MediaQuery.of(context).padding.top,
-            ),
+          :  Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.of(context).size.height -
+                      kToolbarHeight - MediaQuery.of(context).padding.top,
+                ),
             child: IntrinsicHeight(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AttendanceSummaryWidget(
-              workingHours: totalWorkingDays.toString(), 
-              presentDays: presentDays ?? 0,        
-              leaveDays: leaveDays ?? 0,            
-              absentDays: absentDays ?? 0,    
-            ),
-            const SizedBox(height: 20),
-            buildCalendar(),
-          ],
-        ),
-      ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AttendanceSummaryWidget(
+                  workingHours: totalWorkingDays.toString(), 
+                  presentDays: presentDays ?? 0,        
+                  leaveDays: leaveDays ?? 0,            
+                  absentDays: absentDays ?? 0,    
+                ),
+                const SizedBox(height: 20),
+                buildCalendar(),
+            ],
+          ),
         ),
       ),
     ),
-      ),
-    ),
+  ),
+ ),
+),
     
   if (isDateProcessing)
   Positioned.fill(
@@ -406,51 +462,131 @@ Widget build(BuildContext context) {
   ),
     ],
   ),
-  floatingActionButton: GestureDetector(
-  onTap: () {
-    Navigator.pushNamed(context, '/user-info');
-  },
-  child: Material(
-    elevation: 6,
-    shape: const CircleBorder(),
-    clipBehavior: Clip.antiAlias,
+//   floatingActionButton: GestureDetector(
+//   onTap: () {
+//     Navigator.pushNamed(context, '/user-info');
+//   },
+//   child: Material(
+//     elevation: 6,
+//     shape: const CircleBorder(),
+//     clipBehavior: Clip.antiAlias,
+//     child: ValueListenableBuilder<String>(
+//       valueListenable: profileImageNotifier,
+//       builder: (context, value, _) {
+//         return CircleAvatar(
+//           radius: 28,
+//           backgroundColor: Colors.white,
+//           backgroundImage: value.isNotEmpty
+//               ? NetworkImage('$baseUrl/api/employee/attachment/$value')
+//               :  AssetImage('assets/icon/face-id.png'),
+//         );
+//       },
+//     ),
+//   ),
+// ),
+ 
+//  floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+
+  bottomNavigationBar: SafeArea(
+  maintainBottomViewPadding: true,
+  child: CurvedNavigationBar(
+  backgroundColor: Colors.transparent,
+  color: Colors.white,
+  buttonBackgroundColor: Colors.white,
+  height: 65,
+  index: _currentIndex,
+  animationCurve: Curves.easeInOutQuad,
+  animationDuration: const Duration(milliseconds: 600),
+  onTap: (index) {
+    if(_isNavigating) return;
+
+  if (index == 0) {
+    _scaffoldKey.currentState?.openDrawer();
+    return;
+  }
+
+  _isNavigating = true;
+
+try{
+  switch (index) {
+    case 1:
+    Future.delayed(const Duration(milliseconds: 490), () async{
+      await Navigator.push(context, MaterialPageRoute(builder: (_) => attendanceInPage));
+    }
+    );
+  break;
+
+    case 2:
+    if (ModalRoute.of(context)?.settings.name != '/home') {
+    Navigator.pushNamed(context, '/home');
+      } else {
+      }
+      break;
+
+    case 3:
+    Future.delayed(const Duration(milliseconds: 490), () async {
+      await Navigator.push(context, MaterialPageRoute(builder: (_) => attendanceOutPage));
+    });
+      break;
+
+    case 4:
+    Future.delayed(const Duration(milliseconds: 490), () async{
+    await Navigator.pushNamed(context, '/user-info');
+    });
+      break;
+
+    default:
+      setState(() => _currentIndex = index);
+  }
+} finally{
+      _isNavigating = false;
+}
+},
+
+  items: [
+    
+   CurvedNavigationBarItem(
+    child: Icon(Icons.menu_rounded, color: _currentIndex == 0 ? Colors.orange.withOpacity(0.6) : Colors.black87),
+    label: "Menu",
+  ),
+
+  CurvedNavigationBarItem(
+    child: Icon(Icons.punch_clock, color: Colors.black87),
+    label: "In",
+    labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color:  Colors.black87),
+  ),
+
+CurvedNavigationBarItem(
+    child: Icon(Icons.home, color: Colors.black87),
+    label: "Home",
+    labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
+  ),
+  
+
+  CurvedNavigationBarItem(
+    child: Icon(Icons.lock_clock_outlined, color: _currentIndex == 3 ? Colors.teal.withOpacity(0.6) : Colors.black87),
+    label: "Out",
+    labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
+  ),
+
+  CurvedNavigationBarItem(
     child: ValueListenableBuilder<String>(
       valueListenable: profileImageNotifier,
       builder: (context, value, _) {
         return CircleAvatar(
-          radius: 28,
-          backgroundColor: Colors.white,
+          radius: 14,
           backgroundImage: value.isNotEmpty
               ? NetworkImage('$baseUrl/api/employee/attachment/$value')
-              :  AssetImage('assets/icon/face-id.png'),
+              : const AssetImage('assets/icon/face-id.png') as ImageProvider,
         );
       },
     ),
+    label: "Profile",
   ),
-),
- 
- floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
-  bottomNavigationBar: BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 5,
-      shadowColor: Colors.blueGrey,
-      color: Colors.white,
-      elevation: 8,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black87),
-            onPressed: () {
-              _scaffoldKey.currentState?.openDrawer( 
-              );
-            },
-          ),
-          const SizedBox(width: 48),
-        ],
-      ),
-    ),
+],
+),
+  ),
   );
 }
 
@@ -861,7 +997,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
         ),
        );
       }
-    }
+     }
   
   class _InlineAppointmentDataSource extends CalendarDataSource {  
   _InlineAppointmentDataSource(List<Appointment> source) {
