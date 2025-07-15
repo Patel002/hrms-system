@@ -8,10 +8,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:curved_labeled_navigation_bar/curved_navigation_bar.dart';
 import 'package:curved_labeled_navigation_bar/curved_navigation_bar_item.dart';
-import './widgets/attendanceSummary_screen.dart';
+import 'widgets/attendance_summary_screen.dart';
 import 'attendance/attendance_in_screen.dart';
 import 'attendance/attendance_out_screen.dart';
-import 'userInfo/user_info_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -91,14 +90,16 @@ Future<void> loadUserPermissions() async {
       print('Employee Id, $empId');
       isSupervisor = decoded['isSupervisor'] == true;
     });
-    await fetchLeaveDurations();
-    await fetchPunchDurations();
-    await fetchProfileImage();
-    await fetchAttendanceSummary(selectedMonth, selectedYear);
+    
+    await Future.wait([
+    fetchLeaveDurations(),
+    fetchPunchDurations(),
+    fetchProfileImage(),
+    fetchAttendanceSummary(selectedMonth, selectedYear),
+  ]);
 
     setState(() {
-      isDataLoaded = true;
-      
+      isDataLoaded = true;    
     });
   }
 }
@@ -329,33 +330,22 @@ Widget build(BuildContext context) {
     key: _scaffoldKey,
     extendBody: true,
     backgroundColor: const Color(0xFFF5F7FA),
-    appBar: PreferredSize(
-    preferredSize: const Size.fromHeight(kToolbarHeight),
-    child: Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-          begin: Alignment.bottomLeft,
-          end: Alignment.topRight,
-        ),
-      ),
-        child: AppBar(
-        title: const Text(
-          "Dashboard",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        automaticallyImplyLeading: false,
-        forceMaterialTransparency: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black87),
-            onPressed: _logout,
-            tooltip: 'Logout',
-          ),
-        ],
-      ),
+    appBar: AppBar(
+       backgroundColor: Colors.transparent,
+    title: const Text(
+      "Dashboard",
+      style: TextStyle(fontWeight: FontWeight.bold),
     ),
-  ),
+    automaticallyImplyLeading: false,
+    forceMaterialTransparency: true,
+    actions: [
+      IconButton(
+        icon: const Icon(Icons.logout, color: Colors.black87),
+        onPressed: _logout,
+        tooltip: 'Logout',
+      ),
+    ],
+          ),
 
     drawer: buildDrawer(),
     body: Stack(
@@ -462,70 +452,45 @@ Widget build(BuildContext context) {
   ),
     ],
   ),
-//   floatingActionButton: GestureDetector(
-//   onTap: () {
-//     Navigator.pushNamed(context, '/user-info');
-//   },
-//   child: Material(
-//     elevation: 6,
-//     shape: const CircleBorder(),
-//     clipBehavior: Clip.antiAlias,
-//     child: ValueListenableBuilder<String>(
-//       valueListenable: profileImageNotifier,
-//       builder: (context, value, _) {
-//         return CircleAvatar(
-//           radius: 28,
-//           backgroundColor: Colors.white,
-//           backgroundImage: value.isNotEmpty
-//               ? NetworkImage('$baseUrl/api/employee/attachment/$value')
-//               :  AssetImage('assets/icon/face-id.png'),
-//         );
-//       },
-//     ),
-//   ),
-// ),
- 
-//  floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+
 
   bottomNavigationBar: SafeArea(
   maintainBottomViewPadding: true,
   child: CurvedNavigationBar(
   backgroundColor: Colors.transparent,
   color: Colors.white,
-  buttonBackgroundColor: Colors.white,
+  buttonBackgroundColor: Colors.tealAccent.withOpacity(0.3),
   height: 65,
   index: _currentIndex,
   animationCurve: Curves.easeInOutQuad,
-  animationDuration: const Duration(milliseconds: 600),
-  onTap: (index) {
+  animationDuration: const Duration(milliseconds: 490),
+  onTap: (index) async{
     if(_isNavigating) return;
 
   if (index == 0) {
     _scaffoldKey.currentState?.openDrawer();
     return;
   }
-
+  
   _isNavigating = true;
 
 try{
   switch (index) {
     case 1:
-    Future.delayed(const Duration(milliseconds: 490), () async{
+    await Future.delayed(const Duration(milliseconds: 490));  
       await Navigator.push(context, MaterialPageRoute(builder: (_) => attendanceInPage));
-    }
-    );
   break;
 
     case 2:
     if (ModalRoute.of(context)?.settings.name != '/home') {
     Navigator.pushNamed(context, '/home');
-      } else {
       }
       break;
 
     case 3:
     Future.delayed(const Duration(milliseconds: 490), () async {
       await Navigator.push(context, MaterialPageRoute(builder: (_) => attendanceOutPage));
+
     });
       break;
 
@@ -546,25 +511,26 @@ try{
   items: [
     
    CurvedNavigationBarItem(
-    child: Icon(Icons.menu_rounded, color: _currentIndex == 0 ? Colors.orange.withOpacity(0.6) : Colors.black87),
+    child: Icon(Icons.menu_rounded, color:Colors.black87  ),
     label: "Menu",
+    labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color:  Colors.black87),
   ),
 
   CurvedNavigationBarItem(
-    child: Icon(Icons.punch_clock, color: Colors.black87),
+    child: Icon(Icons.punch_clock_outlined, color: Colors.black87),
     label: "In",
     labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color:  Colors.black87),
   ),
 
 CurvedNavigationBarItem(
-    child: Icon(Icons.home, color: Colors.black87),
+    child: Icon(Icons.home_outlined, color: Colors.black87),
     label: "Home",
     labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
   ),
   
 
   CurvedNavigationBarItem(
-    child: Icon(Icons.lock_clock_outlined, color: _currentIndex == 3 ? Colors.teal.withOpacity(0.6) : Colors.black87),
+    child: Icon(Icons.lock_clock_outlined, color:Colors.black87),
     label: "Out",
     labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
   ),
@@ -582,6 +548,7 @@ CurvedNavigationBarItem(
       },
     ),
     label: "Profile",
+    labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color:  Colors.black87),
   ),
 
 ],

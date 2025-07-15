@@ -10,7 +10,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:image/image.dart' as img;
 import 'package:camera/camera.dart';
-
+import 'package:lottie/lottie.dart';
 
 class AttendanceScreenIN extends StatefulWidget {
   const AttendanceScreenIN({super.key});
@@ -33,15 +33,15 @@ class _AttendanceScreenINState extends State<AttendanceScreenIN> {
   CameraController? _cameraController;
   late Future<void> _initializeControllerFuture = Future.value();
   bool isCameraAvailable = false; 
-  final bool _isCapturing = false;
+  // final bool _isCapturing = false;
   bool isLoading = false;
   bool isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-    initializePage();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await initializePage();
    });
   }
 
@@ -54,21 +54,27 @@ class _AttendanceScreenINState extends State<AttendanceScreenIN> {
 
     if (!locationGranted || !cameraGranted) {
       _initializeControllerFuture = Future.value();
-      setState(() {});
+      if (mounted) setState(() {});
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
+    await Future.delayed(Duration(milliseconds: 100));
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+      });
+    }
+
 
     _initializeControllerFuture = _initializeCamera();
 
     await getLocation();
    
-    setState(() {
-      isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
+    }
 
   } catch (e) {
     debugPrint('Initialization error: $e');
@@ -200,12 +206,6 @@ Future<void> _captureImage() async {
   }
 }
 
-@override
-void dispose() {
-  _cameraController?.dispose();
-  super.dispose();
-}
-
   Future<void> submitAttendance() async {
     if (isSubmitting) return;
 
@@ -308,6 +308,13 @@ void dispose() {
       currentPosition = null;
       });
     }
+
+    @override
+    void dispose() {
+    _cameraController?.dispose();
+    super.dispose();
+    }
+
 
  void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
     final snackBar = SnackBar(
@@ -501,30 +508,20 @@ Widget build(BuildContext context) {
 
           const SizedBox(height: 12),
 
-          Center(
-            child: Text(
-              _isCapturing
-                  ? 'Capturing image...'
-                  : 'Press button to capture image',
-              style: TextStyle(
-                fontSize: 16,
-                color: _isCapturing ? Colors.red : Colors.black87,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
+          // Center(
+          //   child: Text(
+          //     _isCapturing
+          //         ? 'Capturing image...'
+          //         : 'Press button to capture image',
+          //     style: TextStyle(
+          //       fontSize: 16,
+          //       color: _isCapturing ? Colors.red : Colors.black87,
+          //       fontWeight: FontWeight.w500,
+          //     ),
+          //   ),
+          // ),
 
-          const SizedBox(height: 24),
-
-          ElevatedButton.icon(
-            onPressed: () async {
-              await _captureImage();
-            },
-            icon: const Icon(Icons.camera_alt, size: 20),
-            label: const Text("Capture Image"),
-            style: primaryButtonStyle,
-          ),
-
+          // const SizedBox(height: 24),
 
           if (_imageFile != null) 
             ...[
@@ -558,6 +555,26 @@ Widget build(BuildContext context) {
                 ),
               ),
             ],
+            const SizedBox(height: 12),
+
+            Center(
+              child: Tooltip(
+                message: "Capture Image",
+                child: GestureDetector(
+                  onTap: () async {
+                    await _captureImage();
+                  },
+                  child: Container(
+                    child: Lottie.asset(
+                      'assets/image/FaceId.json',
+                      width: 75,
+                      height: 75,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
 
               const SizedBox(height: 32),
 

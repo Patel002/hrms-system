@@ -17,14 +17,12 @@ import 'screen/getPass/odPass_history_screen.dart';
 import 'screen/timeMachine/attendance_report_screen.dart';
 import 'screen/userInfo/user_info_screen.dart';
 import 'screen/pay/payslip_screen.dart';
-// import 'animated_splash_screen.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load();
-
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -41,29 +39,36 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: true,
-      title: 'HuCap',
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const SplashScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/home': (context) => const HomePage(),
-        '/holiday': (context) => const HolidayScreen(),
-        '/leave': (context) => const LeaveApplicationPage(),
-        '/leave-status': (context) => LeaveStatusPage(),
-        '/leave-request': (context) => LeaveRequestPage(),
-        '/leave-balance': (context) => LeaveBalancePage(),
-        '/attendance-in': (context) => const AttendanceScreenIN(),
-        '/attendance-out': (context) => const AttendanceScreenOut(),
-        '/attendance-history': (context) => const AttandanceHistory(),
-        '/od-pass': (context) => const ODPassScreen(),
-        '/od-history': (context) => const OdHistory(),
-        '/attendance-record': (context) => const AttendanceReportPage(),
-        '/user-info': (context) => const UserInfo(),
-        '/payslips': (context) => const PayslipScreen(),
-      },
 
+    return ScreenUtilInit(
+      designSize: const Size(360, 690),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: true,
+        title: 'HuCap',
+        initialRoute: '/',
+        routes: {
+          '/': (context) => const SplashScreen(),
+          '/login': (context) => const LoginScreen(),
+          '/home': (context) => const HomePage(),
+          '/holiday': (context) => const HolidayScreen(),
+          '/leave': (context) => const LeaveApplicationPage(),
+          '/leave-status': (context) => LeaveStatusPage(),
+          '/leave-request': (context) => LeaveRequestPage(),
+          '/leave-balance': (context) => LeaveBalancePage(),
+          '/attendance-in': (context) => const AttendanceScreenIN(),
+          '/attendance-out': (context) => const AttendanceScreenOut(),
+          '/attendance-history': (context) => const AttandanceHistory(),
+          '/od-pass': (context) => const ODPassScreen(),
+          '/od-history': (context) => const OdHistory(),
+          '/attendance-record': (context) => const AttendanceReportPage(),
+          '/user-info': (context) => const UserInfo(),
+          '/payslips': (context) => const PayslipScreen(),
+        },
+      );
+      },
     );
   }
 }

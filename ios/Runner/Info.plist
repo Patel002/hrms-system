@@ -14,7 +14,7 @@
 		<string>6.0</string>
 		<key>CFBundleName</key>
 		<string>flutter_application_3</string>
-		<key>CFBundlePackageType</key>
+		<key>CFBundlePackageType</key>	
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
 		<string>$(FLUTTER_BUILD_NAME)</string>
@@ -24,6 +24,15 @@
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		
+		<key>NSPhotoLibraryAddUsageDescription</key>
+        <string>This app needs access to your Photo Library to save your transformed avatars and edited images.</string>
+
+        <key>NSPhotoLibraryUsageDescription</key>
+        <string>This app uses your Photo Library to let you select images for creating anime avatars, changing hairstyles, customizing gender looks, and other profile enhancements.</string>
+
+        <key>NSCameraUsageDescription</key>
+        <string>This app uses the camera to capture photos for creating anime avatars, profile pictures, and applying live transformations like hairstyle or gender changes.</string>
 		<key>UILaunchStoryboardName</key>
 		<string>LaunchScreen</string>
 		<key>UIMainStoryboardFile</key>

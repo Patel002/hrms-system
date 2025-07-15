@@ -40,8 +40,8 @@ class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
   @override
    void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-    initializePage();
+    WidgetsBinding.instance.addPostFrameCallback((_) async{
+     await initializePage();
    });
   }
 
@@ -54,21 +54,27 @@ class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
 
     if (!locationGranted || !cameraGranted) {
       _initializeControllerFuture = Future.value();
-      setState(() {});
+      if (mounted) setState(() {});
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
+    await Future.delayed(Duration(milliseconds: 100));
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+      });
+    }
+
 
     _initializeControllerFuture = _initializeCamera();
 
     await getLocation();
    
-    setState(() {
-      isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
+    }
     
   } catch (e) {
     debugPrint('Initialization error: $e');

@@ -283,7 +283,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
         ),
         child: AppBar(
                 title: const Text(
-                  "User Information",
+                  "User Profile ",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               backgroundColor: Colors.transparent, 

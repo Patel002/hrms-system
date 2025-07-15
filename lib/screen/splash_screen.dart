@@ -60,13 +60,15 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0XFFFFFFFF),
-      body: Center(
-        child: ScaleTransition(
-          scale: _scaleAnimation,
-          child: Image.asset(
-            'assets/icon/image.png',
-            width: 140,
-          ),
+      body: SafeArea(
+        child: Center(
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: Image.asset(
+              'assets/icon/image.png',
+              width: MediaQuery.of(context).size.width/2.5,
+            ),
+          ),  
         ),
       ),
     );
