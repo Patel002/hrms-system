@@ -18,7 +18,7 @@ class HomePage extends StatefulWidget {
   @override
   State<HomePage> createState() => _HomePageState();
 }
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage>  {
   final baseUrl = dotenv.env['API_BASE_URL'];
 
   String? userRole;
@@ -329,7 +329,7 @@ Widget build(BuildContext context) {
   return Scaffold(
     key: _scaffoldKey,
     extendBody: true,
-    backgroundColor: const Color(0xFFF5F7FA),
+    backgroundColor: const Color(0xFFF2F5F8),
     appBar: AppBar(
        backgroundColor: Colors.transparent,
     title: const Text(
@@ -459,57 +459,56 @@ Widget build(BuildContext context) {
   child: CurvedNavigationBar(
   backgroundColor: Colors.transparent,
   color: Colors.white,
-  buttonBackgroundColor: Colors.tealAccent.withOpacity(0.3),
+  buttonBackgroundColor: Colors.blueAccent.withOpacity(0.4),
   height: 65,
   index: _currentIndex,
   animationCurve: Curves.easeInOutQuad,
   animationDuration: const Duration(milliseconds: 490),
-  onTap: (index) async{
-    if(_isNavigating) return;
+  onTap: (index) async {
+  if (_isNavigating) return;
 
   if (index == 0) {
     _scaffoldKey.currentState?.openDrawer();
     return;
   }
-  
+
   _isNavigating = true;
 
-try{
-  switch (index) {
-    case 1:
-    await Future.delayed(const Duration(milliseconds: 490));  
-      await Navigator.push(context, MaterialPageRoute(builder: (_) => attendanceInPage));
-  break;
+  try {
+    switch (index) {
+      case 1:
+        await Future.delayed(const Duration(milliseconds: 490));
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => attendanceInPage));
+        setState(() => _currentIndex = 2);
+        break;
 
-    case 2:
-    if (ModalRoute.of(context)?.settings.name != '/home') {
-    Navigator.pushNamed(context, '/home');
-      }
-      break;
+      case 2:
+        if (ModalRoute.of(context)?.settings.name != '/home') {
+          await Navigator.pushNamed(context, '/home');
+        }
+        break;
 
-    case 3:
-    Future.delayed(const Duration(milliseconds: 490), () async {
-      await Navigator.push(context, MaterialPageRoute(builder: (_) => attendanceOutPage));
+      case 3:
+        await Future.delayed(const Duration(milliseconds: 490));
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => attendanceOutPage));
+        setState(() => _currentIndex = 2);
+        break;
 
-    });
-      break;
+      case 4:
+        await Future.delayed(const Duration(milliseconds: 490));
+        await Navigator.pushNamed(context, '/user-info');
+        setState(() => _currentIndex = 2);
+        break;
 
-    case 4:
-    Future.delayed(const Duration(milliseconds: 490), () async{
-    await Navigator.pushNamed(context, '/user-info');
-    });
-      break;
-
-    default:
-      setState(() => _currentIndex = index);
+      default:
+        setState(() => _currentIndex = index);
+    }
+  } finally {
+    _isNavigating = false;
   }
-} finally{
-      _isNavigating = false;
-}
 },
 
   items: [
-    
    CurvedNavigationBarItem(
     child: Icon(Icons.menu_rounded, color:Colors.black87  ),
     label: "Menu",
@@ -522,7 +521,7 @@ try{
     labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color:  Colors.black87),
   ),
 
-CurvedNavigationBarItem(
+  CurvedNavigationBarItem(
     child: Icon(Icons.home_outlined, color: Colors.black87),
     label: "Home",
     labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
@@ -550,9 +549,8 @@ CurvedNavigationBarItem(
     label: "Profile",
     labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color:  Colors.black87),
   ),
-
-],
-),
+ ],
+),  
   ),
   );
 }

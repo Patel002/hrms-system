@@ -443,40 +443,27 @@ void showImagePreview(BuildContext context, String base64Image) {
   }
 
     return Scaffold(
-       backgroundColor: Colors.transparent,
-      appBar: PreferredSize(
-      preferredSize: const Size.fromHeight(kToolbarHeight),
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-             begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: AppBar(
+       backgroundColor: Color(0xFFF2F5F8),
+      appBar: AppBar(
                 title: const Text(
                   "Attendance History",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               backgroundColor: Colors.transparent, 
-                foregroundColor: Colors.black,
+                forceMaterialTransparency: true,
                 elevation: 0,
               ),
-            ),
-          ),
-      
       body: Stack( 
        children: [
         Container(
           decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
           ),
         ),
-        ),
+      ),
 
           // buildAnimatedStripe(
           //     speedFactor: 1.0, color: Colors.white.withOpacity(0.1)),

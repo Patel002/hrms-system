@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shimmer/shimmer.dart';
 
 class HolidayScreen extends StatefulWidget {
   const HolidayScreen({super.key});
@@ -56,28 +57,16 @@ class _HolidayScreenState extends State<HolidayScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
-appBar: PreferredSize(
- preferredSize: const Size.fromHeight(kToolbarHeight),
-child: Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-        child: AppBar(
+      backgroundColor: Color(0xFFF2F5F8),
+      appBar: AppBar(
+       backgroundColor: Colors.transparent, 
         title: const Text(
           "Holiday",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-       backgroundColor: Colors.transparent, 
-        foregroundColor: Colors.black,
+        forceMaterialTransparency: true,
         elevation: 0,
       ),
-    ),
-  ),
       body: Container(
         decoration:BoxDecoration(
         gradient: LinearGradient(
@@ -87,9 +76,42 @@ child: Container(
       ),
         ),
       child : _isLoading
-          ? const Center(child: CircularProgressIndicator(
-            color: Colors.black87,
-          ))
+          ? ListView.builder(
+          itemCount: 4,
+          padding: const EdgeInsets.all(12),
+          itemBuilder: (context, index) => Shimmer.fromColors(
+            baseColor: Colors.grey.shade300,
+            highlightColor: Colors.grey.shade100,
+            child: Card(
+              elevation: 3,
+              color: const Color.fromARGB(255, 255, 255, 255),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              child: ListTile(
+                contentPadding: const EdgeInsets.all(16),
+                leading: CircleAvatar(
+                  radius: 24,
+                  backgroundColor: Colors.grey[300],
+                ),
+                title: Container(
+                  height: 16,
+                  color: Colors.grey[300],
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: List.generate(3, (_) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6.0),
+                    child: Container(
+                      height: 14,
+                      width: double.infinity,
+                      color: Colors.grey[300],
+                    ),
+                  )),
+                ),
+              ),
+            ),
+          ),
+        )
           : _error != null
               ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
            : RefreshIndicator(
