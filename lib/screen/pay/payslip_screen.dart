@@ -9,9 +9,9 @@ import 'package:lottie/lottie.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:toastification/toastification.dart';
 import 'package:open_filex/open_filex.dart';
-import 'dart:io';
+// import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
+// import 'package:permission_handler/permission_handler.dart';
 import 'package:dio/dio.dart';
 
 class PayslipScreen extends StatefulWidget {
@@ -116,16 +116,15 @@ Future <void> _refreshPage() async {
 
 Future<void> downloadAndOpenPdf(BuildContext context, String url, String fileName) async {
   try {
-    if (Platform.isAndroid) {
-     var status = await Permission.manageExternalStorage.request();
+    // if (Platform.isAndroid) {
+    //  var status = await Permission.manageExternalStorage.request();
 
-             if (!status.isGranted) {
-          openAppSettings();
-          return;
-        }
-      }
+    //       if (!status.isGranted) {
+    //       openAppSettings();
+    //       return;
+    //     }
+    //   }
       
-
     final dir = await getApplicationDocumentsDirectory();
     final filePath = '${dir.path}/$fileName';
 

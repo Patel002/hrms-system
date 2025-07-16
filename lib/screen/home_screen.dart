@@ -11,6 +11,7 @@ import 'package:curved_labeled_navigation_bar/curved_navigation_bar_item.dart';
 import 'widgets/attendance_summary_screen.dart';
 import 'attendance/attendance_in_screen.dart';
 import 'attendance/attendance_out_screen.dart';
+// import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -454,12 +455,100 @@ Widget build(BuildContext context) {
   ),
 
 
-  bottomNavigationBar: SafeArea(
+  // bottomNavigationBar: SafeArea(
+  // child: SalomonBottomBar(
+  //   currentIndex: _currentIndex,
+  //   onTap: (index) async {
+  //     if (_isNavigating) return;
+
+  //     if (index == 0) {
+  //       _scaffoldKey.currentState?.openDrawer();
+  //       return;
+  //     }
+
+  //     setState(() => _currentIndex = index); 
+
+  //     _isNavigating = true;
+
+  //     try {
+  //       switch (index) {
+  //         case 1:
+  //           await Future.delayed(const Duration(milliseconds: 490));
+  //           await Navigator.push(context, MaterialPageRoute(builder: (_) => attendanceInPage));
+  //           break;
+
+  //         case 2: 
+  //           if (ModalRoute.of(context)?.settings.name != '/home') {
+  //             await Navigator.pushNamed(context, '/home');
+  //           }
+  //           break;
+
+  //         case 3:
+  //           await Future.delayed(const Duration(milliseconds: 490));
+  //           await Navigator.push(context, MaterialPageRoute(builder: (_) => attendanceOutPage));
+  //           break;
+
+  //         case 4:
+  //           await Future.delayed(const Duration(milliseconds: 490));
+  //           await Navigator.pushNamed(context, '/user-info');
+  //           break;
+  //       }
+
+  //       setState(() => _currentIndex = 2);
+  //     } finally {
+  //       _isNavigating = false;
+  //     }
+  //   },
+  //   items: [
+  //     SalomonBottomBarItem(
+  //       icon: const Icon(Icons.menu_rounded),
+  //       title: const Text("Menu"),
+  //       selectedColor: Colors.blueAccent,
+  //     ),
+
+  //     SalomonBottomBarItem(
+  //       icon: const Icon(Icons.punch_clock_outlined),
+  //       title: const Text("In"),
+  //       selectedColor: Colors.green,
+  //     ),
+
+  //     SalomonBottomBarItem(
+  //       icon: const Icon(Icons.home_outlined),
+  //       title: const Text("Home"),
+  //       selectedColor: Colors.orange,
+  //     ),
+
+  //     SalomonBottomBarItem(
+  //       icon: const Icon(Icons.lock_clock_outlined),
+  //       title: const Text("Out"),
+  //       selectedColor: Colors.redAccent,
+  //     ),
+
+  //     SalomonBottomBarItem(
+  //       icon: ValueListenableBuilder<String>(
+  //         valueListenable: profileImageNotifier,
+  //         builder: (context, value, _) {
+  //           return CircleAvatar(
+  //             radius: 14,
+  //             backgroundImage: value.isNotEmpty
+  //                 ? NetworkImage('$baseUrl/api/employee/attachment/$value')
+  //                 : const AssetImage('assets/icon/face-id.png') as ImageProvider,
+  //           );
+  //         },
+  //       ),
+  //       title: const Text("Profile"),
+  //       selectedColor: Colors.deepPurple,
+  //     ),
+  //   ],
+  // ),
+
+  
+bottomNavigationBar: SafeArea(
   maintainBottomViewPadding: true,
   child: CurvedNavigationBar(
   backgroundColor: Colors.transparent,
   color: Colors.white,
-  buttonBackgroundColor: Colors.blueAccent.withOpacity(0.4),
+  buttonBackgroundColor: Colors.white,
   height: 65,
   index: _currentIndex,
   animationCurve: Curves.easeInOutQuad,
@@ -472,6 +561,8 @@ Widget build(BuildContext context) {
     return;
   }
 
+  setState(() => _currentIndex = index); 
+
   _isNavigating = true;
 
   try {
@@ -479,7 +570,6 @@ Widget build(BuildContext context) {
       case 1:
         await Future.delayed(const Duration(milliseconds: 490));
         await Navigator.push(context, MaterialPageRoute(builder: (_) => attendanceInPage));
-        setState(() => _currentIndex = 2);
         break;
 
       case 2:
@@ -491,18 +581,14 @@ Widget build(BuildContext context) {
       case 3:
         await Future.delayed(const Duration(milliseconds: 490));
         await Navigator.push(context, MaterialPageRoute(builder: (_) => attendanceOutPage));
-        setState(() => _currentIndex = 2);
         break;
 
       case 4:
         await Future.delayed(const Duration(milliseconds: 490));
         await Navigator.pushNamed(context, '/user-info');
-        setState(() => _currentIndex = 2);
         break;
-
-      default:
-        setState(() => _currentIndex = index);
     }
+    setState(() => _currentIndex = 2);
   } finally {
     _isNavigating = false;
   }
@@ -516,22 +602,22 @@ Widget build(BuildContext context) {
   ),
 
   CurvedNavigationBarItem(
-    child: Icon(Icons.punch_clock_outlined, color: Colors.black87),
+    child: Icon(Icons.punch_clock_outlined, color: _currentIndex == 1 ? Colors.green : Colors.black87),
     label: "In",
-    labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color:  Colors.black87),
+    labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
   ),
 
   CurvedNavigationBarItem(
-    child: Icon(Icons.home_outlined, color: Colors.black87),
+    child: Icon(Icons.home_outlined, color: _currentIndex == 2 ? Colors.orange.shade900 : Colors.black87),
     label: "Home",
     labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
   ),
   
 
   CurvedNavigationBarItem(
-    child: Icon(Icons.lock_clock_outlined, color:Colors.black87),
+    child: Icon(Icons.lock_clock_outlined, color:_currentIndex == 3 ? Colors.redAccent : Colors.black87),
     label: "Out",
-    labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
+    labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color:Colors.black87),
   ),
 
   CurvedNavigationBarItem(
@@ -551,7 +637,8 @@ Widget build(BuildContext context) {
   ),
  ],
 ),  
-  ),
+
+),
   );
 }
 

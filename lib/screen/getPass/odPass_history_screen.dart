@@ -73,31 +73,20 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
 @override
   Widget build(BuildContext context) {
     return Scaffold(
-    appBar: PreferredSize(
-    preferredSize: const Size.fromHeight(kToolbarHeight),
-    child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-           colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-            begin: Alignment.topRight,
-            end: Alignment.center,
-          ),
-        ),
-      child: AppBar(
+      backgroundColor: Color(0xFFF2F5F8),
+    appBar: AppBar(
+        backgroundColor: Colors.transparent,
         title: Text("OD-Pass History",
         style: TextStyle(fontWeight: FontWeight.bold),),
-        backgroundColor: Colors.transparent,
+        forceMaterialTransparency: true,
         foregroundColor: Colors.black,
-        elevation: 4,
-      ),
-     )
     ),
       body: Container(
         decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-              begin: Alignment.bottomLeft,
-              end: Alignment.center,
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
             ),
           ),
    child: Column(
@@ -630,6 +619,7 @@ void initState() {
                               label: const Text("Update"),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white,
+                                foregroundColor: Colors.black87,
                                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),

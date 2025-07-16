@@ -144,32 +144,21 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
     @override
     Widget build(BuildContext context) {
       return Scaffold(
-      appBar: PreferredSize(
-      preferredSize: const Size.fromHeight(kToolbarHeight),
-      child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-           colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-            begin: Alignment.topRight,
-            end: Alignment.center,
-          ),
-        ),
-      child: AppBar(
+      backgroundColor: Color(0xFFF2F5F8),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
         title: Text("Leave Status",
         style: TextStyle(fontWeight: FontWeight.bold),),
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black,
+        forceMaterialTransparency: true,
         elevation: 4,
       ),
-     )
-    ),
 
       body: Container(
         decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-              begin: Alignment.bottomRight,
-              end: Alignment.topLeft,
+              begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
             ),
           ),
 
@@ -332,7 +321,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
       case 'approved':
         return Colors.green;
       case 'rejected':
-        return Colors.red;
+        return Colors.red.shade600;
       default:
         return Colors.grey;
     }
@@ -396,8 +385,6 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
 
     selectedLeaveType = widget.leave['leave_type'];
     fetchLeaveTypes();
-
-    
   }
 
   double calculateDuration(DateTime from, DateTime to) {
@@ -441,44 +428,42 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
 
   if (picked == null) return;
 
-  final pickedDateOnly = DateTime(picked.year, picked.month, picked.day);
-  final fromDateOnly = DateTime(fromDate.year, fromDate.month, fromDate.day);
-  final toDateOnly = DateTime(toDate.year, toDate.month, toDate.day);
+  // final pickedDateOnly = DateTime(picked.year, picked.month, picked.day);
+  // final fromDateOnly = DateTime(fromDate.year, fromDate.month, fromDate.day);
+  // final toDateOnly = DateTime(toDate.year, toDate.month, toDate.day);
 
 
+setState(() {
   if (isFromDate) {
-    if (pickedDateOnly.isAfter(toDateOnly)) {
+    fromDate = picked;
+
+    if (fromDate.isAfter(toDate)) {
+      toDate = fromDate;
       _showCustomSnackBar(
         context,
-        "Start date cannot be after end date",
-        Colors.orange,
+        "End date adjusted to match start date",
+        Colors.blueAccent.shade200,
         'assets/image/Animation1.json',
       );
-      return;
     }
-
-    setState(() {
-      fromDate = picked;
-      leaveDuration = calculateDuration(fromDate, toDate);
-    });
   } else {
-    if (pickedDateOnly.isBefore(fromDateOnly)) {
+    toDate = picked;
+
+    if (toDate.isBefore(fromDate)) {
+      fromDate = toDate;
       _showCustomSnackBar(
         context,
-        "End date cannot be before start date",
-        Colors.orange,
+        "Start date adjusted to match end date",
+        Colors.blueAccent.shade200,
         'assets/image/Animation1.json',
       );
-      return;
     }
-
-    setState(() {
-      toDate = picked;
-      leaveDuration = calculateDuration(fromDate, toDate);
-    });
   }
-}
 
+  leaveDuration = calculateDuration(fromDate, toDate);
+});
+
+} 
 
   Future<void> fetchLeaveTypes() async {
     if (leaveTypes.isNotEmpty) return;
@@ -628,6 +613,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
     setState(() {});
   }
 
+
  void _showCustomSnackBar(
   BuildContext context,
   String message,
@@ -679,28 +665,17 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
     // print('Leave Reject: ${widget.leave['rejected_reason']}');
 
    return Scaffold(
-      backgroundColor: Colors.grey[200],
-      appBar: PreferredSize(
-      preferredSize: const Size.fromHeight(kToolbarHeight),
-      child: Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: AppBar(
+      backgroundColor: const Color(0xFFF2F5F8),
+      extendBody: true,
+      appBar: AppBar(
+       backgroundColor: Colors.transparent, 
         title: const Text(
           "Leave Details",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-       backgroundColor: Colors.transparent, 
-        foregroundColor: Colors.black,
-        elevation: 0,
+        forceMaterialTransparency: true,
       ),
-    ),
-  ),
+   
      body:Stack( 
      children: [
       Container(
@@ -708,7 +683,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
       gradient: LinearGradient(
         colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
          begin: Alignment.topRight,
-         end: Alignment.bottomLeft,
+         end: Alignment.center,
       ),
       ),
       child: RefreshIndicator(
