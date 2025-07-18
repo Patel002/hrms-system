@@ -342,28 +342,16 @@ Future<void> handlePullToRefresh() async {
 @override
 Widget build(BuildContext context) {
   return Scaffold(
-    backgroundColor: Colors.transparent,
-   appBar: PreferredSize(
-  preferredSize: const Size.fromHeight(kToolbarHeight),
-  child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+    backgroundColor: Color(0xFFF2F5F8),
+   appBar: AppBar(
+      backgroundColor: Colors.transparent, 
+        title: const Text(
+          "Attendance Out",
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        child: AppBar(
-                title: const Text(
-                  "Attendance Out",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              backgroundColor: Colors.transparent, 
-                foregroundColor: Colors.black,
-                elevation: 0,
-              ),
-            ),
-          ),
+        forceMaterialTransparency: true,
+        elevation: 0,
+      ),
     body: Stack(
       children: [
         Container (

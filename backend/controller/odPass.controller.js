@@ -120,7 +120,7 @@ const getHistoryOfOdPass = async(req, res) =>{
         });
 
         const odPass = odPassRecords.map((od) => ({
-                        id: od.id,
+            id: od.id,
             emp_id: od.emp_id,
             comp_id: od.comp_id,
             add_date: od.add_date,
@@ -198,8 +198,119 @@ const updateOdPassApplication = async(req, res) => {
     }
 }
 
+const getLeaveRequestsBySupervisor = async (req, res) => {
+  const { status } = req.params;
+  const { em_id, em_role } = req.user;
+
+  try {
+    if (em_role === 'SUPER ADMIN') {
+      const allodPassRequests = await OdPass.findAll({
+        where: { approved: status },
+      });
+      return res.status(200).json({
+        pendingLeaves: allodPassRequests,
+      });
+    }
+
+    const subordinates = await Employee.findAll({
+      where: { supervisor_id: (em_id) },
+    });
+
+    console.log(subordinates);
+
+    const subordinateIds = subordinates.map(emp => emp.em_id);
+    console.log("subordinateIds:", subordinateIds);
+
+    if (subordinateIds.length === 0) {
+      return res.status(200).json([
+        {
+          message: 'No leave requests found',
+        },
+      ]); 
+    }
+
+    const odRequests = await OdPass.findAll({
+    where: {
+        emp_id: subordinateIds,
+        approved: status,
+    },
+    include: [
+        {
+        model: Employee,
+        include: [
+            { model: Department, attributes: ['dep_name'] },
+            { model: Company, attributes: ['comp_fname'] },
+        ],
+        attributes: ['em_id', 'em_username'],
+        },
+    ],
+    });
+
+    res.status(200).json({
+        pendingOdRequests: odRequests
+    });
+  } catch (err) {
+    console.error('Error fetching od requests:', err);
+    res.status(500).json({ error: 'Failed to get leave requests' });
+  }
+};
+
+const approveRejectOd = async(req, res) => {
+const { id } = req.params;
+const { action, reject_reason } = req.body;
+try {
+    const odPass = await OdPass.findOne({ where: { id } });
+    if (!odPass) {
+        return res.status(404).json({ message: "Od Pass not found" });
+    }
+
+        const employee = await Employee.findOne({
+        where: { em_id: odPass.emp_id },
+        include: [
+            {
+            model: Department,
+            attributes: ['dep_name']
+            },
+            {
+            model: Company,
+            attributes: ['comp_fname']
+            }
+        ]
+        });
+
+
+    if (!employee || employee.supervisor_id !== req.user.em_id && req.user.em_role !== 'SUPER ADMIN') {
+        return res.status(403).json({ message: "You are not authorized to approve/reject this leave" });
+    }
+
+    console.log("employee.em_id",employee.em_id,"quattro",req.user.em_role);
+
+   if (action === "approve") {
+    odPass.approved = "APPROVED";
+    odPass.rejectreason = `Approved By ${req.user.em_id}`;
+   }else if (action === "reject") {
+        odPass.approved = "REJECTED";
+        odPass.rejectreason = reject_reason;
+    }
+
+    odPass.approved_by = req.user.em_id;
+    odPass.approved_at = new Date();
+    odPass.update_date = new Date();
+    const result = await odPass.save();
+
+    return res.status(200).json({ message: "od pass request updated" ,result
+  });
+}
+    catch (error) {
+        console.log("Error rejecting leave: ", error);
+        res.status(500).json({ message: "Server side error from reject leave", error });
+    }
+}
+
 export {
     createOdPass,
     getHistoryOfOdPass,
-    updateOdPassApplication
+    updateOdPassApplication,
+    getLeaveRequestsBySupervisor,
+    approveRejectOd
 }

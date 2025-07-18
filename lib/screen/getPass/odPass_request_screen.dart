@@ -3,19 +3,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:jwt_decode/jwt_decode.dart';
-import './leave_details_page.dart';
+import './odPass_details_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-
-class LeaveRequestPage extends StatefulWidget {
-  const LeaveRequestPage({super.key});
+class ODPassRequest extends StatefulWidget {
+  const ODPassRequest({super.key});
 
   @override
-  _LeaveRequestPageState createState() => _LeaveRequestPageState();
+  State<ODPassRequest> createState() => _ODPassRequestState();
 }
 
-class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerProviderStateMixin {
-  bool isLoading = true;
+class _ODPassRequestState extends State<ODPassRequest> with SingleTickerProviderStateMixin {
+ 
+ bool isLoading = true;
   String? employeeCode,compFname,departmentName;
   List<dynamic> pendingRequests = [];
   List<dynamic> approvedRequests = [];
@@ -66,15 +66,15 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
 
 
     final statusMap = {
-      'pending': 'Not Approve',
-      'approved': 'Approve',
-      'rejected': 'Rejected',
+      'pending': 'PENDING',
+      'approved': 'APPROVED',
+      'rejected': 'REJECTED',
     };
 
     final apiStatus = statusMap[status.toLowerCase()];
     print('API Status: $apiStatus');
 
-    final res = await http.get(Uri.parse('$baseUrl/api/emp-leave/list/$apiStatus'),
+    final res = await http.get(Uri.parse('$baseUrl/api/od-pass/list/$apiStatus'),
     headers: {
       'Authorization': 'Bearer $token', 
     });
@@ -83,8 +83,8 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
     if (res.statusCode == 200) {
       final decoded = jsonDecode(res.body);
       print('Decoded: $decoded');
-      final List<dynamic> dataList = decoded['pendingLeaves'];
-      print('Pending Leaves: $dataList');
+      final List<dynamic> dataList = decoded['pendingOdRequests'];
+      print('Pending Od-Pass requests: $dataList');
       return dataList.cast<Map<String, dynamic>>();
 
     } else {
@@ -94,12 +94,12 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
     }
   }
 
-  Future<void> _sendApprovalOrRejection(String leaveId, {required String action, String? reason}) async {
+  Future<void> _sendApprovalOrRejection(String odPassId, {required String action, String? rejectreason}) async {
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
-    final url = Uri.parse('$baseUrl/api/emp-leave/approve-reject/$leaveId');
+    final url = Uri.parse('$baseUrl/api/od-pass/approve-reject/$odPassId');
     print("url,$url");
     final response = await http.patch(
       url,
@@ -108,7 +108,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
       }, 
       body: jsonEncode({
         'action': action,
-        if (action == 'reject') 'reject_reason': reason,
+        if (action == 'reject') 'reject_reason': rejectreason,
       }),
     );
 
@@ -116,7 +116,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
     print('responseBody,$responseBody');
 
     if (response.statusCode == 200) {
-     _showCustomSnackBar(context, 'Leave details updated successfully ', Colors.green, Icons.check);
+     _showCustomSnackBar(context, 'Od pass details updated successfully ', Colors.green, Icons.check);
       await initData(); 
     } else {
       final error = jsonDecode(responseBody);
@@ -124,7 +124,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
     }
   }
 
-void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
+  void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
         final snackBar = SnackBar(
           content: Row(
             children: [
@@ -148,7 +148,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
 
-  void _confirmApprove(String leaveId) {
+  void _confirmApprove(String odPassId) {
   showModalBottomSheet(
     context: context,
     shape: RoundedRectangleBorder(
@@ -164,7 +164,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
             Icon(Icons.verified_outlined, color: Colors.green.shade400, size: 50),
             SizedBox(height: 16),
             Text(
-              "Approve Leave Request?",
+              "Approve Od Pass Request?",
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -172,7 +172,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
             ),
             SizedBox(height: 10),
             Text(
-              "Are you sure you want to approve this leave request?",
+              "Are you sure you want to approve this Od pass request?",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: Colors.black54),
             ),
@@ -198,7 +198,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _sendApprovalOrRejection(leaveId, action: 'approve');
+                      _sendApprovalOrRejection(odPassId, action: 'Approved');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
@@ -223,7 +223,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
 }
   
 
- void _showRejectDialog(String leaveId) {
+ void _showRejectDialog(String odPassId) {
   final TextEditingController reasonController = TextEditingController();
 
   showModalBottomSheet(
@@ -246,7 +246,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
             Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 50),
             SizedBox(height: 16),
             Text(
-              "Reject Leave Request",
+              "Reject Od Pass Request",
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -254,7 +254,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
             ),
             SizedBox(height: 10),
             Text(
-              "Please provide a reason for rejecting this leave request.",
+              "Please provide a reason for rejecting this Od pass request.",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: Colors.black54),
             ),
@@ -293,7 +293,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                       final reason = reasonController.text.trim();
                       if (reason.isNotEmpty) {
                         Navigator.pop(context);
-                        _sendApprovalOrRejection(leaveId, action: 'reject', reason: reason);
+                        _sendApprovalOrRejection(odPassId, action: 'reject', rejectreason: reason);
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -318,27 +318,28 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
   );
 }
 
- Widget _buildList(List<dynamic> list, {bool showActions = false}) {
+
+Widget _buildList(List<dynamic> list, {bool showActions = false}) {
   if (list.isEmpty) return Center(child: Text("No requests."));
   return ListView.builder(
     padding: EdgeInsets.only(top: 8),
     itemCount: list.length,
     itemBuilder: (_, i) {
-      Map<String, dynamic> leave = list[i];
-      String status = leave['leave_status'] ?? 'pending';
+      Map<String, dynamic> od = list[i];
+      String status = od['approved'] ?? 'pending';
       print('Status: $status');
       
       return Card(
-        color: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: Colors.white,
         elevation: 4,
         margin: EdgeInsets.all(10),
         child: Column(
           children: [
             ListTile(
               leading: Icon(Icons.event_note, color: Colors.blue),
-              title: Text("${leave['start_date']} → ${leave['end_date']}"),
-              subtitle: Text("Employee: ${leave['em_id']}", 
+              title: Text("${od['fromdate']} → ${od['todate']}"),
+              subtitle: Text("Employee: ${od['emp_id']}", 
               style: TextStyle(fontWeight: FontWeight.bold)),
               trailing: Container(
                 padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -352,31 +353,32 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                 ),
               ),
               onTap: () async {
-                final pref = await SharedPreferences.getInstance();
-                final token = pref.getString('token');
-                final decoded = Jwt.parseJwt(token!);
+                // final pref = await SharedPreferences.getInstance();
+                // final token = pref.getString('token');
+                // final decoded = Jwt.parseJwt(token!);
                 // final employeeCode = decoded['em_code'];
                 // final departmentName = decoded['dep_name'];
-                final compFname = decoded['comp_fname'];
+                // final compFname = decoded['comp_fname'];
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => LeaveDetailPage(
-                      leave: leave,
+                    builder: (context) => OdDetailPage(
+                      od: od,
                       // departmentName: departmentName ?? '',
                       // employeeCode: employeeCode ?? '',
-                      compFname: compFname ?? '',
+                      // compFname: compFname ?? '',
                       onAction: (action, [reason]) {
                         Navigator.pop(context);
-                        _sendApprovalOrRejection(leave['id'].toString(), 
-                            action: action, reason: reason);
+                        _sendApprovalOrRejection(od['id'].toString(), 
+                            action: action, rejectreason: reason);
                       },
+                      showActions: false
                     ),
                   ),
                 );
               },
             ),
-            if (showActions && status.toLowerCase() == 'not approve')
+            if (showActions && status.trim().toUpperCase() == 'PENDING')
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: Row(
@@ -384,14 +386,14 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   children: [
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:  Color(0xFFF5F7FA),
+                        backgroundColor: Color(0xFFF5F7FA),
                         foregroundColor: Colors.green,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.all(Radius.circular(10)),
                            ),
                           // contentPadding: EdgeInsets.symmetric(horizontal: 16),
                       ),
-                      onPressed: () => _confirmApprove(leave['id'].toString()),
+                      onPressed: () => _confirmApprove(od['id'].toString()),
                       child: Icon(Icons.check_circle_rounded, size: 20),
                     ),
                     SizedBox(width: 8),
@@ -403,7 +405,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                           borderRadius: BorderRadius.circular(10)),
                         padding: EdgeInsets.symmetric(horizontal: 16),
                       ),
-                      onPressed: () => _showRejectDialog(leave['id'].toString()),
+                      onPressed: () => _showRejectDialog(od['id'].toString()),
                       child: Icon(Icons.cancel_rounded, size: 20),
                     ),
                   ],
@@ -423,7 +425,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
       backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.white,
-          title: Text("Leave Requests"),
+          title: Text("Od Pass Requests", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
           bottom: TabBar(
             controller: _tabController,
             labelColor: Color(0XFF00A8CC),
@@ -437,7 +439,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
           ),
         ),
         body: isLoading
-            ? Center(child: CircularProgressIndicator())
+            ? Center(child: CircularProgressIndicator( color: Colors.black87,))
             : TabBarView(
                 controller: _tabController,
                 children: [
@@ -450,14 +452,14 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
     );
   }
 
-    Color statusColor(String status) {
+  Color statusColor(String status) {
   final cleaned = status.trim().toLowerCase();
   switch (cleaned) {
-    case 'not approve': return Colors.orange;
-    case 'approve': return Colors.green;
+    case 'pending': return Colors.orange;
+    case 'approved': return Colors.green;
     case 'rejected': return Colors.red;
     default: return Colors.grey;
   }
 }
+  
 }
-

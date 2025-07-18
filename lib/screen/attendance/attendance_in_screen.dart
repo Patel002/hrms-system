@@ -113,9 +113,7 @@ class _AttendanceScreenINState extends State<AttendanceScreenIN> {
     await openAppSettings();
     return false;
   } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Location permission is required.')),
-    );
+    _showCustomSnackBar(context, 'Location permission is required.', Colors.teal.shade400, Icons.location_on_outlined);
     return false;
   }
 }
@@ -129,9 +127,7 @@ Future<bool> requestCameraPermission() async {
     await openAppSettings();
     return false;
   } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Camera permission is required.')),
-    );
+    _showCustomSnackBar(context, 'Camera permission is required.', Colors.lightBlue.shade200, Icons.camera_alt_outlined);
     return false;
   }
 }
@@ -344,30 +340,17 @@ Future<void> _captureImage() async {
 @override
 Widget build(BuildContext context) {
   return Scaffold(
-    backgroundColor: Colors.transparent,
-   appBar: PreferredSize(
-  preferredSize: const Size.fromHeight(kToolbarHeight),
-  child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: AppBar(
-                title: const Text(
-                  "Attendance In",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              backgroundColor: Colors.transparent, 
-                foregroundColor: Colors.black,
-                elevation: 0,
-              ),
-            ),
+    backgroundColor: Color(0xFFF2F5F8),
+   appBar:AppBar(
+    backgroundColor: Colors.transparent, 
+      title: const Text(
+        "Attendance In",
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      forceMaterialTransparency: true,
           ),
     body: Stack(
-      children: [
+    children: [
     Container (
     padding: const EdgeInsets.all(20),
     decoration: const BoxDecoration(

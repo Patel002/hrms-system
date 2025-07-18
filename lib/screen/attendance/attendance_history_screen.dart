@@ -289,34 +289,7 @@ void showImagePreview(BuildContext context, String base64Image) {
           Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-          if (base64Image != null && base64Image.isNotEmpty)
-          GestureDetector(
-            onTap: () => showImagePreview(context, base64Image),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.memory(
-                base64Decode(base64Image.split(',').last),
-                height: 80,
-                width: 80,
-                fit: BoxFit.cover,
-              ),
-            ),
-          )
-          else
-          Container(
-            height: 130,
-            width: 130,
-            decoration: BoxDecoration(
-              color: Colors.grey,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.image_not_supported,
-              size: 40,
-              color: Colors.grey,
-            ),
-          ),
-  
+            buildImageOrPlaceholder(base64Image, context),
               const SizedBox(width: 16),
 
               Expanded(
@@ -572,4 +545,48 @@ void showImagePreview(BuildContext context, String base64Image) {
       )
     );
   }
+
+
+Widget buildImageOrPlaceholder(String? base64Image, BuildContext context) {
+  try {
+    if (base64Image != null &&
+        base64Image.isNotEmpty &&
+        base64Image.contains(',')) {
+      final imageBytes = base64Decode(base64Image.split(',').last);
+
+      return GestureDetector(
+        onTap: () => showImagePreview(context, base64Image),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.memory(
+            imageBytes,
+            height: 80,
+            width: 80,
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    } else {
+      return _buildPlaceholderContainer();
+    }
+  } catch (e) {
+    return _buildPlaceholderContainer();
+  }
+}
+
+Widget _buildPlaceholderContainer() {
+  return Container(
+    height: 130,
+    width: 130,
+    decoration: BoxDecoration(
+      color: Colors.grey.shade300,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: const Icon(
+      Icons.image_not_supported,
+      size: 40,
+      color: Colors.grey,
+    ),
+  );
+}
 }

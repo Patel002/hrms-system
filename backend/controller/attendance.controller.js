@@ -14,10 +14,10 @@ const punchAttendance = async(req, res) => {
        const punchTime = istNow.toFormat('HH:mm:ss'); 
        const createdAtIst = istNow.toISO();
        
-        //    console.log("Current IST Date and Time:", istNow);
-        //    console.log("Punch Date:", punchDate);
-        //    console.log("Punch Time:", punchTime);
-        //    console.log("Created At:", createdAtIst);
+           console.log("Current IST Date and Time:", istNow);
+           console.log("Punch Date:", punchDate);
+           console.log("Punch Time:", punchTime);
+           console.log("Created At:", createdAtIst);
 
         if (!emp_id || !comp_id || !punch_place || !punch_img || !latitude || !longitude || !created_by) {
             return res.status(400).json({ message: "All fields are required" });

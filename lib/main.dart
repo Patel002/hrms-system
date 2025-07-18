@@ -17,6 +17,7 @@ import 'screen/getPass/odPass_history_screen.dart';
 import 'screen/timeMachine/attendance_report_screen.dart';
 import 'screen/userInfo/user_info_screen.dart';
 import 'screen/pay/payslip_screen.dart';
+import 'screen/getPass/odPass_request_screen.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 void main() async {
@@ -65,6 +66,7 @@ class MyApp extends StatelessWidget {
           '/attendance-history': (context) => const AttandanceHistory(),
           '/od-pass': (context) => const ODPassScreen(),
           '/od-history': (context) => const OdHistory(),
+          '/od-request': (context) => const ODPassRequest(),
           '/attendance-record': (context) => const AttendanceReportPage(),
           '/user-info': (context) => const UserInfo(),
           '/payslips': (context) => const PayslipScreen(),

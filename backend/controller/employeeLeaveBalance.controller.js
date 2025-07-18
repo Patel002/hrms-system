@@ -14,7 +14,8 @@ const getEmployeeLeaveBalance = async (req, res) => {
       attributes: [
         'leave_type_id',
         [Sequelize.fn('SUM', Sequelize.literal(`CASE WHEN LOWER(leave_status) = 'credit' THEN number_of_days ELSE 0 END`)), 'credit'],
-        [Sequelize.fn('SUM', Sequelize.literal(`CASE WHEN LOWER(leave_status) = 'debit' THEN ABS(number_of_days) ELSE 0 END`)), 'debit']
+        [Sequelize.fn('SUM', Sequelize.literal(`CASE WHEN LOWER(leave_status) LIKE 'debit%' THEN ABS(number_of_days)
+         ELSE 0 END`)), 'debit']
       ],
       group: ['employee_leave_balance.leave_type_id', 'leave_type.type_id'],
       include: [{
@@ -27,18 +28,18 @@ const getEmployeeLeaveBalance = async (req, res) => {
   //  console.log(JSON.stringify(balances, null, 2));
 
     const formatted = balances.map(b => {
-      const credit = parseFloat(b.get('credit')) || 0;
+      const Credit = parseFloat(b.get('credit')) || 0;
       const debit = parseFloat(b.get('debit')) || 0;
 
-      console.log("credit: ", credit);
+      console.log("credit: ", Credit);
       console.log("debit: ", debit);
 
       return {
         leave_type_id: b.leave_type_id,
         leave_type_name: b.leave_type.name, 
         leave_short_name: b.leave_type.leave_short_name,
-        available_balance: credit - debit,
-        credit: credit, 
+        available_balance: Credit - debit,
+        credit: Credit, 
         debit: debit
       };
     });

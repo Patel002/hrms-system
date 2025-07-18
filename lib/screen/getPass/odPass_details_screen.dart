@@ -1,44 +1,42 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-class LeaveDetailPage extends StatelessWidget {
-  final Map<String, dynamic> leave;
+class OdDetailPage extends StatelessWidget {
+  final Map<String, dynamic> od;
   // final String? departmentName;
-  // final String employeeCode;
-  final String compFname;
-  final void Function(String action, [String? reason]) onAction;
+  // final String compFname;
+  final void Function(String action, [String? rejectreason]) onAction;
+  final bool showActions;
   final baseUrl = dotenv.env['API_BASE_URL'];
 
-  LeaveDetailPage({super.key, 
-    required this.leave,
-    // this.departmentName,
-    // required this.employeeCode,
-    required this.compFname,
+  OdDetailPage({
+    super.key, 
+    required this.od,
     required this.onAction,
+    // required this.departmentName,
+    // required this.compFname,
+    this.showActions = false,
   });
 
-  @override
+
+    @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final status = leave['leave_status'] ?? 'pending';
-
+    final status = od['approved'] ?? 'pending';
     return Scaffold(
       backgroundColor: Color(0xFFF2F5F8),
       appBar: AppBar(
-        title: const Text("Leave Details", style: TextStyle(fontWeight: FontWeight.bold),),
+        title: const Text("Od Pass Details", style: TextStyle(fontWeight: FontWeight.bold),),
         centerTitle: false,
-        elevation: 0,
         forceMaterialTransparency: true,
+        elevation: 0,
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
                 child: Card(
-                  color: Color(0xFFF5F7FA),
+                  color: Colors.white,
                   elevation: 2,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -75,80 +73,29 @@ class LeaveDetailPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        
-                        // Leave Type
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.calendar_today_outlined, size: 16, color: Colors.grey.shade600),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text(leave['leave_type'] ?? ''))
-                            ],
-                          )
-                        ),
-
-                        const SizedBox(height: 12),
-                        const Divider(height: 32),
                     
                         _buildSectionHeader(Icons.person_outline, 'Employee Information'),
-                        _buildInfoTile(Icons.badge_outlined, "Employee ID", leave['em_id'].toString()),
-                        // _buildInfoTile(Icons.credit_card_outlined, "Employee Code", employeeCode),
-                        _buildInfoTile(Icons.business_outlined, "Company Name", compFname),
+                        _buildInfoTile(Icons.badge_outlined, "Employee ID", od['emp_id'].toString()),
+                        _buildInfoTile(Icons.business_outlined, "Company Name", od['employee']?['company']?['comp_fname'] ?? '-'),
+                        _buildInfoTile(Icons.credit_card_outlined, "Department Name", od['employee']?['department']?['dep_name'] ?? '-'),
+
                         
                         const Divider(height: 32),
                         
-                        _buildSectionHeader(Icons.date_range_outlined, 'Leave Dates'),
-                        _buildInfoTile(Icons.play_circle_outline, "Start Date", leave['start_date']),
-                        _buildInfoTile(Icons.stop_circle_outlined, "End Date", leave['end_date']),
-                        _buildInfoTile(Icons.timelapse_outlined, "Duration", "${leave['leave_duration']} day(s)"),
+                        _buildSectionHeader(Icons.date_range_outlined, 'Od Dates'),
+                        _buildInfoTile(Icons.play_circle_outline, "Start Date", od['fromdate']),
+                        _buildInfoTile(Icons.stop_circle_outlined, "End Date", od['todate']),
+                        _buildInfoTile(Icons.timelapse_outlined, "Duration", "${od['oddays']} day(s)"),
                         
                         const Divider(height: 32),
                         
-                        _buildInfoTile(Icons.note_outlined, "Reason", leave['reason']),
+                        _buildInfoTile(Icons.note_outlined, "Reason", od['remark']),
 
-                        _buildInfoTile(Icons.attach_file_outlined, "Attachment",   leave['leaveattachment'] ?? '',
-                        color: Colors.blueGrey,
-                        onTap: () async {
-                        print('onTap triggered');
-                        final fileUrl = leave['leaveattachment'];
-                        print('File Name: $fileUrl');
-
-                        if (fileUrl == null || fileUrl.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('No attachment found')),
-                        );
-                        return;
-                        }
+                        if ((od['rejectreason'] != null && od['rejectreason'] != '') &&
+                        status.toLowerCase().trim() == 'rejected')
+                        _buildInfoTile(Icons.block_outlined, "Reject Reason", od['rejectreason'], color: Colors.red),
                         
-                         print('Attachment: ${leave['leaveattachment']}');
-                      try {
-                      final fileName = fileUrl.split('/').last.split('?').first;
-                      final dir = await getTemporaryDirectory();
-                      final filePath = '${dir.path}/$fileName';
-                      await Dio().download(fileUrl, filePath);
-                      final result = await OpenFilex.open(filePath);
-                        if (result.type != ResultType.done) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Could not open attachment')),
-                          );
-                        }
-                      }catch(e){
-                        print('Download/open error: $e');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to download attachment')),
-                        );
-                      } 
-                    }        
-                    ),
-                        if (leave['reject_reason'] != null && leave['reject_reason'] != '')
-                          _buildInfoTile(Icons.block_outlined, "Reject Reason", leave['reject_reason'], color: Colors.red),
-                        
-                        if (status.toLowerCase() == 'pending') ...[
+                        if (showActions && status.toLowerCase().trim() == 'pending') ...[
                           const Divider(height: 32),
                           _buildActionButtons(context),
                         ],
@@ -156,11 +103,11 @@ class LeaveDetailPage extends StatelessWidget {
                     ),
                   ),
                 ),
-          );
-        },
-      ),
-    );
-  }
+              );
+            },
+          ),
+        );
+      }
 
   Widget _buildSectionHeader(IconData icon, String title) {
     return Padding(
@@ -187,7 +134,7 @@ class LeaveDetailPage extends StatelessWidget {
   VoidCallback? onTap,
 }) {
   return InkWell(
-    onTap: onTap,
+    onTap: onTap, 
     child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -256,9 +203,9 @@ class LeaveDetailPage extends StatelessWidget {
   }
 
   IconData _getStatusIcon(String status) {
-    if (status.toLowerCase() == 'approve') {
+    if (status.toLowerCase().trim() == 'approved') {
       return Icons.verified;
-    } else if (status.toLowerCase() == 'rejected') {
+    } else if (status.toLowerCase().trim() == 'rejected') {
       return Icons.cancel_outlined;
     } else {
       return Icons.pending_outlined;
@@ -266,9 +213,9 @@ class LeaveDetailPage extends StatelessWidget {
   }
 
   Color _getStatusColor(String status) {
-    if (status.toLowerCase() == 'approve') {
+    if (status.toLowerCase().trim() == 'approved') {
       return Colors.green.withOpacity(0.1);
-    } else if (status.toLowerCase() == 'rejected') {
+    } else if (status.toLowerCase().trim() == 'rejected') {
       return Colors.red.withOpacity(0.1);
     } else {
       return Colors.orange.withOpacity(0.1);
@@ -276,9 +223,9 @@ class LeaveDetailPage extends StatelessWidget {
   }
 
   Color _getStatusTextColor(String status) {
-    if (status.toLowerCase() == 'approve') {
+    if (status.toLowerCase().trim() == 'approved') {
       return Colors.green;
-    } else if (status.toLowerCase() == 'rejected') {
+    } else if (status.toLowerCase().trim() == 'rejected') {
       return Colors.red;
     } else {
       return Colors.orange;

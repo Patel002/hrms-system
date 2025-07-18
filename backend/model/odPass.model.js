@@ -68,10 +68,19 @@ const OdPass = sequelize.define('od_pass',{
         type: DataTypes.STRING,
         allowNull: false
     },
+    approved_by: {
+        type: DataTypes.STRING
+    },
+    approved_at: {
+        type: DataTypes.DATE
+    },
     approve_step1:{
         type: DataTypes.ENUM('0','1'),
         allowNull: false,
         defaultValue: '0'
+    },
+    rejectreason: {
+        type: DataTypes.STRING  
     }
 
 },{

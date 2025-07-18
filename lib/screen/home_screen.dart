@@ -11,7 +11,7 @@ import 'package:curved_labeled_navigation_bar/curved_navigation_bar_item.dart';
 import 'widgets/attendance_summary_screen.dart';
 import 'attendance/attendance_in_screen.dart';
 import 'attendance/attendance_out_screen.dart';
-// import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,6 +22,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage>  {
   final baseUrl = dotenv.env['API_BASE_URL'];
 
+  String appVersion = '';
   String? userRole;
   String? username,profileImage;
   String? empId; 
@@ -59,9 +60,19 @@ void initState() {
   loadUserPermissions();
   attendanceInPage = const AttendanceScreenIN();
   attendanceOutPage = const AttendanceScreenOut();
+  _loadVersion();
 }
 
-   String formatDuration(String rawDuration) {
+
+Future<void> _loadVersion() async {
+  final info = await PackageInfo.fromPlatform();
+  setState(() {
+    appVersion = '${info.version}+${info.buildNumber}';
+  });
+}
+
+
+  String formatDuration(String rawDuration) {
   try {
     final parts = rawDuration.split(' ');
     final hours = int.parse(parts[0].replaceAll('h', ''));
@@ -951,9 +962,10 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
               ],
             ),
             ),
+            
             Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),          
-            child: ExpansionTile(
+              child: ExpansionTile(
               key: Key('Attendance_${_expandedTile == 'Attendance'}'),
               title: const Text('Attendance',style: TextStyle(fontWeight: FontWeight.w600)),
               leading: const Icon(Icons.rocket_launch_outlined),
@@ -993,12 +1005,17 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
               childrenPadding: const EdgeInsets.only(left: 25, right: 16, bottom: 5), 
               children: [
                 ListTile(
-                  title: const Text('Apply OD'),
+                  title: const Text('OD Apply'),
                   onTap: () => Navigator.pushNamed(context, '/od-pass'),
                 ),
                 ListTile(
                   title: const Text('OD History'),
                   onTap: () => Navigator.pushNamed(context, '/od-history'),
+                ),
+                if (userRole == 'SUPER ADMIN' || isSupervisor)
+                ListTile(
+                  title: const Text('OD Request'),
+                  onTap: () => Navigator.pushNamed(context, '/od-request'),
                 ),
               ]
              )
@@ -1026,7 +1043,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
 
             Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),          
-            child: ExpansionTile(
+              child: ExpansionTile(
               key: Key('Payroll${_expandedTile == 'Payroll'}'),
               title: const Text('Payroll',style: TextStyle(fontWeight: FontWeight.w600)),
               leading: const Icon(Icons.currency_rupee),
@@ -1043,6 +1060,26 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
               ],
              ),
             ),
+          Padding(
+  padding: const EdgeInsets.only(bottom: 25.0, top: 6.0),
+  child: Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Divider(thickness: 0.7, color: Colors.grey.shade300),
+      SizedBox(height: 6),
+      Text(
+        'v$appVersion',
+        style: TextStyle(
+          fontSize: 12,
+          color: Colors.grey,
+          fontWeight: FontWeight.w400,
+        ),
+      ),
+      // const SizedBox(height: 4),
+    ],
+  ),
+),
+
            ],
           ),
          ),
