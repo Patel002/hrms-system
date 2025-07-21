@@ -107,7 +107,7 @@ const getHistoryOfOdPass = async(req, res) =>{
             {
                 model: Employee,
                 as: 'employee',
-                attributes: ['em_id','dep_id','em_username'],
+                attributes: ['em_id','dep_id','first_name','last_name'],
                 include: [
                     {
                         model: Department,
@@ -137,7 +137,7 @@ const getHistoryOfOdPass = async(req, res) =>{
             updated_at: od.updated_at,
             created_by: od.created_by,
             approve_step1: od.approve_step1,
-            employee_name: od.employee?.em_username || null,
+            employee_name: od.employee?.first_name + ' ' + od.employee?.last_name || null,
             department_name: od.employee?.department?.dep_name || null
         }));
 

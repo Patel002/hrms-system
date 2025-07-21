@@ -11,8 +11,8 @@ const punchAttendance = async(req, res) => {
 
        const istNow = DateTime.now().setZone('Asia/Kolkata');
        const punchDate = istNow.toISODate(); 
-       const punchTime = istNow.toFormat('HH:mm:ss'); 
-       const createdAtIst = istNow.toISO();
+       const punchTime = istNow.toJSDate(); 
+       const createdAtIst = istNow.toJSDate();
        
            console.log("Current IST Date and Time:", istNow);
            console.log("Punch Date:", punchDate);
@@ -115,9 +115,12 @@ const punchAttendance = async(req, res) => {
         const monitorData = await MonitorData.create({
             SRNO: newAttendance.punchtype,
             EnrollID: enrollId,
-            PunchDate: newAttendance.punch_date,
-            Received_date: newAttendance.punch_date,
-            verifyMode: 'Selfie'
+            PunchDate: punchTime,
+            Received_date: punchTime,
+            verifyMode: 'Selfie',
+            // Temperature_c: 0,
+            // TRID: 0,
+            // Temperature_f: 0
         });
 
         // console.log("Attendance recorded:", newAttendance,);

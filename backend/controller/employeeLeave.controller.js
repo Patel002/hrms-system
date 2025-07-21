@@ -1,13 +1,14 @@
 import { EmployeeLeave, Employee, LeaveTypes, Company, EmployeeLeaveBalance } from "../utils/join.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Op } from "sequelize";
+import { DateTime } from "luxon";
 import fs from "fs";
 
 const MAX_FILE_SIZE_MB = 10;
 
 const createLeave = async (req, res) => {
     const {
-        em_username,
+        em_id,
         leave_type,
         comp_fname,
         start_date,
@@ -17,7 +18,14 @@ const createLeave = async (req, res) => {
         reason
     } = req.body;
 
+    console.log("Request Body:", req.body);
+
     let attachment = null;
+    let day_type = "";
+
+    const istNow = DateTime.now().setZone('Asia/Kolkata');
+    const createdAtIst = istNow.toJSDate();
+
 
     // const leaveattachment = req.file ? req.file.filename : null;
     // if (!leaveattachment) {
@@ -35,12 +43,22 @@ const createLeave = async (req, res) => {
         });
     }
 
-        const employee = await Employee.findOne({ where: { em_username } });
+    if(duration === 0.5){
+      day_type = "Half-Day";
+    }else if(duration === 1){
+      day_type = "Full-Day";
+    }else if(duration > 1){
+      day_type = "More Than One Day";
+    }else{
+      return res.status(400).json({ message: "Invalid leave duration" });
+    }
+
+        const employee = await Employee.findOne({ where: { em_id } });
         if (!employee) {
             return res.status(404).json({ message: "Employee not found" });
         }
-        const employeeId = employee.em_code;
-        console.log("Employee ID:", employee.em_code);
+        const employeeId = employee.em_id;
+        console.log("Employee ID:", employee.em_id);
 
         const leaveType = await LeaveTypes.findOne({ where: { name: req.body.leave_type } });
         if (!leaveType) return res.status(400).json({ message: "Invalid leave type" });
@@ -203,7 +221,7 @@ const createLeave = async (req, res) => {
             em_id: employeeId,
             comp_id: company.comp_id,
             typeid: leaveType.type_id,
-            leave_type,
+            leave_type: day_type,
             start_date,
             end_date,
             leave_duration,
@@ -213,8 +231,8 @@ const createLeave = async (req, res) => {
             leaveattachment : attachment?.url,
             created_by: employeeId,
             update_id: employeeId,
-            update_date: new Date(),
-            created_at: new Date(),
+            update_date: createdAtIst,
+            created_at: createdAtIst,
         });
 
         // console.log("Leave Created:", leave);
@@ -262,18 +280,35 @@ const getLeavesByStatusForEmployee = async (req, res) => {
         }
 
           const whereCondition = {
-          em_id: employee.em_code,
+          em_id: employee.em_id,
           leave_status: status,
         };
+
+        console.log("whereCondition",whereCondition);
 
         if (leave_type_id) {
           whereCondition.typeid = leave_type_id;
         }
 
-        const leaves = await EmployeeLeave.findAll({ where: whereCondition });
+        console.log("leaveIdOf",whereCondition.typeid)
+
+        const leaves = await EmployeeLeave.findAll({ 
+          where: whereCondition,
+          include: [
+            {
+              model: LeaveTypes,
+              as: 'leaveTypeInfo',
+              attributes: [
+                'type_id',
+                'name'
+              ]
+            }
+          ]
+        });
 
         console.log("leave_status",leaves.leave_status);
-       console.log("leaves: ", leaves);
+        console.log("leaves: ", leaves);
+
         return res.status(200).json({ leaves });
 
     } catch (error) {
@@ -609,13 +644,14 @@ try {
         }
     }
         leave.leave_status = "Approve";
+        leave.reject_reason = `Approved By ${req.user.em_name}`;
         
     }else if (action === "reject") {
         leave.leave_status = "Rejected";
         leave.reject_reason = reject_reason;
     }
 
-    leave.approved_by = req.user.em_code;
+    // leave.approved_by = req.user.em_code;
     leave.approved_at = new Date();
     leave.update_date = new Date();
     const result = await leave.save();

@@ -65,12 +65,12 @@ const EmployeeLeave = sequelize.define('emp_leave',{
     reject_reason: {
         type: DataTypes.STRING,
     },
-    approved_by: {
-        type: DataTypes.STRING,
-    },
-    approved_at: {
-        type: DataTypes.DATE,
-    },
+    // approved_by: {
+    //     type: DataTypes.STRING,
+    // },
+    // approved_at: {
+    //     type: DataTypes.DATE,
+    // },
     created_by:{
         type: DataTypes.STRING,
         allowNull: false

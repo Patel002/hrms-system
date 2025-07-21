@@ -7,19 +7,20 @@ const Department = sequelize.define('department',{
         primaryKey: true,
         autoIncrement: true
     },
-    dep_code: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
+    // dep_code: {
+    //     type: DataTypes.STRING,
+    //     allowNull: false
+    // },
     dep_name: {
         type: DataTypes.STRING,
         allowNull: false
     },
-    updated_by: {
-        type: DataTypes.STRING
-    }
+    // company_id: {
+    //     type: DataTypes.STRING,
+    //     allowNull: false
+    // }
 },{
-    tableName: 'department',
+    tableName: 'm_department',
     timestamps: false
 })
 

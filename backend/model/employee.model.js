@@ -20,7 +20,7 @@ const Employee = sequelize.define('employee',{
         allowNull: false
     },
     dep_id: {
-        type: DataTypes.STRING,
+        type: DataTypes.INTEGER,
     },
     supervisor_id: {
         type: DataTypes.INTEGER,
@@ -91,6 +91,10 @@ const Employee = sequelize.define('employee',{
     em_image: {
         type: DataTypes.STRING,
         defaultValue: 'default.png'
+    },
+    token: {
+        type: DataTypes.STRING,
+        allowNull: true 
     }
 
 },{

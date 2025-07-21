@@ -36,7 +36,7 @@ final token = prefs.getString('token');
     if (token != null) {
       Map<String, dynamic> payload = Jwt.parseJwt(token);
       setState(() {
-        emUsername = payload['em_username'];
+        emUsername = payload['first_name'];
         compFname = payload['comp_fname'];
         empId = payload['em_id'];
       });
@@ -261,6 +261,15 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                             },
                                 );
                                 if (picked != null) {
+                                 if (todate != null && picked.isAfter(todate!)) {
+                                _showCustomSnackBar(context, "Start date cannot be after end date", Colors.yellow.shade900, Icons.date_range_outlined);
+
+                                setState(() {
+                                  fromdate = null;
+                                });
+                                
+                                return;
+                              } 
                           setState(() {
                             fromdate = picked;
                             if (todate != null) {
@@ -299,6 +308,15 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                             },
                                 );
                               if (picked != null) {
+                                if (fromdate != null && picked.isBefore(fromdate!)) {
+                                  _showCustomSnackBar(context, "End date cannot be before start date", Colors.yellow.shade900, Icons.date_range_outlined);
+
+                                  setState(() {
+                                    todate = null;
+                                  });
+
+                                  return;
+                                } 
                               setState(() {
                                 todate = picked;
                                 if (fromdate != null) {

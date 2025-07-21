@@ -13,13 +13,19 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _idController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
 
   final baseUrl = dotenv.env['API_BASE_URL'];
+
+ @override
+ void initState(){
+    super.initState();
+    login();
+  }
 
   Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -33,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'em_username': _usernameController.text.trim(),
+          'em_id': _idController.text.trim(),
           'em_password': _passwordController.text.trim(),
         }),
       );
@@ -89,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _idController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -139,9 +145,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 32),
 
                     TextFormField(
-                      controller: _usernameController,
+                      controller: _idController,
                       decoration: InputDecoration(
-                        hintText: 'Username',
+                        hintText: 'Id',
                         prefixIcon: const Icon(Icons.person_outline),
                         filled: true,
                         fillColor: Colors.grey[50],

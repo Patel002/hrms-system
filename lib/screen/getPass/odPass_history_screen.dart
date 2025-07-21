@@ -35,8 +35,8 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
       final decodedToken = Jwt.parseJwt(token);
       final empId = decodedToken['em_id'];
 
-      print('Employee Username: $empId');
-      print('Company Name: $compFname');
+      // print('Employee Username: $empId');
+      // print('Company Name: $compFname');
     
     
       final statusMap = {

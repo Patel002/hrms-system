@@ -30,8 +30,8 @@ class _PayslipScreenState extends State<PayslipScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(Duration.zero,(){
-    fetchPaySlipDate();
+    Future.delayed(Duration.zero,() async{
+    await fetchPaySlipDate();
   });
   }
 
@@ -45,7 +45,7 @@ class _PayslipScreenState extends State<PayslipScreen> {
       Map<String, dynamic> payload = Jwt.parseJwt(token);
       setState(() {
         empId = payload['em_id'];
-        emUsername = payload['em_username'];
+        emUsername = payload['first_name'];
         compId = payload['comp_id']; 
       });
     }
@@ -205,7 +205,7 @@ void showToast(String message, ToastificationType type) {
                 final formattedMonth =
                     DateFormat('MMMM yyyy').format(DateTime.parse(salaryDate));
 
-                final url = 'https://gbihr.org/images/docs/test.pdf'; 
+                final url = '$baseUrl/api/od-pass/download/$payslipId'; 
                 
                 final fileName =
                     'Payslip-${DateFormat('MM-yyyy').format(DateTime.parse(salaryDate))}.pdf';

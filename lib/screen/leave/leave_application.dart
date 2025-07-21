@@ -23,7 +23,7 @@ String? selectedLeaveType;
 String? reason;
 DateTime? startDate, endDate;
 XFile? selectedFile;
-String? emUsername, compFname;
+String? emUsername, compFname, empId;
 bool isLoading = false;
 String? type;
 bool isSubmitting = false;
@@ -78,7 +78,8 @@ final token = prefs.getString('token');
 if (token != null) {
   Map<String, dynamic> payload = Jwt.parseJwt(token);
   setState(() {
-    emUsername = payload['em_username'];
+    empId = payload['em_id'];
+    emUsername = payload['first_name'];
     compFname = payload['comp_fname'];
   });
 }
@@ -154,7 +155,7 @@ var request = http.MultipartRequest(
 Uri.parse('$baseUrl/api/emp-leave/leave'),
 );
 
-request.fields['em_username'] = emUsername ?? '';
+request.fields['em_id'] = empId ?? '';
 request.fields['leave_type'] = selectedLeaveType ?? '';
 request.fields['comp_fname'] = compFname ?? '';
 request.fields['start_date'] = startDate!.toIso8601String();
@@ -162,8 +163,8 @@ request.fields['end_date'] = endDate!.toIso8601String();
 request.fields['apply_date'] = DateTime.now().toIso8601String();
 request.fields['reason'] = reason ?? '';
 request.fields['leave_status'] = 'Pending';
-request.fields['created_by'] = emUsername ?? '';
-request.fields['update_id'] = emUsername ?? '';
+request.fields['created_by'] = empId ?? '';
+request.fields['update_id'] = empId ?? '';
 
 if(startDate !=null && endDate !=null){
   if(type == 'Half Day'){

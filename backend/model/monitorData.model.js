@@ -16,7 +16,7 @@ const MonitorData = sequelize.define('monitordatatbl', {
         allowNull: false
     },
     PunchDate:{
-        type: DataTypes.DATEONLY,
+        type: DataTypes.DATE,
         allowNull: false,
     },
     Received_date:{
@@ -29,13 +29,16 @@ const MonitorData = sequelize.define('monitordatatbl', {
     },
     TRID:{
         type: DataTypes.STRING,
-        allowNull: true
+        allowNull: true,
+        defaultValue: 0
     },
     Temperature_c:{
-        type: DataTypes.INTEGER
+        type: DataTypes.INTEGER,
+        defaultValue: 0
     },
     Temperature_f:{
-        type: DataTypes.INTEGER
+        type: DataTypes.INTEGER,
+        defaultValue: 0
     }
 },{
     tableName: 'monitordatatbl',

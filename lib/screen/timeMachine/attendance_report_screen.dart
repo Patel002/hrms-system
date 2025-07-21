@@ -112,8 +112,15 @@ Widget build(BuildContext context) {
 
         final totalPresent = records.where((r) => r['presabs'] == 'P').length;
         final totalAbsent = records.where((r) => r['presabs'] == 'A').length;
-        final totalOT = records.fold<double>(0.0, (sum, r) => sum + double.tryParse(r['othrs'])!);
-        final totalWorkHrs = records.fold<double>(0.0, (sum, r) => sum + double.tryParse(r['wrkhrs'])!);
+        final totalOT = records.fold<double>(
+          0.0, 
+          (sum, r) => sum + (double.tryParse(r['othrs'] ?? '0') ?? 0),
+        );
+
+        final totalWorkHrs = records.fold<double>(
+          0.0, 
+          (sum, r) => sum + (double.tryParse(r['wrkhrs'] ?? '0') ?? 0),
+        );
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,6 +146,11 @@ Widget build(BuildContext context) {
                         initialDate: selectedMonth ?? DateTime.now(),
                         firstDate: DateTime(2015),
                         lastDate: DateTime.now(),
+                      //   monthPickerDialogSettings: const MonthPickerDialogSettings(
+                      //     headerSettings: PickerHeaderSettings(
+                      //       headerBackgroundColor: Colors.black
+                      //     )
+                      //   )
                       );
 
                       if (selected != null) {

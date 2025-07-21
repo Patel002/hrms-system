@@ -24,7 +24,7 @@ Employee.belongsTo(Department, {
 
 Employee.belongsTo(Company, {
   foreignKey: 'comp_id',
-  targetKey: 'comp_id'
+  targetKey: 'company_id'
 });
 
 LeaveTypes.hasMany(EmployeeLeave, {

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decode/jwt_decode.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shimmer/shimmer.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class LeaveBalancePage extends StatefulWidget {
   const LeaveBalancePage({super.key});
@@ -28,19 +29,22 @@ class _LeaveBalancePageState extends State<LeaveBalancePage> {
 
     if (token != null) {
       Map<String, dynamic> payload = Jwt.parseJwt(token);
-      return payload['em_code'];
+      return payload['em_id'];
     }
     return null;
   }
 
-  Future<List<dynamic>> fetchLeaveBalances(String emCode) async {
+  Future<List<dynamic>> fetchLeaveBalances(String emId) async {
     try {
-      final response = await Dio().get(
-        '$baseUrl/api/balance/balance/$emCode',
-      );
+      final response = await http.get(Uri.parse('$baseUrl/api/balance/balance/$emId'));
+      
+    //  print('Status Code: ${response.statusCode}');
+    //   print('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
-        return response.data;
+        final List<dynamic> jsonData = json.decode(response.body);
+        print('Leave Balances: $jsonData');
+        return jsonData;
       } else {
         throw Exception('Failed to load leave balances');
       }
@@ -49,10 +53,11 @@ class _LeaveBalancePageState extends State<LeaveBalancePage> {
     }
   }
 
+
   Future<List<dynamic>> loadLeaveBalances() async {
-    final emCode = await getEmpCodeFromToken();
-    if (emCode == null) throw Exception("Invalid token: em_code missing");
-    return await fetchLeaveBalances(emCode);
+    final emId = await getEmpCodeFromToken();
+    if (emId == null) throw Exception("Invalid token: em_id missing");
+    return await fetchLeaveBalances(emId);
   }
 
   @override
@@ -147,7 +152,9 @@ class _LeaveBalancePageState extends State<LeaveBalancePage> {
                   final String name = item['leave_type_name'] ?? '';
                   final String shortName = item['leave_short_name'] ?? '';
                   final balanceRaw = item['available_balance'] ?? 0;
-                  final double balance = (balanceRaw is int) ? balanceRaw.toDouble() : balanceRaw;
+                  final double balance = double.tryParse(balanceRaw.toString()) ?? 0.0;
+
+                  print('Balance: $balanceRaw');
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 16),

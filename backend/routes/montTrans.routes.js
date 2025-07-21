@@ -5,6 +5,6 @@ import { Router } from 'express';
 
 const router = Router();
 
-router.route('/list/:emp_id').get(getMonthTrans);
+router.route('/list/:attcode').get(getMonthTrans);
 
 export default router;

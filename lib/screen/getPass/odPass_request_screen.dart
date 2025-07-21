@@ -51,7 +51,7 @@ class _ODPassRequestState extends State<ODPassRequest> with SingleTickerProvider
     final token = prefs.getString('token');
     if (token != null) {
       Map<String, dynamic> decoded = Jwt.parseJwt(token);
-      employeeCode = decoded['em_code'];
+      employeeCode = decoded['em_id'];
       print('Employee Code: $employeeCode');
       // compFname = decoded['comp_fname'];
       // departmentName = decoded['dep_name'];
@@ -198,7 +198,7 @@ class _ODPassRequestState extends State<ODPassRequest> with SingleTickerProvider
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _sendApprovalOrRejection(odPassId, action: 'Approved');
+                      _sendApprovalOrRejection(odPassId, action: 'approve');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,

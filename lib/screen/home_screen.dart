@@ -97,7 +97,7 @@ Future<void> loadUserPermissions() async {
     final decoded = Jwt.parseJwt(token);
     setState(() {
       userRole = decoded['em_role']; 
-      username = decoded['em_username'];
+      username = decoded['first_name'];
       empId = decoded['em_id'];
       print('Employee Id, $empId');
       isSupervisor = decoded['isSupervisor'] == true;
@@ -619,7 +619,7 @@ bottomNavigationBar: SafeArea(
   ),
 
   CurvedNavigationBarItem(
-    child: Icon(Icons.home_outlined, color: _currentIndex == 2 ? Colors.orange.shade900 : Colors.black87),
+    child: Icon(Icons.home_outlined, color: Colors.black87),
     label: "Home",
     labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
   ),
@@ -715,7 +715,7 @@ leaveDurations.forEach((date, leaves) {
         dataSource: calendarDataSource as CalendarDataSource,
             headerStyle: CalendarHeaderStyle(
             textAlign: TextAlign.center,
-            backgroundColor:  Color(0xFFF5F7FA),
+            backgroundColor:  Color.fromARGB(255, 240, 243, 247),
             textStyle: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,

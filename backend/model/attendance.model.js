@@ -16,11 +16,11 @@ const Attendance = sequelize.define('attendance_selfie', {
         allowNull: false,
     },
     punch_date: {
-        type: DataTypes.DATEONLY,
+        type: DataTypes.STRING,
         allowNull: false,
     },
     punch_time: {
-        type: DataTypes.TIME,
+        type: DataTypes.DATE,
         allowNull: false,
     },
     punch_place: {

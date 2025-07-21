@@ -57,13 +57,19 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
     }
   }
   String FormattedDate(String timeString) {
-    try {
-    DateTime parseTime = DateFormat('HH:mm').parse(timeString);
-    return DateFormat('HH:mm a').format(parseTime);
-    } catch (e) {
-      return "Invalid Time format"; 
+  try {
+    if (timeString.contains(' ')) {
+      DateTime parsed = DateFormat('yyyy-MM-dd HH:mm:ss').parse(timeString);
+      return DateFormat('hh:mm a').format(parsed); 
     }
+
+    DateTime parsedTime = DateFormat('HH:mm:ss').parse(timeString);
+    return DateFormat('hh:mm a').format(parsedTime);
+  } catch (e) {
+    return "Invalid Time format"; 
   }
+}
+
 
   Future<void> gettokenData() async {
     final pref = await SharedPreferences.getInstance();

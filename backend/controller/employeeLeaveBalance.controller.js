@@ -6,11 +6,11 @@ import {
 
 
 const getEmployeeLeaveBalance = async (req, res) => {
-  const { em_code } = req.params;
+  const { emp_id } = req.params;
 
   try {
     const balances = await EmployeeLeaveBalance.findAll({
-      where: { emp_id: em_code },
+      where: { emp_id: emp_id },
       attributes: [
         'leave_type_id',
         [Sequelize.fn('SUM', Sequelize.literal(`CASE WHEN LOWER(leave_status) = 'credit' THEN number_of_days ELSE 0 END`)), 'credit'],

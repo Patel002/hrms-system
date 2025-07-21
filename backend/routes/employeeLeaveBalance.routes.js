@@ -5,6 +5,6 @@ import { Router } from 'express';
 
 const router = Router();
 
-router.route('/balance/:em_code').get(getEmployeeLeaveBalance);
+router.route('/balance/:emp_id').get(getEmployeeLeaveBalance);
 
 export default router;

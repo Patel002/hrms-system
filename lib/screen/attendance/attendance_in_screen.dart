@@ -98,7 +98,7 @@ class _AttendanceScreenINState extends State<AttendanceScreenIN> {
       setState(() {
         compFname = payload['comp_fname'];
         emId = payload['em_id'];
-        emUsername = payload['em_username'];
+        emUsername = payload['first_name'];
         compId = payload['comp_id']; 
       });
     }
@@ -151,7 +151,7 @@ Future<void> getLocation() async {
 
   currentPosition = await Geolocator.getCurrentPosition(
     desiredAccuracy: LocationAccuracy.high,
-  );
+  ).timeout(const Duration(seconds: 10));
 
   print('Latitude: ${currentPosition?.latitude}, Longitude: ${currentPosition?.longitude}, Accuracy: ${currentPosition?.accuracy}');
 } 
@@ -187,7 +187,7 @@ Future<void> _captureImage() async {
     final flipped = img.flipHorizontal(decoded);
 
     final resized = img.copyResize(flipped, width: 250, height: 250);
-    final resizedBytes = img.encodeJpg(resized);
+    final resizedBytes = img.encodeJpg(resized, quality: 80);
     final base64Str = base64Encode(resizedBytes);
 
     if (!mounted) return;
@@ -254,7 +254,7 @@ Future<void> _captureImage() async {
           'latitude': currentPosition?.latitude,
           'longitude': currentPosition?.longitude,
           'punch_img': base64Image,
-          'created_by': emUsername,
+          'created_by': emId,
         }),
       );
 

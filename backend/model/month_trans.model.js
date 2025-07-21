@@ -24,10 +24,10 @@ const MonthTrans = sequelize.define('month_trans',{
         type: DataTypes.DECIMAL(4,2),
         allowNull: false
     },
-    otminutes: {
-        type: DataTypes.DECIMAL(4,2),
-        allowNull: false
-    },
+    // otminutes: {
+    //     type: DataTypes.DECIMAL(4,2),
+    //     allowNull: false
+    // },
     wrkhrs: {
         type: DataTypes.DECIMAL(4,2),
         allowNull: false
@@ -56,10 +56,10 @@ const MonthTrans = sequelize.define('month_trans',{
         type: DataTypes.DATEONLY,
         allowNull: false
     },
-    capproval: {
-        type: DataTypes.STRING,
-        allowNull: false
-    }
+    // capproval: {
+    //     type: DataTypes.STRING,
+    //     allowNull: false
+    // }
 },
 {
     tableName: 'month_trans',

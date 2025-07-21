@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:io';
@@ -56,7 +57,10 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
     });
     
   }
-  
+
+ String formattedDate(String date) {
+  return DateFormat('dd-MM-yyyy').format(DateTime.parse(date));
+ }
 
   Future<void> fetchLeaveTypes() async {
     try {
@@ -218,19 +222,19 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
                   onRefresh: _refreshData,
                   color: Colors.black,
                   backgroundColor: Colors.white,
-                  child: buildLeaveList("pending"),
+                  child: buildLeaveList("Pending", selectedTypeId),
                 ),
                 RefreshIndicator(
                   onRefresh: _refreshData,
                   color: Colors.black,
                   backgroundColor: Colors.white,
-                  child: buildLeaveList("approved"),
+                  child: buildLeaveList("approved", selectedTypeId),
                 ),
                 RefreshIndicator(
                   onRefresh: _refreshData,
                   color: Colors.black,
                   backgroundColor: Colors.white,
-                  child: buildLeaveList("rejected"),
+                  child: buildLeaveList("rejected", selectedTypeId),
                 ),
               ],
             ),
@@ -241,7 +245,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
   );
 }
 
-  Widget buildLeaveList(String status) {
+  Widget buildLeaveList(String status, int? selectedTypeId) {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: fetchLeaves(status),
       builder: (context, snapshot) {
@@ -253,11 +257,20 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
           return Center(child: Text("No $status leaves."));
         }
 
-        final leaves = snapshot.data!;
+             final allLeaves = snapshot.data!;
+      
+      final filteredLeaves = selectedTypeId == null
+          ? allLeaves
+          : allLeaves.where((leave) => leave['typeid'] == selectedTypeId).toList();
+
+      if (filteredLeaves.isEmpty) {
+        return Center(child: Text("No $status leaves for this type."));
+      }
+
         return ListView.builder(
-          itemCount: leaves.length,
+          itemCount: filteredLeaves.length,
           itemBuilder: (context, index) {
-            final leave = leaves[index];
+            final leave = filteredLeaves[index];
             return Card(
               margin: EdgeInsets.all(10),
               color:Color(0xFFF5F7FA),
@@ -267,7 +280,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
               elevation: 4,
               child: ListTile(
                 leading: Icon(Icons.event_note, color: Colors.blue),
-                title: Text("${leave['start_date']} → ${leave['end_date']}"),
+              title: Text("${formattedDate(leave['start_date'])} → ${formattedDate(leave['end_date'])}"),
                 subtitle: Text(leave['reason']),
                 trailing: Container(
                   padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -288,7 +301,7 @@ class _LeaveStatusPageState extends State<LeaveStatusPage>
                   final prefs = await SharedPreferences.getInstance();
                   final token = prefs.getString('token') ?? '';
                   final decoded = Jwt.parseJwt(token);
-                  final emUsername = decoded['em_username'];
+                  final emUsername = decoded['first_name'];
                   final departmentName = decoded['dep_name'];
                   print("department name: $departmentName");
                   final compFname = decoded['comp_fname'];
@@ -383,7 +396,7 @@ class _LeaveDetailPageState extends State<LeaveDetailPage> {
             ? 'Half Day'
             : 'Full Day';
 
-    selectedLeaveType = widget.leave['leave_type'];
+    selectedLeaveType = widget.leave['leaveTypeInfo']?['name'];
     fetchLeaveTypes();
   }
 
@@ -830,7 +843,7 @@ setState(() {
                       child: _buildDetailRow(
                         icon: Icons.date_range_outlined,
                         title: 'From',
-                        value: "${fromDate.toLocal()}".split(' ')[0],
+                        value: ("${fromDate.toLocal()}".split(' ')[0]),
                         onTap: () => isReadOnly ? null : selectDate(context, true),
                       ),
                     ),
@@ -892,6 +905,7 @@ setState(() {
                 TextField(
                   controller: reasonController,
                   readOnly: isReadOnly,
+                  maxLines: 2,
                   decoration: InputDecoration(
                     labelText: 'Leave Reason',
                     border: OutlineInputBorder(),

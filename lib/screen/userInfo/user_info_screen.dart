@@ -270,40 +270,27 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.transparent,
-   appBar: PreferredSize(
-    preferredSize: const Size.fromHeight(kToolbarHeight),
-    child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+      backgroundColor: Color(0xFFF2F5F8),
+   appBar: AppBar(
+        title: const Text(
+          "User Profile ",
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        child: AppBar(
-                title: const Text(
-                  "User Profile ",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              backgroundColor: Colors.transparent, 
-                foregroundColor: Colors.black,
-                elevation: 0,
+      // backgroundColor: Colors.transparent, 
+      forceMaterialTransparency: true,
+        elevation: 0,
               ),
-            ),
-          ),
-      
       body: Stack(
         children: [
           Container(
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
+      gradient: LinearGradient(
+        colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
       ),
     ),
+  ),
 
       isLoading ? const Center(child: CircularProgressIndicator(color: Colors.black,)) 
       : RefreshIndicator(
@@ -544,22 +531,33 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
         transitionDuration: const Duration(milliseconds: 300),
         pageBuilder: (context, animation, secondaryAnimation) {
           return Center(
-  child: Padding(
-    padding: const EdgeInsets.all(16),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: PhotoView(
-        imageProvider: NetworkImage('$baseUrl/api/employee/attachment/$profileImage'),
-        backgroundDecoration: const BoxDecoration(
-          color: Colors.transparent,
-        ),
-        enableRotation: false,
-        minScale: PhotoViewComputedScale.contained,
-        maxScale: PhotoViewComputedScale.contained,
-        initialScale: PhotoViewComputedScale.contained,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: PhotoView.customChild(
+          backgroundDecoration: const BoxDecoration(
+            color: Colors.transparent,
+          ),
+          enableRotation: false,
+          minScale: PhotoViewComputedScale.contained,
+          maxScale: PhotoViewComputedScale.contained,
+          initialScale: PhotoViewComputedScale.contained,
+
+          child: Image.network(
+                        profileImage != null && profileImage!.isNotEmpty
+                            ?'$baseUrl/api/employee/attachment/$profileImage'
+                            : 'assets/icon/face-id.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Image.asset('assets/icon/face-id.png');
+                        },
+                      ),
+
+        // enableRotation: false,
+        // minScale: PhotoViewComputedScale.contained,
+        // maxScale: PhotoViewComputedScale.contained,
+        // initialScale: PhotoViewComputedScale.contained,
       ),
     ),
-  ),
 );
 
         },
@@ -589,7 +587,9 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
         child: CircleAvatar(
           radius: 70,
           backgroundColor: Colors.white,
-          backgroundImage: NetworkImage('$baseUrl/api/employee/attachment/$profileImage'),
+          backgroundImage: profileImage != null && profileImage!.isNotEmpty
+          ? NetworkImage('$baseUrl/api/employee/attachment/$profileImage')
+          : const AssetImage('assets/icon/face-id.png') as ImageProvider,
           ),
       ),
       Positioned(
