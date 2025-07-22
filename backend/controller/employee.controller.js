@@ -60,12 +60,12 @@ import jwt from 'jsonwebtoken';
                 };
 
             const token = jwt.sign(
-               
+                payload,
                 "this is a secret key of !@#$%^&*()_+-=[]{};':\"|\\<>/?~`",
-                { expiresIn: '180d' }
+                { expiresIn: '90d' }
             );
             
-            console.log("token", token);
+            // console.log("token", token);
 
             return res.status(200).json({ message: "Login successful", token, data: employee });
 

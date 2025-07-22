@@ -15,9 +15,9 @@ const punchAttendance = async(req, res) => {
        const createdAtIst = istNow.toJSDate();
        
            console.log("Current IST Date and Time:", istNow);
-           console.log("Punch Date:", punchDate);
-           console.log("Punch Time:", punchTime);
-           console.log("Created At:", createdAtIst);
+        //    console.log("Punch Date:", punchDate);
+        //    console.log("Punch Time:", punchTime);
+        //    console.log("Created At:", createdAtIst);
 
         if (!emp_id || !comp_id || !punch_place || !punch_img || !latitude || !longitude || !created_by) {
             return res.status(400).json({ message: "All fields are required" });
@@ -85,7 +85,7 @@ const punchAttendance = async(req, res) => {
 
                  updatePunchRemark = (punch_remark || '') + " (Last Punch Out Missing)";
 
-                console.log("Warning",warning);
+                // console.log("Warning",warning);
             }
         }
 
@@ -207,11 +207,13 @@ const getPunchDurations = async(req, res) => {
 
         const punchIn = punchIns[matchedIndex];
         const duration = punchOutTime.diff(matchedPunchInTime, ['hours', 'minutes']);
+        const hours = Math.floor(duration.hours);
+        const minutes = Math.round(duration.minutes);
 
         sessions.push({
-        punch_in: `${punchIn.punch_date} ${punchIn.punch_time}`,
-        punch_out: `${punchOut.punch_date} ${punchOut.punch_time}`,
-        duration: `${duration.hours}h ${duration.minutes}m`
+        punch_in: `${punchIn.punch_time}`,
+        punch_out: `${punchOut.punch_time}`,
+        duration: `${hours}h ${minutes}m`
     });
 
       usedPunchIns.add(matchedIndex);;
@@ -358,7 +360,7 @@ const getAttendanceSummary = async(req, res) => {
         group: ['punch_date']
         });
 
-        console.log("Attendance: ", attendance);
+        // console.log("Attendance: ", attendance);
 
         const presentDates = new Set(attendance.map(a => a.punch_date));
 

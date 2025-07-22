@@ -39,18 +39,18 @@ dependencies:
   flutter_native_splash: ^2.3.7
   lottie: ^3.3.1
   flutter_dotenv: ^5.1.0
-  geolocator: ^10.1.0
+  geolocator: ^14.0.2
   image_picker: ^1.1.0
   permission_handler: ^12.0.0+1
   image: ^4.1.7
   url_launcher: ^6.3.1
   intl: ^0.20.2
-  camera:  ^0.10.5+9
-  syncfusion_flutter_calendar: ^28.2.12
-  syncfusion_flutter_charts: ^28.2.12
-  syncfusion_flutter_pdf: ^28.2.12
-  syncfusion_flutter_xlsio: ^28.2.12
-  syncfusion_flutter_pdfviewer: ^28.2.12
+  camera: ^0.11.2
+  syncfusion_flutter_calendar: ^30.1.40
+  syncfusion_flutter_charts: ^30.1.40
+  syncfusion_flutter_pdf: ^30.1.40
+  syncfusion_flutter_xlsio: ^30.1.40
+  syncfusion_flutter_pdfviewer: ^30.1.40
   month_picker_dialog: ^6.2.1
   fl_chart: ^1.0.0
   flutter_custom_clippers: ^2.1.0
@@ -59,7 +59,10 @@ dependencies:
   shimmer: ^3.0.0
   toastification: ^3.0.3
   open_filex: ^4.7.0  
-
+  flutter_screenutil: ^5.9.3
+  salomon_bottom_bar: ^3.3.2
+  package_info_plus: ^8.3.0
+  google_nav_bar: ^5.0.7
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
