@@ -92,10 +92,10 @@ const Employee = sequelize.define('employee',{
         type: DataTypes.STRING,
         defaultValue: 'default.png'
     },
-    token: {
-        type: DataTypes.STRING,
-        allowNull: true 
-    }
+    // token: {
+    //     type: DataTypes.STRING,
+    //     allowNull: true 
+    // }
 
 },{
     tableName: 'employee',

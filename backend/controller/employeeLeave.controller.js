@@ -92,7 +92,7 @@ const createLeave = async (req, res) => {
           let totalDuration = 0;
           let fullDayCount = 0;
           let halfDayCount = 0;
-          // let sameTypeHalfDayLeaveExist = false; 
+          let sameTypeHalfDayLeaveExist = false; 
 
           existingHalfLeave.forEach((leave) => {
             
@@ -102,23 +102,24 @@ const createLeave = async (req, res) => {
             if (duration === 1) fullDayCount++;
             if (duration === 0.5) halfDayCount++;
 
-            // if(duration === 0.5 && leave.leave_type === leave_type){
-            //   sameTypeHalfDayLeaveExist = true;
-            // }
+            if(duration === 0.5 && leave.leave_type === leave_type){
+              sameTypeHalfDayLeaveExist = true;
+            }
 
           });
 
           console.log("totalDuration",totalDuration);
 
-        // if (totalDuration + 0.5 > 1 || sameTypeHalfDayLeaveExist) {
-        // let message = "You have already applied for leave on this date.";
+        if (totalDuration + 0.5 > 1 || sameTypeHalfDayLeaveExist) {
+        let message = "You have already applied for leave on this date.";
+        }
         if (totalDuration + 0.5 > 1) {
         let message = "You have already applied for leave on this date.";
 
         if (fullDayCount >= 1) {
           message = "You have already applied for leave in this period of date.";
-        // } else if (sameTypeHalfDayLeaveExist) {
-        //   message = `You have already applied for half day leave of ${leave_type} on this date.`;
+        } else if (sameTypeHalfDayLeaveExist) {
+          message = `You have already applied for half day leave of ${leave_type} on this date.`;
         } else if (halfDayCount >= 1) {
           message = "You have already applied for half day leave on this date.";
         }
@@ -548,7 +549,7 @@ const getLeaveRequestsBySupervisor = async (req, res) => {
       where: { supervisor_id: (em_id) },
     });
 
-    console.log(subordinates);
+    console.log("subordinates",subordinates);
 
     const subordinateIds = subordinates.map(emp => emp.em_id);
     console.log("subordinateIds:", subordinateIds);
