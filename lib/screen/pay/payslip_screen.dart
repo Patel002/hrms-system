@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:jwt_decode/jwt_decode.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';  
 import 'package:shimmer/shimmer.dart';
-import 'package:toastification/toastification.dart';
 import 'package:open_filex/open_filex.dart';
 // import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 // import 'package:permission_handler/permission_handler.dart';
 import 'package:dio/dio.dart';
+import '../utils/user_session.dart';
 
 class PayslipScreen extends StatefulWidget {
   const PayslipScreen({super.key});
@@ -23,8 +21,12 @@ class PayslipScreen extends StatefulWidget {
 
 class _PayslipScreenState extends State<PayslipScreen> {
   final baseUrl = dotenv.env['API_BASE_URL'];
-  String? empId, emUsername, compId, selectedDate;
+  final apiToken = dotenv.env['ACCESS_TOKEN'];
+
+  String? empId, emUsername, compId;
+  String? selectedYearValue;
   List<Map<String, dynamic>> payslipList = [];
+  List<dynamic> yearList = [];
   bool isLoading = false;
 
   @override
@@ -35,46 +37,67 @@ class _PayslipScreenState extends State<PayslipScreen> {
   });
   }
 
-  Future<void> fetchPaySlipDate() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+  Future<void> fetchPaySlipDate({String? finYear}) async {
+    final token = await UserSession.getToken();
 
-    // print("token: $token");
-
-    if (token != null) {
-      Map<String, dynamic> payload = Jwt.parseJwt(token);
-      setState(() {
-        empId = payload['em_id'];
-        emUsername = payload['first_name'];
-        compId = payload['comp_id']; 
-      });
+    if(token == null){
+      Navigator.pushReplacementNamed(context, '/login');
+      return;
     }
+
+    final empId = await UserSession.getUserId();
 
     try{
       setState(() {
         isLoading = true;
       });
-      final response = await http.get(Uri.parse('$baseUrl/api/payslip/payslip?emp_id=$empId'));
+
+      final uri = Uri.parse(
+      finYear != null
+        ? '$baseUrl/MyApis/payslipthelist?finyear=$finYear'
+        : '$baseUrl/MyApis/payslipthelist',
+    );
+
+    print('API URI: $uri');
+
+      final response = await http.get(uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiToken',
+          'auth_token': token,
+          'user_id': empId!
+        });
+
+         await UserSession.checkInvalidAuthToken(
+        context,
+        json.decode(response.body),
+        response.statusCode,
+        );
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-        final List<dynamic> data = decoded['data'];
+        final List<dynamic> data = decoded['data_packet'];
+        final List<dynamic> years = decoded['year_list'];
+        final String? selectedYear = decoded['selected_year']?.toString();
 
-        // print('Payslip List: $data');
+
+        print('Payslip List: $data');
 
         data.sort((a, b) => b['salarydate'].compareTo(a['salarydate']));
 
         setState(() {
           payslipList = data.cast<Map<String, dynamic>>();
+          yearList = years;
+          selectedYearValue = selectedYear;
         });
 
         print('Payslip List: $payslipList');
       } else {
-        showToast("Failed to load payslips", ToastificationType.error);
+        _showCustomSnackBar(context, 'Failed to load payslips', Colors.red, Icons.error);
       }
     }catch(e){
       print(e); 
-      showToast("Error: ${e.toString()}", ToastificationType.error);
+      _showCustomSnackBar(context, '$e', Colors.red, Icons.error);
       setState(() {
         isLoading = false;
       });
@@ -90,7 +113,7 @@ Future <void> _refreshPage() async {
     isLoading = true;
   });
   await fetchPaySlipDate();
-  showToast("Payslip list refreshed", ToastificationType.success);
+  _showCustomSnackBar(context, 'Payslip List Refreshed', Colors.teal.shade400, Icons.refresh);
 
   setState(() {
     isLoading = false;
@@ -132,24 +155,43 @@ Future<void> downloadAndOpenPdf(BuildContext context, String url, String fileNam
 
     await OpenFilex.open(filePath);
   } catch (e) {
-    showToast("Failed to open PDF: ${e.toString()}", ToastificationType.error);
+    _showCustomSnackBar(context, 'Failed to download PDF', Colors.red, Icons.error);
 
   }
 }
 
+void _showCustomSnackBar(
+    BuildContext context,
+    String message,
+    Color color,
+    IconData icon,
+  ) {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-void showToast(String message, ToastificationType type) {
-    if (!mounted) return;
-    toastification.show(
-      context: context,
-      title: Text(message),
-      type: type,
-      style: ToastificationStyle.flatColored,
-      alignment: Alignment.bottomCenter,
-      autoCloseDuration: const Duration(seconds: 2),
+    scaffoldMessenger.clearSnackBars();
+
+    final snackBar = SnackBar(
+      content: Row(
+        children: [
+          Icon(icon, color: Colors.white),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: color,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      margin: const EdgeInsets.all(16),
+      duration: const Duration(seconds: 3),
     );
-  }
 
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -187,28 +229,80 @@ void showToast(String message, ToastificationType type) {
     ),
       child:isLoading
       ? _buildShimmerList()
-        : payslipList.isEmpty
-          ? _buildEmptyState()
             : RefreshIndicator(
               onRefresh: _refreshPage,
               color: Colors.black87,
               backgroundColor: Colors.white,
-              child: ListView.separated(
+              child: Column(
+              children: [
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.shade200,
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: selectedYearValue,
+                        borderRadius: BorderRadius.circular(10),
+                        dropdownColor: Color(0xFFF2F5F8),
+                        hint: const Text("Select Financial Year"),
+                        icon: const Icon(Icons.arrow_drop_down),
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                        ),
+                        items: yearList.map<DropdownMenuItem<String>>((year) {
+                          return DropdownMenuItem<String>(
+                            value: year['year_value'].toString(),
+                            child: Text(year['year_name']),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            selectedYearValue = newValue;
+                          });
+                          fetchPaySlipDate(finYear: newValue);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+              Expanded(
+              child: payslipList.isEmpty
+             ? _buildEmptyState() 
+              : ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 10),
               itemCount: payslipList.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final payslip = payslipList[index];
                 final salaryDate = payslip['salarydate'];
-                final payslipId = payslip['id'];
+                // final payslipId = payslip['id'];
 
                 final formattedMonth =
                     DateFormat('MMMM yyyy').format(DateTime.parse(salaryDate));
 
-                final url = '$baseUrl/api/od-pass/download/$payslipId'; 
+                final url = payslip['payslip_url']; 
                 
                 final fileName =
-                    'Payslip-${DateFormat('MM-yyyy').format(DateTime.parse(salaryDate))}.pdf';
+                    'Payslip_${DateFormat('MM_yyyy').format(DateTime.parse(salaryDate))}.pdf';
 
               return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -274,6 +368,20 @@ void showToast(String message, ToastificationType type) {
                                     ),
                                   ],
                                 ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.paid, size: 16, color: Colors.grey),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "Net Paid: ${payslip['net_pay'] ?? '0.00'}",
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
@@ -292,7 +400,10 @@ void showToast(String message, ToastificationType type) {
             },
           ),
         ),
+              ],
+              ),
       ),
+    ),
     );
   }
 
