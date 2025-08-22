@@ -1,16 +1,18 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:jwt_decode/jwt_decode.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';  
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:image/image.dart' as img;
 import 'package:camera/camera.dart';
-import 'dart:math' as math;
-
+import '../utils/user_session.dart';
+import '../utils/network_failure.dart';
 
 class AttendanceScreenOut extends StatefulWidget {
   const AttendanceScreenOut({super.key});
@@ -21,12 +23,17 @@ class AttendanceScreenOut extends StatefulWidget {
 
 class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
   final baseUrl = dotenv.env['API_BASE_URL'];
+  final apiToken = dotenv.env['ACCESS_TOKEN'];
+  
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _narrationController = TextEditingController();
 
-  String? narration;
+  String? narration,loadingText;
   String? field;
-  String? emId,emUsername,compFname,compId;
+  String? _token;
+  String? _emId,_error;
+  String? _emUsername;
+  String? _compFname;
   Position? currentPosition;
   String? base64Image;
   File? _imageFile;
@@ -36,51 +43,84 @@ class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
   final bool _isCapturing = false;
   bool isLoading = false;
   bool isSubmitting = false;
+  bool isDataLoading = false;
+
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+
 
   @override
-   void initState() {
+  void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async{
-     await initializePage();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await initializePage();
    });
-  }
 
-   Future<void> initializePage() async {
+  _connectivitySubscription = Connectivity()
+    .onConnectivityChanged
+    .listen((List<ConnectivityResult> results) {
+  if (results.contains(ConnectivityResult.none)) {
+    if (mounted) {
+      setState(() {
+        _error = 'No internet connection.';
+      });
+    }
+  } else {
+    if (mounted && _error != null) {
+      setState(() {
+        _error = null;
+      });
+      fetchDataPacketApi();
+    }
+  }
+});
+
+final initialStatus = Connectivity().checkConnectivity();
+initialStatus.then((status) {
+  if (status == ConnectivityResult.none) {
+    setState(() {
+      _error = 'No internet connection.';
+    });
+  } else {
+    fetchDataPacketApi();
+  }
+});
+}
+  
+
+  Future<void> initializePage() async {
   try {
     await getEmpCodeFromToken();
 
-    bool locationGranted = await requestLocationPermission();
-    bool cameraGranted = await requestCameraPermission();
+    final locationGranted = await requestLocationPermission();
+    final cameraGranted = await requestCameraPermission();
 
     if (!locationGranted || !cameraGranted) {
       _initializeControllerFuture = Future.value();
-      if (mounted) setState(() {});
       return;
     }
 
-    await Future.delayed(Duration(milliseconds: 100));
-    if (mounted) {
-      setState(() {
-        isLoading = true;
-      });
-    }
+    setState(() {
+    isLoading = true;
+    });
 
+    // await Future.delayed(Duration(milliseconds: 100));
+    // if (mounted) {
+    //   setState(() {
+    //     isLoading = true;
+    //   });
+    // }
 
     _initializeControllerFuture = _initializeCamera();
 
     await getLocation();
    
-    if (mounted) {
       setState(() {
         isLoading = false;
       });
-    }
-    
+
   } catch (e) {
     debugPrint('Initialization error: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Initialization error: $e')),
-    );
+   _showCustomSnackBar(context, 'Error: $e', Colors.red, Icons.error);
     _initializeControllerFuture = Future.value();
     setState(() {
       isLoading = false;
@@ -88,23 +128,26 @@ class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
   }
 }
 
-
   Future<void> getEmpCodeFromToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    
+   _token = await UserSession.getToken();
 
-    if (token != null) {
-      Map<String, dynamic> payload = Jwt.parseJwt(token);
-      setState(() {
-        compFname = payload['comp_fname'];
-        emId = payload['em_id'];
-        emUsername = payload['first_name'];
-        compId = payload['comp_id']; 
-      });
+    if (_token == null) {
+      Navigator.pushReplacementNamed(context, '/login');
+      return;
     }
+      _emId = await UserSession.getUserId();
+      _emUsername = await UserSession.getUserName();
+      await fetchDataPacketApi();
+
+      if(mounted){
+        setState(() {
+          isDataLoading = true;
+        });
+      }
   }
 
-   Future<bool> requestLocationPermission() async {
+  Future<bool> requestLocationPermission() async {
   final status = await Permission.location.request();
 
   if (status.isGranted) {
@@ -113,12 +156,11 @@ class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
     await openAppSettings();
     return false;
   } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Location permission is required.')),
-    );
+    _showCustomSnackBar(context, 'Location permission is required.', Colors.teal.shade400, Icons.location_on_outlined);
     return false;
   }
 }
+
 
 Future<bool> requestCameraPermission() async {
   final status = await Permission.camera.request();
@@ -129,14 +171,12 @@ Future<bool> requestCameraPermission() async {
     await openAppSettings();
     return false;
   } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Camera permission is required.')),
-    );
+    _showCustomSnackBar(context, 'Camera permission is required.', Colors.lightBlue.shade200, Icons.camera_alt_outlined);
     return false;
   }
 }
 
-  Future<void> getLocation() async {
+Future<void> getLocation() async {
   bool isLocationEnabled = await Geolocator.isLocationServiceEnabled();
 
   if (!isLocationEnabled) {
@@ -144,20 +184,21 @@ Future<bool> requestCameraPermission() async {
     return;
   }
 
-    LocationPermission permission = await Geolocator.checkPermission();
+  LocationPermission permission = await Geolocator.checkPermission();
+  
   if (permission == LocationPermission.denied) {
     permission = await Geolocator.requestPermission();
     if (permission == LocationPermission.denied) {
-      throw Exception('Location permission denied');
+      _showCustomSnackBar(context, 'Location permission is Denied.', Colors.yellow.shade900, Icons.location_on_outlined);
     }
   }
 
   currentPosition = await Geolocator.getCurrentPosition(
     desiredAccuracy: LocationAccuracy.high,
-  ).timeout(const Duration(seconds: 10));
+  );
 
   print('Latitude: ${currentPosition?.latitude}, Longitude: ${currentPosition?.longitude}, Accuracy: ${currentPosition?.accuracy}');
-}
+} 
 
 
 Future<void> _initializeCamera() async {
@@ -189,8 +230,8 @@ Future<void> _captureImage() async {
 
     final flipped = img.flipHorizontal(decoded);
 
-    final resized = img.copyResize(flipped, width: 250, height: 250);
-    final resizedBytes = img.encodeJpg(resized, quality: 70);
+    final resized = img.copyResize(flipped, width: 400, height: 400);
+    final resizedBytes = img.encodePng(resized);
     final base64Str = base64Encode(resizedBytes);
 
     if (!mounted) return;
@@ -198,6 +239,8 @@ Future<void> _captureImage() async {
     setState(() {
       _imageFile = File(file.path);
       base64Image = 'data:image/png;base64,$base64Str';
+
+      // print('Base64 Image: $base64Image');
     });
     
   } catch (e) {
@@ -205,116 +248,206 @@ Future<void> _captureImage() async {
   }
 }
 
-@override
-void dispose() {
-  _cameraController?.dispose();
-  super.dispose();
-}
+  Future<void> fetchDataPacketApi() async {
 
- Future<void> submitAttendance() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/MyApis/userinfo?user_id=$_emId'),
+      headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiToken',
+          'auth_token': _token!,
+        },
+      );
+
+      await UserSession.checkInvalidAuthToken(
+        context,
+        json.decode(response.body),
+        response.statusCode,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body)['data_packet'];
+
+        if(mounted){ 
+        setState(() {
+          _compFname = data['comp_fname'];
+        });
+        }
+      }
+
+      } catch (e) {
+  if (e is SocketException) {
+    setState(() {
+      _error = 'No internet connection.';
+    });
+  } else {
+    setState(() {
+      _error = 'Error fetching user info: $e';
+    });
+  }
+}
+  }
+
+    Future<void> submitAttendance() async {
   if (isSubmitting) return;
 
-   setState(() {
-    isSubmitting = true;
-  });
-
-  if (!_formKey.currentState!.validate() || narration == null || field == null) {
-      _showCustomSnackBar(context, "Please fill all fields", Colors.yellow.shade900, Icons.warning_amber_outlined);
-      setState(() {
-        isSubmitting = false;
-      });
-      return;
+  if (!_formKey.currentState!.validate() || field == null) {
+    if (mounted) {
+      _showCustomSnackBar(
+        context,
+        "Please fill all fields",
+        Colors.yellow.shade900,
+        Icons.warning_amber_outlined,
+      );
+      setState(() => isSubmitting = false);
     }
-    
-    _formKey.currentState!.save();
+    return;
+  }
 
-  
-      if (base64Image == null) {
-      _showCustomSnackBar(context, 'Please capture an image', Colors.teal.shade400, Icons.camera);
-      setState(() {
-        isSubmitting = false;
-      });
-          return;
-      }
-
-     if (currentPosition == null) {
-      try{
-      await getLocation();
-      }catch(e){
-      _showCustomSnackBar(context, 'Please give access of location', const Color.fromARGB(255, 138, 166, 38), Icons.location_disabled);
-        setState(() {
-          isSubmitting = false;
-        });
-      }
-      return;
+  if (field == 'FIELD' && (narration?.trim().isEmpty ?? true)) {
+    if (mounted) {
+      _showCustomSnackBar(
+        context,
+        'Please enter a remark for Field work',
+        Colors.orange,
+        Icons.edit_note,
+      );
+      setState(() => isSubmitting = false);
     }
+    return;
+  }
+
+  if (base64Image == null) {
+    if (mounted) {
+      _showCustomSnackBar(
+        context,
+        'Please capture an image',
+        Colors.teal.shade400,
+        Icons.camera_alt_outlined,
+      );
+      setState(() => isSubmitting = false);
+    }
+    return;
+  }
+
+ 
+  if (mounted) {
+    setState(() {
+      isSubmitting = true;
+      loadingText = 'Submitting, please wait...';
+    });
+  }
 
   try {
+    if (currentPosition == null) {
+      currentPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+    }
+
+    _formKey.currentState!.save();
+
+    if (field == 'OFFICE') narration = '';
+
+    final body = {
+      'punch_remark': narration,
+      'punch_place': field,
+      'punch_type': 'OUT',
+      'latitude': currentPosition?.latitude,
+      'longitude': currentPosition?.longitude,
+      'punch_img': base64Image,
+    };
+
+    final uri = Uri.parse('$baseUrl/MyApis/punchthein');
 
     final response = await http.post(
-      Uri.parse('$baseUrl/api/attendance/punch'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'emp_id': emId,
-        'comp_id': compId,
-        'punch_remark': narration,
-        'punch_place': field,
-        'punchtype': 'OUTSTATION2',
-        'latitude': currentPosition?.latitude,
-        'longitude': currentPosition?.longitude,
-        'punch_img': base64Image,
-        'created_by': emId,
-      }),
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiToken',
+        'auth_token': _token!,
+        'user_id': _emId!,
+      },
+      body: jsonEncode(body),
     );
 
-     if (response.statusCode == 201) {
-      final responseData = jsonDecode(response.body);
+    final resBody = jsonDecode(response.body);
 
-    if (responseData['warning'] != null) {
-    _showCustomSnackBar(context, responseData['warning'], Colors.orange.shade700, Icons.warning_amber_outlined);
-  }
-      _showCustomSnackBar(context, 'Punch Out marked successfully', Colors.green, Icons.check_circle);
+    await UserSession.checkInvalidAuthToken(context, resBody, response.statusCode);
 
-      _resetForm();
-
+    if (response.statusCode == 200) {
+      if (mounted) {
+        _showCustomSnackBar(
+          context,
+          'Punch Out marked successfully',
+          Colors.green,
+          Icons.check_circle,
+        );
+        await _resetForm();
+      }
     } else {
-      final error = jsonDecode(response.body);
-      _showCustomSnackBar(context, "${error['message']}", Colors.red, Icons.error);
+      if (mounted) {
+        _showCustomSnackBar(
+          context,
+          resBody['message'] ?? 'Something went wrong',
+          Colors.red,
+          Icons.error,
+        );
+      }
     }
   } catch (e) {
-     _showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
+    if (mounted) {
+      _showCustomSnackBar(
+        context,
+        'An unexpected error occurred: $e',
+        Colors.red,
+        Icons.error,
+      );
+    }
   } finally {
-    setState(() {
-      isSubmitting = false;
-    });
+    if (mounted) {
+      setState(() => isSubmitting = false);
+    }
   }
 }
 
-Future<void> handlePullToRefresh() async {
-  setState(() {
-    isLoading = true;
-  });
 
-  _resetForm();
-
-  setState(() {
-    isLoading = false;
-  });
-} 
-
-  void _resetForm() {
-    _formKey.currentState?.reset();
-    _narrationController.clear();
+  Future<void> handlePullToRefresh() async {
     setState(() {
-    narration = null;
-    field = null;
-    base64Image = null;
-    _imageFile = null;
-    currentPosition = null;
+      isLoading = true;
+      _error = null;
     });
-  }
+
+    await _resetForm();
+
+    setState(() {
+      isLoading = false;
+    });
+  } 
+
+    Future<void> _resetForm() async{
+      _formKey.currentState?.reset();
+      _narrationController.clear();
+      setState(() {
+      narration = null;
+      field = null;
+      base64Image = null;
+      _imageFile = null;
+      currentPosition = null;
+      });
+    }
+
+    @override
+    void dispose() {
+    _cameraController?.dispose();
+    super.dispose();
+    }
+
 
  void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
+  final scaffoldMessenger = ScaffoldMessenger.of(context);
+    scaffoldMessenger.clearSnackBars();
+    
     final snackBar = SnackBar(
       content: Row(
         children: [
@@ -338,25 +471,34 @@ Future<void> handlePullToRefresh() async {
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
-
 @override
 Widget build(BuildContext context) {
   return Scaffold(
     backgroundColor: Color(0xFFF2F5F8),
-   appBar: AppBar(
-      backgroundColor: Colors.transparent, 
-        title: const Text(
-          "Attendance Out",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        forceMaterialTransparency: true,
-        elevation: 0,
+   appBar:AppBar(
+    backgroundColor: Colors.transparent, 
+      title: const Text(
+        "Check-Out",
+        style: TextStyle(fontWeight: FontWeight.bold),
       ),
-    body: Stack(
-      children: [
-        Container (
-      padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
+      forceMaterialTransparency: true,
+    ),
+
+    body:_error != null
+     ? NoInternetWidget(
+      onRetry: () async{
+        setState(() {
+          _error = null;
+        });
+        await fetchDataPacketApi();
+      },
+    )
+    : isDataLoading
+    ? Stack(
+    children: [
+    Container (
+    padding: const EdgeInsets.all(20),
+    decoration: const BoxDecoration(
       gradient: LinearGradient(
         colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
         begin: Alignment.topRight,
@@ -364,28 +506,28 @@ Widget build(BuildContext context) {
       ),
     ),
 
-    child:Form(
-    key: _formKey,
-    child: RefreshIndicator(
-      onRefresh: handlePullToRefresh,
-      color: Colors.black,
-      backgroundColor: Colors.white ,
-      child: ListView(
-      children: [
-      Padding(
-        padding: const EdgeInsets.all(16.0),
-      child: Column(
+      child:Form(
+        key: _formKey,
+        child: RefreshIndicator(
+          onRefresh: handlePullToRefresh,
+          color: Colors.black,
+          backgroundColor: Colors.white ,
+          child: ListView(
+            children: [
+            Padding(
+            padding: const EdgeInsets.all(16.0),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          buildReadOnlyField("Employee ID", emId ?? "N/A"),
+          buildReadOnlyField("Employee ID", _emId ?? "N/A"),
           const SizedBox(height: 16),
-          buildReadOnlyField("Employee Name", emUsername ?? "N/A"),
+          buildReadOnlyField("Employee Name", _emUsername ?? "N/A"),
           const SizedBox(height: 16),
-          buildReadOnlyField("Company Name", compFname ?? "N/A"),
+          buildReadOnlyField("Company Name", _compFname ?? "N/A"),
           const SizedBox(height: 24),
 
           Text("Punch Place*", style: labelStyle),
-
+          
           const SizedBox(height: 8),
 
           DropdownButtonFormField<String>(
@@ -408,20 +550,22 @@ Widget build(BuildContext context) {
         ),
 
           const SizedBox(height: 24),
-
+        
+          if(field == 'FIELD') ...[
           Text("Narration*", style: labelStyle),
 
           const SizedBox(height: 8),
 
           TextFormField(
             controller: _narrationController,
-            maxLines: 3,
+            maxLines: 2,
             style: inputTextStyle,
             decoration: inputDecoration.copyWith(
               hintText: "Remark",
             ),
-              validator: (value) {
-            if (value == null || value.trim().isEmpty) {
+            validator: (value) {
+            if (field == 'FIELD' && (value == null || value.trim().isEmpty)) 
+            {
               return 'Please enter a remark';
             }
             return null;
@@ -432,17 +576,19 @@ Widget build(BuildContext context) {
             });
           },
         ),
+        ],
 
-        const SizedBox(height: 24),
+         const SizedBox(height: 24),
 
-        FutureBuilder(
+          if (_imageFile == null) ...[
+          FutureBuilder(
             future: _initializeControllerFuture,
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator()); 
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
                 }
 
-              if (snapshot.connectionState == ConnectionState.done) {
+                if (snapshot.connectionState == ConnectionState.done) {
                 if (_cameraController != null && _cameraController!.value.isInitialized) {
                   return ClipRRect(
                     borderRadius: BorderRadius.circular(16),
@@ -493,12 +639,13 @@ Widget build(BuildContext context) {
           ),
 
           const SizedBox(height: 12),
-          
           Center(
             child: Text(
               _isCapturing
                   ? 'Capturing image...'
-                  : 'Press button to capture image',
+                  : (_imageFile != null
+                      ? 'Image captured'
+                      : 'Press button to capture image'),
               style: TextStyle(
                 fontSize: 16,
                 color: _isCapturing ? Colors.red : Colors.black87,
@@ -506,20 +653,9 @@ Widget build(BuildContext context) {
               ),
             ),
           ),
+        ],
 
-          const SizedBox(height: 24),
-
-          ElevatedButton.icon(
-            onPressed: () async {
-              await _captureImage();
-            },
-            icon: const Icon(Icons.camera_alt, size: 20),
-            label: const Text("Capture Image"),
-            style: primaryButtonStyle,
-          ),
-
-
-         if (_imageFile != null) 
+          if (_imageFile != null) 
             ...[
               const SizedBox(height: 20),
               Center(
@@ -534,7 +670,7 @@ Widget build(BuildContext context) {
                       )
                     ],
                   ),
-
+                  
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child:Transform(
@@ -551,14 +687,44 @@ Widget build(BuildContext context) {
                 ),
               ),
             ],
+            
 
-           const SizedBox(height: 32),
+         const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () async {
+              if (_imageFile != null) {
+                setState(() => _imageFile = null);
+              } else {
+                await _captureImage();
+              }
+            },
+            icon: Icon(
+              _imageFile != null ? Icons.refresh : Icons.camera_alt,
+              size: 20,
+            ),
+            label: Text(
+              _imageFile != null ? "Retake" : "Capture Image",
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _imageFile != null
+                  ? Colors.redAccent.shade200 
+                  : const Color.fromARGB(255, 80, 140, 184), 
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              textStyle: const TextStyle(fontSize: 15),
+            ),
+          ),
 
+              const SizedBox(height: 32),
+                
                 ElevatedButton.icon(
-                  onPressed: isSubmitting? null : ()async {
+                  onPressed: isSubmitting? null : () async {
                     await submitAttendance();
-                  } ,
-                  label: const Text("Submit Attendance"),
+                  },
+                  label: const Text("Submit"),
                   style: greenButtonStyle,
                   icon: const Icon(Icons.send_outlined, size: 20),
                 ),
@@ -573,15 +739,15 @@ Widget build(BuildContext context) {
     if (isSubmitting)
         Container(
           color: Colors.black.withOpacity(0.5), 
-          child: const Center(
+          child: Center(
             child: Column(
              mainAxisSize: MainAxisSize.min,
              children: [
               CircularProgressIndicator(color: Colors.white),
               SizedBox(height: 16),
               Text(
-                'Submitting, please wait...',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+                loadingText ?? 'Submitting, please wait...',
+                style: TextStyle(color: Colors.white, fontSize: 16,),
                 textAlign: TextAlign.center,
                   ),
                 ],
@@ -589,12 +755,16 @@ Widget build(BuildContext context) {
             ),
           ),
         ],
-      ),
+      ): const Center(
+          child: CircularProgressIndicator(
+            color: Colors.black87,
+          ),
+      )
     );
   }
 }
 
-Widget buildReadOnlyField(String label, String value) {
+ Widget buildReadOnlyField(String label, String value) {
           return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -622,7 +792,7 @@ Widget buildReadOnlyField(String label, String value) {
           style: TextStyle(
           fontSize: 15,
           color:  const Color(0xFF212529),
-          ),
+        ),
        ),
       ),
      ],
@@ -648,15 +818,15 @@ final inputDecoration = InputDecoration(
   fillColor: Colors.white,
   contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
   border: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(5),
     borderSide: BorderSide(color: Colors.grey.shade300),
   ),
   enabledBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(5),
     borderSide: BorderSide(color: Colors.grey.shade300),
   ),
   focusedBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(5),
     borderSide: const BorderSide(color: Colors.blueGrey, width: 1.5),
   ),
 );
@@ -666,17 +836,17 @@ final primaryButtonStyle = ElevatedButton.styleFrom(
   foregroundColor: Colors.blue.shade300,
   minimumSize: const Size.fromHeight(48),
   shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(10),
   ),
   textStyle: const TextStyle(fontSize: 15),
 );
 
 final greenButtonStyle = ElevatedButton.styleFrom(
-  backgroundColor: Colors.green.shade50,
-  foregroundColor: Colors.green.shade300,
-  minimumSize: const Size.fromHeight(50),
+  backgroundColor: Color.fromARGB(255, 245, 247, 250),
+  foregroundColor: Colors.black87,
+  minimumSize: const Size.fromHeight(48),
   shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(10),
   ),
   textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
 );

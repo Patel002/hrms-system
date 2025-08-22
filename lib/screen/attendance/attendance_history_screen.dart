@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:jwt_decode/jwt_decode.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import "package:url_launcher/url_launcher.dart";
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -8,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:lottie/lottie.dart';
+import '../utils/user_session.dart';
 
 class AttandanceHistory extends StatefulWidget {
   const AttandanceHistory({super.key});
@@ -18,6 +18,7 @@ class AttandanceHistory extends StatefulWidget {
 
 class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProviderStateMixin {
   final baseUrl = dotenv.env['API_BASE_URL'];
+  final apiToken = dotenv.env['ACCESS_TOKEN'];
 
   String? emId, emUsername, compFname, compId, department;
   List attendanceList = [];
@@ -31,8 +32,25 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
   @override
   void initState() {
     super.initState();
-    gettokenData();
-    fetchAttendanceData(DateTime.now());
+    // gettokenData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final passedDate = args?['selectedDate'] as DateTime?;
+
+    if (passedDate != null) {
+      setState(() {
+        selectedDate = passedDate;
+      });
+      fetchAttendanceData(passedDate);
+    } else {
+      final today = DateTime.now();
+      setState(() {
+        selectedDate = today;
+      });
+      fetchAttendanceData(today);
+    }
+  });
+
 
     //   _animationController = AnimationController(
     //   vsync: this,
@@ -50,34 +68,34 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
 
   String getFormattedDate(String dateString) {
     try {
-    DateTime parsedDate = DateTime.parse(dateString);
+    DateTime parsedDate = DateFormat('dd/MM/yyyy').parse(dateString);
     return DateFormat('dd-MMM').format(parsedDate);
     } catch (e) {
       return "Invalid Date"; 
     }
   }
-  String FormattedDate(String timeString) {
-  try {
-    if (timeString.contains(' ')) {
-      DateTime parsed = DateFormat('yyyy-MM-dd HH:mm:ss').parse(timeString);
-      return DateFormat('hh:mm a').format(parsed); 
-    }
+//   String FormattedDate(String timeString) {
+//   try {
+//     if (timeString.contains(' ')) {
+//       DateTime parsed = DateFormat('yyyy-MM-dd HH:mm:ss').parse(timeString);
+//       return DateFormat('hh:mm a').format(parsed); 
+//     }
 
-    DateTime parsedTime = DateFormat('HH:mm:ss').parse(timeString);
-    return DateFormat('hh:mm a').format(parsedTime);
-  } catch (e) {
-    return "Invalid Time format"; 
-  }
-}
+//     DateTime parsedTime = DateFormat('HH:mm:ss').parse(timeString);
+//     return DateFormat('hh:mm a').format(parsedTime);
+//   } catch (e) {
+//     return "Invalid Time format"; 
+//   }
+// }
 
 
-  Future<void> gettokenData() async {
-    final pref = await SharedPreferences.getInstance();
-    final token = pref.getString('token') ?? '';
-    final decode = Jwt.parseJwt(token);
-    compFname = decode['comp_fname'] ?? '';
-    department = decode['dep_name'] ?? '';
-  }
+  // Future<void> gettokenData() async {
+  //   final pref = await SharedPreferences.getInstance();
+  //   final token = pref.getString('token') ?? '';
+  //   final decode = Jwt.parseJwt(token);
+  //   compFname = decode['comp_fname'] ?? '';
+  //   department = decode['dep_name'] ?? '';
+  // }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -119,10 +137,16 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
 
   Future<void> fetchAttendanceData(DateTime date) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
-      final decode = Jwt.parseJwt(token);
-      emId = decode['em_id'] ?? '';
+
+      final token = await UserSession.getToken();
+
+      if(token == null){
+        Navigator.pushReplacementNamed(context, '/login');
+        return;
+      }
+
+      emId = await UserSession.getUserId();
+     
       print("emp_id: $emId");
 
       final formattedDate =
@@ -130,21 +154,42 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
       print("Formatted Date: $formattedDate");
 
       final url = Uri.parse(
-        '$baseUrl/api/attendance/list?emp_id=$emId&punch_date=$formattedDate',
+        '$baseUrl/MyApis/punchlogs?user_id=$emId&date=$formattedDate',
       );
       print("URL: $url");
 
       final response = await http.get(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiToken',
+          'auth_token': token,
+        },
       );
 
-      if (response.statusCode == 200) {
-        final List data = jsonDecode(response.body)['data'];
-        
-         attendanceList = data;
+      // print("Response Status Code: ${response.statusCode}");
+      // print("url: $response");
+      // print("body: ${response.body}");
 
-        await Future.delayed(Duration(seconds: 2));
+      final jsonData = json.decode(response.body);
+
+       await UserSession.checkInvalidAuthToken(
+        context,
+        json.decode(response.body),
+        response.statusCode,
+      );
+
+     if (response.statusCode == 200) {
+        if (jsonData['data_packet'] != null && jsonData['data_packet'] is List) {
+          attendanceList = jsonData['data_packet'];
+
+          print("attendanceList: $attendanceList");
+          print("image:${attendanceList[0]['punch_img']}");
+        } else {
+          attendanceList = [];
+        }
+
+      await Future.delayed(Duration(seconds: 2));
 
         setState(() {
           isLoading = false;
@@ -202,7 +247,7 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
   // }
 
 
-void showImagePreview(BuildContext context, String base64Image) {
+void showImagePreview(BuildContext context, String image) {
   showGeneralDialog(
     context: context,
     barrierDismissible: true,
@@ -216,9 +261,7 @@ void showImagePreview(BuildContext context, String base64Image) {
           backgroundColor: Colors.transparent,
           body: Center(
             child: PhotoView(
-              imageProvider: MemoryImage(
-                base64Decode(base64Image.split(',').last),
-              ),
+              imageProvider: NetworkImage(image),
               backgroundDecoration: const BoxDecoration(
                 color: Colors.transparent,
               ),
@@ -258,7 +301,7 @@ void showImagePreview(BuildContext context, String base64Image) {
 }
 
   Widget buildAttendanceCard(Map item) {
-    final base64Image = item['punch_img'];
+    final image = item['punch_img'];
     final latitude = item['latitude'];
     final longitude = item['longitude'];
 
@@ -295,7 +338,7 @@ void showImagePreview(BuildContext context, String base64Image) {
           Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            buildImageOrPlaceholder(base64Image, context),
+            buildImageOrPlaceholder(image, context),
               const SizedBox(width: 16),
 
               Expanded(
@@ -305,32 +348,32 @@ void showImagePreview(BuildContext context, String base64Image) {
                     Row(
                       children: [
                         Expanded(
+                        child: Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
                           child: Text(
-                            FormattedDate(item['punch_time']),
+                            (item['punch_time'] ?? ''),
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                        item['punchtype'] == 'OUTSTATION1'
-                                ? 'In'
-                            : item['punchtype'] == 'OUTSTATION2'
-                                ? 'Out'
-                                : item['punchtype'],
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            
                             ),
                           ),
                         ),
                       ),
                         Expanded(
+                          child: Padding(
+                          padding:  EdgeInsets.symmetric(horizontal: 4.h),
+                          child: Text(
+                            item['punch_type'] ?? '',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                        Expanded(
+                          child: Padding(
+                           padding:  EdgeInsets.symmetric(horizontal: 1.0.h),
                           child: Text(
                             item['punch_place'] ?? '',
                             style: const TextStyle(
@@ -339,15 +382,18 @@ void showImagePreview(BuildContext context, String base64Image) {
                             ),
                           ),
                         ),
-
-                        if (latitude != null && longitude != null)
-                          GestureDetector(
+                        ),
+                        
+                      Padding(
+                       padding: const EdgeInsets.only(right: 10.0),
+                        child: (latitude != null && longitude != null)
+                          ? GestureDetector(
                             onTap: () => _launchMap(latitude, longitude),
                             child: Row(
                               children: const [
                                 Icon(
                                   Icons.location_on_outlined,
-                                  color: Color.fromARGB(255, 222, 17, 17),
+                                  color: Colors.red,
                                   size: 18,
                                 ),
                                 SizedBox(width: 4),
@@ -361,11 +407,11 @@ void showImagePreview(BuildContext context, String base64Image) {
                                 ),
                               ],
                             ),
-                          ),
+                          ): SizedBox.shrink(),
+                        ),
                       ],
                     ),
 
-                    
                     const SizedBox(height: 4),
                     Row(
                       children: const [
@@ -412,17 +458,8 @@ void showImagePreview(BuildContext context, String base64Image) {
 
   @override
   Widget build(BuildContext context) {
-
-    final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
-    final passedDate = args?['selectedDate'] as DateTime?;
-
-    if (passedDate != null && selectedDate == null) {
-    selectedDate = passedDate;
-    fetchAttendanceData(passedDate);
-  }
-
     return Scaffold(
-       backgroundColor: Color(0xFFF2F5F8),
+      backgroundColor: Color(0xFFF2F5F8),
       appBar: AppBar(
                 title: const Text(
                   "Attendance History",
@@ -510,9 +547,10 @@ void showImagePreview(BuildContext context, String base64Image) {
                           children: [
                             Lottie.asset(
                               'assets/image/Animation.json',
-                              width: 180,
-                              height: 180,
+                              width: 200,
+                              height: 200,
                               repeat: true,
+                              fit: BoxFit.cover
                             ),
                             const SizedBox(height: 5),
                             const Text(
@@ -520,7 +558,7 @@ void showImagePreview(BuildContext context, String base64Image) {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                                color: Colors.grey,
                               ),
                             ),
                           ],
@@ -553,32 +591,67 @@ void showImagePreview(BuildContext context, String base64Image) {
   }
 
 
-Widget buildImageOrPlaceholder(String? base64Image, BuildContext context) {
+Widget buildImageOrPlaceholder(String? image, BuildContext context) {
   try {
-    if (base64Image != null &&
-        base64Image.isNotEmpty &&
-        base64Image.contains(',')) {
-      final imageBytes = base64Decode(base64Image.split(',').last);
-
-      return GestureDetector(
-        onTap: () => showImagePreview(context, base64Image),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.memory(
-            imageBytes,
-            height: 80,
-            width: 80,
-            fit: BoxFit.cover,
+    if (image != null && image.isNotEmpty) {
+      if (image.contains('data:image')) {
+        // Base64 image
+        final imageBytes = base64Decode(image.split(',').last);
+        return GestureDetector(
+          onTap: () => showImagePreview(context, image),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.memory(
+              imageBytes,
+              height: 80,
+              width: 80,
+              fit: BoxFit.cover,
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        // URL
+        return GestureDetector(
+          onTap: () => showImagePreview(context, image),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              image,
+              height: 80,
+              width: 80,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return _buildPlaceholderContainer();
+              },
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return SizedBox(
+                  height: 80,
+                  width: 80,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.black87,
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                              (loadingProgress.expectedTotalBytes!)
+                          : null,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      }
     } else {
       return _buildPlaceholderContainer();
     }
   } catch (e) {
+    print("Image load error: $e");
     return _buildPlaceholderContainer();
   }
 }
+
 
 Widget _buildPlaceholderContainer() {
   return Container(
