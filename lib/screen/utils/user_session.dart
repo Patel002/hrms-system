@@ -23,7 +23,7 @@ class UserSession {
   static Future<T?> getField<T>(String key) async {
     final data = await getUserDataPacket();
     return data?[key] as T?;
-  }
+  } 
 
   static Future<String?> getUserId() async => getField<String>('user_id');
 
@@ -35,7 +35,18 @@ class UserSession {
 
   static Future<String?> getUserImageUrl() async => getField<String>('image_url');
 
+  static Future<String?> isSupervisor() async => getField<String>('reporting_auth');
 
+
+  static Future<bool> hasGatePassAccess() async {
+    final data = await getUserDataPacket();
+    return (data?['module_access']?['gatepass'] == true);
+  }
+
+  static Future<bool> hasLeaveAccess() async {
+    final data = await getUserDataPacket();
+    return (data?['module_access']?['visit'] == true);
+  }
 
   static Future<void> logout(BuildContext context) async{
     SharedPreferences prefs = await SharedPreferences.getInstance();

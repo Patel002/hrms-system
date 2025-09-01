@@ -5,7 +5,9 @@ import 'package:http/http.dart' as http;
 import 'package:jwt_decode/jwt_decode.dart';
 import './leave_details_page.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
+import 'package:intl/intl.dart';
+import '../utils/user_session.dart';
+import '../helper/top_snackbar.dart';
 
 class LeaveRequestPage extends StatefulWidget {
   const LeaveRequestPage({super.key});
@@ -23,6 +25,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
   late TabController _tabController;
 
   final baseUrl = dotenv.env['API_BASE_URL'];
+  final apiToken = dotenv.env['ACCESS_TOKEN'];
 
   @override
   void initState() {
@@ -32,7 +35,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
   }
 
   Future<void> initData() async {
-    await parseToken();
+    // await parseToken();
      final pending = await fetchRequests('pending');
     final approved = await fetchRequests('approved');
     final rejected = await fetchRequests('rejected');
@@ -46,24 +49,31 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
 
   }
 
-  Future<void> parseToken() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    if (token != null) {
-      Map<String, dynamic> decoded = Jwt.parseJwt(token);
-      employeeCode = decoded['em_code'];
-      print('Employee Code: $employeeCode');
-      // compFname = decoded['comp_fname'];
-      // departmentName = decoded['dep_name'];
-    }
-  }
+  // Future<void> parseToken() async {
+  //   SharedPreferences prefs = await SharedPreferences.getInstance();
+  //   final token = prefs.getString('token');
+  //   if (token != null) {
+  //     Map<String, dynamic> decoded = Jwt.parseJwt(token);
+  //     employeeCode = decoded['em_code'];
+  //     print('Employee Code: $employeeCode');
+  //   }
+  // }
+
+
+
+ String formattedDate(String date) {
+  return DateFormat('dd-MM-yyyy').format(DateTime.parse(date));
+ }
 
   Future<List<Map<String, dynamic>>> fetchRequests(String status) async {
-    if (employeeCode == null) return [];  
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token'); 
-       if (token == null) return [];
+    final token = await UserSession.getToken();
 
+    if(token ==  null){
+      Navigator.pushReplacementNamed(context, '/login');
+      return [];
+    }
+
+    final empId = await UserSession.getUserId();
 
     final statusMap = {
       'pending': 'Not Approve',
@@ -71,82 +81,132 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> with SingleTickerPr
       'rejected': 'Rejected',
     };
 
+  try{
     final apiStatus = statusMap[status.toLowerCase()];
     print('API Status: $apiStatus');
 
-    final res = await http.get(Uri.parse('$baseUrl/api/emp-leave/list/$apiStatus'),
+    final response = await http.get(Uri.parse('$baseUrl/MyApis/leavetherecords?fetch_type=REQUEST&leave_status=$apiStatus'),
     headers: {
-      'Authorization': 'Bearer $token', 
+      'Authorization': 'Bearer $apiToken', 
+      'auth_token': token,
+      'user_id': empId!
     });
-    print("res,$res");
+    print("res,$response");
 
-    if (res.statusCode == 200) {
-      final decoded = jsonDecode(res.body);
+    await UserSession.checkInvalidAuthToken(
+        context,
+        json.decode(response.body),
+        response.statusCode,
+      );
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
       print('Decoded: $decoded');
-      final List<dynamic> dataList = decoded['pendingLeaves'];
+      final List<dynamic> dataList = decoded['data_packet'];
       print('Pending Leaves: $dataList');
       return dataList.cast<Map<String, dynamic>>();
 
     } else {
-      final error = jsonDecode(res.body);
-      _showCustomSnackBar(context,"${error['message']}", Colors.red, Icons.error);
+      final error = jsonDecode(response.body);
+      showCustomSnackBar(context,"${error['message']}", Colors.red, Icons.error);
      return [];
     }
+  }catch(e){
+    final error = jsonDecode(e.toString());
+    showCustomSnackBar(context,"${error['message']}", Colors.red, Icons.error);
+    return [];
+  }
   }
 
-  Future<void> _sendApprovalOrRejection(String leaveId, {required String action, String? reason}) async {
 
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
 
-    final url = Uri.parse('$baseUrl/api/emp-leave/approve-reject/$leaveId');
+  Future<void> _sendApproval(String leaveId, {required String action}) async {
+
+    final token = await UserSession.getToken();
+
+    if(token ==  null){
+      Navigator.pushReplacementNamed(context, '/login');
+      return;
+    }
+
+    final empId = await UserSession.getUserId();
+
+    final url = Uri.parse('$baseUrl/MyApis/leavetheapprove?id=$leaveId');
     print("url,$url");
     final response = await http.patch(
       url,
       headers: {'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token'
+      'Authorization': 'Bearer $apiToken',
+      'auth_token': token,
+      'user_id': empId!
       }, 
       body: jsonEncode({
         'action': action,
-        if (action == 'reject') 'reject_reason': reason,
+      }),
+    );
+
+    final responseBody = response.body;
+    print('responseBody,$responseBody');
+    
+    await UserSession.checkInvalidAuthToken(
+        context,
+        json.decode(response.body),
+        response.statusCode,
+      );
+
+    if (response.statusCode == 200) {
+     showCustomSnackBar(context, 'Leave details updated successfully ', Colors.green, Icons.check);
+      await initData(); 
+    } else {
+      final error = jsonDecode(responseBody);
+      showCustomSnackBar(context,"${error['message']}", Colors.red, Icons.error);
+    }
+  }
+
+
+  Future<void> _sendRejection(String leaveId, {required String action, String? reason}) async {
+
+    final token = await UserSession.getToken();
+
+    if(token == null){
+      Navigator.pushReplacementNamed(context, '/login');
+      return;
+    }
+
+    final _empId = await UserSession.getUserId();
+
+    final url = Uri.parse('$baseUrl/MyApis/leavethereject?id=$leaveId');
+    print("url,$url");
+    final response = await http.patch(
+      url,
+      headers: {'Content-Type': 'application/json',
+      'Authorization': 'Bearer $apiToken',
+      'auth_token': token,
+      'user_id': _empId!
+      }, 
+      body: jsonEncode({
+        'action': 'reject',
+        'reject_reason': reason,
       }),
     );
 
     final responseBody = response.body;
     print('responseBody,$responseBody');
 
+    await UserSession.checkInvalidAuthToken(
+        context,
+        json.decode(response.body),
+        response.statusCode,
+      );
+
     if (response.statusCode == 200) {
-     _showCustomSnackBar(context, 'Leave details updated successfully ', Colors.green, Icons.check);
+     showCustomSnackBar(context, 'Leave details updated successfully ', Colors.green, Icons.check);
       await initData(); 
     } else {
       final error = jsonDecode(responseBody);
-      _showCustomSnackBar(context,"${error['message']}", Colors.red, Icons.error);
+      showCustomSnackBar(context,"${error['message']}", Colors.red, Icons.error);
     }
   }
-
-void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
-        final snackBar = SnackBar(
-          content: Row(
-            children: [
-              Icon(icon, color: Colors.white),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  message,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: color,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          duration: const Duration(seconds: 2),
-        );
-
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
 
   void _confirmApprove(String leaveId) {
   showModalBottomSheet(
@@ -174,7 +234,9 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
             Text(
               "Are you sure you want to approve this leave request?",
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.black54),
+              style: TextStyle(fontSize: 16, 
+              // color: Colors.black54
+              ),
             ),
             SizedBox(height: 24),
             Row(
@@ -198,7 +260,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _sendApprovalOrRejection(leaveId, action: 'approve');
+                      _sendApproval(leaveId, action: 'approve');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
@@ -256,7 +318,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
             Text(
               "Please provide a reason for rejecting this leave request.",
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.black54),
+              style: TextStyle(fontSize: 16),
             ),
             SizedBox(height: 16),
             TextField(
@@ -293,7 +355,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                       final reason = reasonController.text.trim();
                       if (reason.isNotEmpty) {
                         Navigator.pop(context);
-                        _sendApprovalOrRejection(leaveId, action: 'reject', reason: reason);
+                        _sendRejection(leaveId, action: 'reject', reason: reason);
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -329,7 +391,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
       print('Status: $status');
       
       return Card(
-        color: Colors.white,
+        color:Theme.of(context).brightness == Brightness.light ? Color(0xFFF2F5F8) : Colors.grey.shade900,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 4,
         margin: EdgeInsets.all(10),
@@ -337,9 +399,12 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
           children: [
             ListTile(
               leading: Icon(Icons.event_note, color: Colors.blue),
-              title: Text("${leave['start_date']} → ${leave['end_date']}"),
-              subtitle: Text("Employee: ${leave['em_id']}", 
-              style: TextStyle(fontWeight: FontWeight.bold)),
+              title: Text("${formattedDate(leave['start_date'])} → ${formattedDate(leave['end_date'])}"),
+              subtitle: Text(
+                  "Name: ${leave['empname']}"
+                  "\nLeave: ${leave['leave_type_name']}" 
+                  "\nDuration: ${leave['leave_duration_formatted']}",
+              style: TextStyle(fontWeight: FontWeight.w400,color: Colors.grey)),
               trailing: Container(
                 padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
@@ -352,23 +417,14 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                 ),
               ),
               onTap: () async {
-                final pref = await SharedPreferences.getInstance();
-                final token = pref.getString('token');
-                final decoded = Jwt.parseJwt(token!);
-                // final employeeCode = decoded['em_code'];
-                // final departmentName = decoded['dep_name'];
-                final compFname = decoded['comp_fname'];
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => LeaveDetailPage(
                       leave: leave,
-                      // departmentName: departmentName ?? '',
-                      // employeeCode: employeeCode ?? '',
-                      compFname: compFname ?? '',
                       onAction: (action, [reason]) {
                         Navigator.pop(context);
-                        _sendApprovalOrRejection(leave['id'].toString(), 
+                        _sendRejection(leave['id'].toString(), 
                             action: action, reason: reason);
                       },
                     ),
@@ -384,7 +440,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   children: [
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:  Color(0xFFF5F7FA),
+                        backgroundColor: Theme.of(context).brightness == Brightness.light ? Color(0xFFF5F7FA) : Colors.grey.shade900,
                         foregroundColor: Colors.green,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.all(Radius.circular(10)),
@@ -397,7 +453,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                     SizedBox(width: 8),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFFF5F7FA),
+                        backgroundColor: Theme.of(context).brightness == Brightness.light ? Color(0xFFF5F7FA) : Colors.grey.shade900,
                         foregroundColor: Colors.red,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10)),
@@ -409,21 +465,25 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   ],
                 ),
               ),
-          ],
-        ),
-      );
-    },
-  );
-}
+            ],
+          ),
+        );
+      },
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).brightness == Brightness.light
+        ? Color(0xFFF2F5F8)
+        : Color(0xFF121212),
         appBar: AppBar(
-          backgroundColor: Colors.white,
-          title: Text("Leave Requests"),
+          backgroundColor: Colors.transparent,
+          forceMaterialTransparency: true,
+          title: Text("Leave Requests", style: TextStyle( fontWeight: FontWeight.bold ),),
           bottom: TabBar(
             controller: _tabController,
             labelColor: Color(0XFF00A8CC),
@@ -435,9 +495,12 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
               Tab(text: 'Rejected'),
             ],
           ),
+        foregroundColor: Theme.of(context).brightness == Brightness.dark
+      ? Colors.white
+      : Colors.black87,
         ),
         body: isLoading
-            ? Center(child: CircularProgressIndicator())
+            ? Center(child: CircularProgressIndicator(color: Theme.of(context).iconTheme.color,))
             : TabBarView(
                 controller: _tabController,
                 children: [

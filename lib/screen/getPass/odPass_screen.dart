@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:jwt_decode/jwt_decode.dart';
+import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../utils/user_session.dart';
+import '../helper/top_snackbar.dart';
 
 class ODPassScreen extends StatefulWidget {
   const ODPassScreen({super.key});
@@ -14,33 +15,30 @@ class ODPassScreen extends StatefulWidget {
 
 class _ODPassScreenState extends State<ODPassScreen> {
 
-
 final baseUrl = dotenv.env['API_BASE_URL'];
+final apiToken = dotenv.env['ACCESS_TOKEN'];
 final _formKey = GlobalKey<FormState>();
 String? remark;
 DateTime? fromdate, todate;
-String? emUsername, compFname, empId, type;
+String? _emUsername, _empId, type;
+String? _token;
 bool isLoading = false;
 bool isSubmitting = false;
 
 @override
-  void initState() {
+void initState() {
 super.initState();
 loadTokenData();
 }
 
 Future<void> loadTokenData() async {
-final prefs = await SharedPreferences.getInstance();
-final token = prefs.getString('token');
+    _emUsername = await UserSession.getUserName();
+    _empId = await UserSession.getUserId();
 
-    if (token != null) {
-      Map<String, dynamic> payload = Jwt.parseJwt(token);
-      setState(() {
-        emUsername = payload['first_name'];
-        compFname = payload['comp_fname'];
-        empId = payload['em_id'];
-      });
-    }
+    setState(() {
+      _emUsername = _emUsername;
+      _empId = _empId;
+    });
   } 
 
 
@@ -83,40 +81,55 @@ Map<String, dynamic> getODDetails() {
     });
 
   final odDetails = getODDetails(); 
-try{
+
+  _token = await UserSession.getToken();
+
+  print('odDetails,$odDetails');
+  print('token,$_token');
+  print('empId,$_empId');
+   try{
    final response = await http.post(
-    Uri.parse('$baseUrl/api/od-pass/apply'),
-    headers: {'Content-Type': 'application/json'},
+    Uri.parse('$baseUrl/MyApis/odpasstheadd'),
+    headers: {
+      'Content-Type': 'application/json',
+      'auth_token': _token!,
+      'user_id': _empId!,
+      'Authorization': 'Bearer $apiToken',
+      },
     body: jsonEncode({
-      'emp_id': empId,
-      'comp_fname': compFname,
-      'em_username': emUsername,
-      'fromdate': fromdate!.toIso8601String(),
-      'todate': todate!.toIso8601String(),
+      // 'emp_id': empId,
+      // 'comp_fname': compFname,
+      // 'em_username': emUsername,
+      'from_date': DateFormat('yyyy-MM-dd').format(fromdate!),
+      'to_date': DateFormat('yyyy-MM-dd').format(todate!),
       'remark': remark,
-      'add_date': DateTime.now().toIso8601String(),
-      'created_by': empId,
-      'oddays': odDetails['oddays'],
-      'odtype': odDetails['odtype'],
-      'created_at': DateTime.now().toIso8601String(),
+      // 'add_date': DateTime.now().toIso8601String(),
+      // 'created_by': empId,
+      // 'oddays': odDetails['oddays'],
+      'od_type': odDetails['odtype'],
+      // 'created_at': DateTime.now().toIso8601String(),
     })
    );
 
-  //  print('body,${response.body}');
+    await UserSession.checkInvalidAuthToken(
+        context,
+        json.decode(response.body),
+        response.statusCode,
+      );
 
-   if (response.statusCode == 201) {
-      _showCustomSnackBar(context, 'OD-Pass applied successfully', Colors.green, Icons.check);
+   if (response.statusCode == 200) {
+      showCustomSnackBar(context, 'OD-Pass applied successfully', Colors.green, Icons.check);
 
       _resetForm();
       
       return true;
     } else {
       final body = jsonDecode(response.body);
-      _showCustomSnackBar(context, body['message'], Colors.red, Icons.error);
+      showCustomSnackBar(context, body['message'], Colors.red, Icons.error);
       return false;
     }
   } catch (e) {
-    _showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
+    showCustomSnackBar(context, 'Unexpected error format:-$e', Colors.red, Icons.error);
     return false;
 
   } finally {
@@ -149,81 +162,47 @@ Future<void> handlePullToRefresh() async {
   });
 }
 
-void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
-
-  final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-  scaffoldMessenger.clearSnackBars();
-  
-    final snackBar = SnackBar(
-      content: Row(
-        children: [
-          Icon(icon, color: Colors.white),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ),
-        ],
-      ),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      margin: const EdgeInsets.all(16),
-      duration: const Duration(seconds: 2),
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-  backgroundColor: Colors.transparent,
-  appBar: PreferredSize(
-  preferredSize: const Size.fromHeight(kToolbarHeight),
-  child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: AppBar(
-                title: const Text(
-                  "OD-Pass",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              backgroundColor: Colors.transparent, 
-                foregroundColor: Colors.black,
-                elevation: 0,
-              ),
-            ),
-          ),
+    backgroundColor: Theme.of(context).brightness == Brightness.light
+        ? Color(0xFFF2F5F8)
+        : Color(0xFF121212),
+    appBar: AppBar(
+      backgroundColor: Colors.transparent, 
+      title: const Text(
+        "On-Duty Apply",
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      foregroundColor: Theme.of(context).brightness == Brightness.dark
+      ? Colors.white
+      : Colors.black87,
+      forceMaterialTransparency: true,
+    ),
+
         body: Stack(
-          children: [ 
+        children: [ 
         Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-            ),
-          ),
-      padding: const EdgeInsets.all(16.0),
-      child: emUsername == null || compFname == null
-      ? const Center(child: CircularProgressIndicator(
-      valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
-              ))
-            : Form(
+          decoration: BoxDecoration(
+              gradient: Theme.of(context).brightness == Brightness.dark
+                  ? const LinearGradient(
+                      colors: [Color(0xFF121212), Color(0xFF121212)],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)], 
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
+                  ),
+              padding: const EdgeInsets.all(16.0),
+              child: Form(
               key: _formKey,
               child: RefreshIndicator(
               onRefresh: handlePullToRefresh,
-              color: Colors.black87,
-              backgroundColor: Colors.white,
+              color: Theme.of(context).iconTheme.color,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor ,
               child: ListView(
                 children: [
                   Padding(
@@ -231,15 +210,14 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      buildReadOnlyField("Employee ID", empId!),
-                      buildReadOnlyField("Employee Username", emUsername!),
-                      buildReadOnlyField("Company Name", compFname!),
+                      buildReadOnlyField(context,"Employee ID", _empId ?? '-'),
+                      buildReadOnlyField(context, "Employee Username", _emUsername??'-'),
+                      // buildReadOnlyField("Company Name", compFname!),
                       const SizedBox(height: 10),
                        Row(
                         children: [
                           Expanded(
                             child: InkWell(
-                              
                               onTap: () async {
                                 final picked = await showDatePicker(
                                   context: context,
@@ -247,22 +225,34 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                                   firstDate: DateTime.now(),
                                   lastDate: DateTime(2100),
                                    builder: (context, child) {
-                              return Theme(
-                                data: Theme.of(context).copyWith(
-                                  colorScheme: ColorScheme.light(
-                                    primary: const Color(0xFF4361EE),
-                                    onPrimary: Colors.white,
-                                    surface: Colors.white,
-                                    onSurface: const Color(0xFF212529),
-                                  ), dialogTheme: DialogThemeData(backgroundColor: Colors.white),
+                                  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+                                  return Theme(
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: isDarkMode
+                                    ? const ColorScheme.dark(
+                                        primary: Color(0xFF3C3FD5),
+                                        onPrimary: Colors.white,
+                                        surface: Color(0xFF1E1E1E),
+                                        onSurface: Colors.white,
+                                      )
+                                    : const ColorScheme.light(
+                                        primary: Color(0xFF3C3FD5),
+                                        onPrimary: Colors.white,
+                                        onSurface: Colors.black,
+                                      ),
+                                textButtonTheme: TextButtonThemeData(
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: const Color(0xFF3C3FD5),
+                                  ),
                                 ),
-                                child: child!,
-                              );
+                              ),
+                              child: child!,
+                            );
                             },
                                 );
                                 if (picked != null) {
                                  if (todate != null && picked.isAfter(todate!)) {
-                                _showCustomSnackBar(context, "Start date cannot be after end date", Colors.yellow.shade900, Icons.date_range_outlined);
+                                showCustomSnackBar(context, "Start date cannot be after end date", Colors.yellow.shade900, Icons.date_range_outlined);
 
                                 setState(() {
                                   fromdate = null;
@@ -281,7 +271,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                           });
                         }
                       },
-                      child: buildDateTile("Start Date", fromdate ),
+                      child: buildDateTile(context,"Start Date", fromdate ),
                             ),
                           ),
                           const SizedBox(width: 5),
@@ -291,25 +281,37 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                                 final picked = await showDatePicker(
                                   context: context,
                                   initialDate: todate ?? DateTime.now(),
-                                  firstDate: DateTime(1947),
+                                  firstDate: DateTime.now(),
                                   lastDate: DateTime(2100),
                                   builder: (context, child) {
-                              return Theme(
-                                data: Theme.of(context).copyWith(
-                                  colorScheme: ColorScheme.light(
-                                    primary: const Color(0xFF4361EE),
-                                    onPrimary: Colors.white,
-                                    surface: Colors.white,
-                                    onSurface: const Color(0xFF212529),
-                                  ), dialogTheme: DialogThemeData(backgroundColor: Colors.white),
+                             final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+                                  return Theme(
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: isDarkMode
+                                    ? const ColorScheme.dark(
+                                        primary: Color(0xFF3C3FD5),
+                                        onPrimary: Colors.white,
+                                        surface: Color(0xFF1E1E1E),
+                                        onSurface: Colors.white,
+                                      )
+                                    : const ColorScheme.light(
+                                        primary: Color(0xFF3C3FD5),
+                                        onPrimary: Colors.white,
+                                        onSurface: Colors.black,
+                                      ),
+                                textButtonTheme: TextButtonThemeData(
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: const Color(0xFF3C3FD5),
+                                  ),
                                 ),
-                                child: child!,
-                              );
+                              ),
+                              child: child!,
+                            );
                             },
                                 );
                               if (picked != null) {
                                 if (fromdate != null && picked.isBefore(fromdate!)) {
-                                  _showCustomSnackBar(context, "End date cannot be before start date", Colors.yellow.shade900, Icons.date_range_outlined);
+                                  showCustomSnackBar(context, "End date cannot be before start date", Colors.yellow.shade900, Icons.date_range_outlined);
 
                                   setState(() {
                                     todate = null;
@@ -328,7 +330,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                               });
                             }
                           },
-                      child: buildDateTile("End Date", todate),
+                      child: buildDateTile(context,"End Date", todate),
                     ),
                   ),
                 ],
@@ -343,7 +345,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF212529),
+                        // color: const Color(0xFF212529),
                       ),
                     ),
                   const SizedBox(height: 18),
@@ -362,14 +364,19 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                     if (!items.any((item) => item.value == type)) {
                       type = items.first.value;
                     }
-                      return DropdownButtonFormField<String>(
+                return DropdownButtonFormField<String>(
                   value: type,
+                  // icon: const Icon(Icons.expand_circle_down, size: 20),
+                  dropdownColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey.shade900
+                      : Colors.white,
                   decoration: InputDecoration(
-
                     labelText: "Select OD Type",
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
                     filled: true,
-                    fillColor: Colors.white60,
+                    fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey.shade900
+                        : Colors.white60,
                   ),
 
                   items: fromdate != null && todate != null && fromdate == todate
@@ -394,18 +401,47 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
                     ],
                     const SizedBox(height: 18),
                      TextFormField(
-                   decoration: InputDecoration(
-                          labelText: 'Remark',
-                          filled: true,
-                          fillColor: Colors.white60,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(5),
-                            borderSide: BorderSide(color: Colors.grey.shade300)),
-                          alignLabelWithHint: true,
+                    decoration: InputDecoration(
+                        labelText: 'Remark',
+                        labelStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          // color: Color(0xFF555555),
                         ),
-                        maxLines: 2,
-                        onSaved: (val) => remark = val,
-                        validator: (val) => val == null || val.isEmpty ? 'Enter remark' : null,
+                        hintStyle: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                        filled: true,
+                        fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey.shade900
+                        : Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Color(0xFF123458), width: 1.5),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Colors.red, width: 1),
+                        ),
+                        alignLabelWithHint: true,
+                      ),
+                      style: const TextStyle(fontSize: 15),
+                      maxLines: 2,
+                      onSaved: (val) => remark = val,
+                      validator: (val) =>
+                          val == null || val.trim().isEmpty ? 'Enter remark' : null,
                     ),
+
                      const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,
@@ -462,7 +498,7 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
   }
 }
 
- Widget buildReadOnlyField(String label, String value) {
+ Widget buildReadOnlyField(BuildContext context, String label, String value) {
           return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -470,7 +506,9 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
           label,
           style: TextStyle(
           fontSize: 14,
-          color: const Color(0xFF6C757D),
+          color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey.shade300 
+                  : const Color(0xFF6C757D), 
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -478,7 +516,9 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
           Container(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+           color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.grey.shade900
+              : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(5),
           border: Border.all(color: Colors.grey.shade300),
           ),
@@ -489,7 +529,9 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
           value,
           style: TextStyle(
           fontSize: 15,
-          color:  const Color(0xFF212529),
+          color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : const Color(0xFF212529),
           ),
         ),
         ),
@@ -500,23 +542,25 @@ void _showCustomSnackBar(BuildContext context, String message, Color color, Icon
   );
   }
 
-Widget buildDateTile(String label, DateTime? date) {
+      Widget buildDateTile(BuildContext context, String label, DateTime? date) {
                   return Container(
                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                   decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade300),
                   borderRadius: BorderRadius.circular(5),
-                  color: Colors.white60,
-                  ),
+                  color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey.shade900
+                    : Colors.grey.shade50,
+                ),
                   child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                  Icon(Icons.calendar_today, color: const Color(0xFF4361EE)),
-                  Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Icon(Icons.calendar_today, color: Theme.of(context).brightness == Brightness.light ? Color(0xFF4361EE) : Colors.white),
+
                   const SizedBox(height: 4),
                   Text(
                   date != null ? date.toLocal().toString().split(' ')[0] : 'Select',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF212529)),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                   ),
                   ],
                   ),

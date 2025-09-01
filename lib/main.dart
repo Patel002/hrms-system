@@ -6,19 +6,27 @@ import 'screen/login_screen.dart';
 import 'screen/home_screen.dart';
 import 'screen/leave/leave_application.dart';
 import 'screen/leave/leave_request.dart';
-import 'screen/leave/leave_status_screen.dart';
+import 'screen/leave/leave_history_screen.dart';
 import 'screen/holiday_screen.dart';
 import 'screen/leave/leave_balance.dart';
 import 'screen/attendance/attendance_in_screen.dart';
 import 'screen/attendance/attendance_history_screen.dart';
 import 'screen/attendance/attendance_out_screen.dart';
-import 'screen/getPass/odPass_screen.dart';
-import 'screen/getPass/odPass_history_screen.dart';
+import 'screen/getpass/odpass_screen.dart';
+import 'screen/getpass/odpass_history_screen.dart';
 import 'screen/timeMachine/attendance_report_screen.dart';
-import 'screen/userInfo/user_info_screen.dart';
+import 'screen/user/user_info_screen.dart';
 import 'screen/pay/payslip_screen.dart';
-import 'screen/getPass/odPass_request_screen.dart';
+import 'screen/getpass/odPass_request_screen.dart';
+import 'screen/visit entry/visit_apply_screen.dart';
+import 'screen/visit entry/visit_history_screen.dart';
+import 'screen/expense/expense_apply_screen.dart';
+import 'screen/expense/expense_history_screen.dart';
+import 'screen/expense/expense_request_screen.dart';
+import 'screen/utils/keyboard_dismiss.dart';
+import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,7 +39,7 @@ void main() async {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
-
+  await Future.delayed(Duration(seconds: 2));
   runApp(const MyApp());
 }
 
@@ -41,14 +49,31 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
 
-    return ScreenUtilInit(
-      designSize: const Size(375, 812),
+    return KeyboardVisibilityProvider( 
+      child: GlobalKeyboardDismiss(   
+    child: ScreenUtilInit(
+      designSize: const Size(360, 690),
       minTextAdapt: true,
       splitScreenMode: true,
 
       builder: (context, child) {
         
       return MaterialApp(
+        theme: ThemeData(
+            brightness: Brightness.light,
+            textTheme: GoogleFonts.openSansTextTheme(),
+            primarySwatch: Colors.indigo,
+            scaffoldBackgroundColor: Colors.white,
+          ),
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            textTheme: GoogleFonts.openSansTextTheme(
+            ThemeData(brightness: Brightness.dark).textTheme,
+            ),
+            primarySwatch: Colors.indigo,
+            scaffoldBackgroundColor: Colors.black,
+          ),
+        themeMode: ThemeMode.system,
         debugShowCheckedModeBanner: true,
         title: 'HuCap',
         initialRoute: '/',
@@ -68,11 +93,18 @@ class MyApp extends StatelessWidget {
           '/od-history': (context) => const OdHistory(),
           '/od-request': (context) => const ODPassRequest(),
           '/attendance-record': (context) => const AttendanceReportPage(),
-          '/user-info': (context) => const UserInfo(),
+          '/profile': (context) => const UserInfo(),
           '/payslips': (context) => const PayslipScreen(),
+          '/visit-entry-apply': (context) => const VisitEntryScreen(),
+          '/visit-entry-history': (context) => const VisitHistory(),
+          '/apply-expense': (context) => const ExpenseApplyScreen(), 
+          '/expense-history': (context) => const ExpenseHistoryScreen(),
+          '/expense-request': (context) => const ExpenseRequestScreen(),
         },
       );
       },
+    ),
+      ),
     );
   }
 }

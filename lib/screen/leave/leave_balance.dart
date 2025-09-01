@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:jwt_decode/jwt_decode.dart';
+import '../utils/user_session.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shimmer/shimmer.dart';
 import 'dart:convert';
+import '../utils/network_failure.dart';
 import 'package:http/http.dart' as http;
 
 class LeaveBalancePage extends StatefulWidget {
@@ -15,7 +15,9 @@ class LeaveBalancePage extends StatefulWidget {
 
 class _LeaveBalancePageState extends State<LeaveBalancePage> {
   late Future<List<dynamic>> _leaveBalances;
+  String? _token,_error;
   final baseUrl = dotenv.env['API_BASE_URL'];
+  final apiToken = dotenv.env['ACCESS_TOKEN'];
 
   @override
   void initState() {
@@ -24,27 +26,43 @@ class _LeaveBalancePageState extends State<LeaveBalancePage> {
   }
 
   Future<String?> getEmpCodeFromToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
 
-    if (token != null) {
-      Map<String, dynamic> payload = Jwt.parseJwt(token);
-      return payload['em_id'];
-    }
-    return null;
+    final emId = await UserSession.getUserId();
+    return emId;
   }
 
   Future<List<dynamic>> fetchLeaveBalances(String emId) async {
+
+    _token = await UserSession.getToken();
+
+    if (_token == null) {
+      Navigator.pushReplacementNamed(context, '/login');
+      return [];
+    }
+
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/balance/balance/$emId'));
+      final url = Uri.parse('$baseUrl/MyApis/leavethebalancelist?emp_id=$emId');
+
+      print('API URL: $url,$_token,$emId');
+
+      final response = await http.get(url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiToken',
+        'auth_token': _token!,
+        'user_id': emId
+      });
       
     //  print('Status Code: ${response.statusCode}');
     //   print('Response Body: ${response.body}');
 
+    await UserSession.checkInvalidAuthToken(context, response.body, response.statusCode);
+
       if (response.statusCode == 200) {
-        final List<dynamic> jsonData = json.decode(response.body);
-        print('Leave Balances: $jsonData');
-        return jsonData;
+        // final List<dynamic> jsonData = json.decode(response.body);
+        final data = json.decode(response.body)['data_packet'];
+        print('Leave Balances: $data');
+        return data;
       } else {
         throw Exception('Failed to load leave balances');
       }
@@ -55,39 +73,68 @@ class _LeaveBalancePageState extends State<LeaveBalancePage> {
 
 
   Future<List<dynamic>> loadLeaveBalances() async {
-    final emId = await getEmpCodeFromToken();
+      try {
+    final emId = await UserSession.getUserId();
     if (emId == null) throw Exception("Invalid token: em_id missing");
     return await fetchLeaveBalances(emId);
+  }catch(e){
+    setState(() {
+      _error = 'Failed to load leave balances. $e';
+    });
+    rethrow;
+   }
+  }
+
+  void refresh(){
+    setState(() {
+      _error = null;
+      _leaveBalances = loadLeaveBalances();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       // extendBody: true,
-      backgroundColor: Color(0xFFF2F5F8),
+      backgroundColor: Theme.of(context).brightness == Brightness.light
+        ? Color(0xFFF2F5F8)
+        : Color(0xFF121212),
       appBar: AppBar(
               title: const Text(
                 "Leave Balance",
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             backgroundColor: Colors.transparent, 
+            foregroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white
+            : Colors.black87,
             forceMaterialTransparency: true,
             elevation: 0,
             ),
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-          ),
+        decoration: BoxDecoration(
+              gradient: Theme.of(context).brightness == Brightness.dark
+                  ? const LinearGradient(
+                      colors: [Color(0xFF121212), Color(0xFF121212)],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)], 
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
         ),
-        child: FutureBuilder<List<dynamic>>(
-          future: _leaveBalances,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-             return Padding(
+    child: FutureBuilder<List<dynamic>>(
+      future: _leaveBalances,
+      builder: (context, snapshot) {
+        if(_error != null){
+          return NoInternetWidget(onRetry: refresh);
+        }
+        
+        if (snapshot.connectionState == ConnectionState.waiting) {
+        return Padding(
         padding: const EdgeInsets.all(12.0),
         child: ListView.builder(
           itemCount: 5,
@@ -149,9 +196,9 @@ class _LeaveBalancePageState extends State<LeaveBalancePage> {
                 itemCount: balances.length,
                 itemBuilder: (context, index) {
                   final item = balances[index];
-                  final String name = item['leave_type_name'] ?? '';
+                  final String name = item['name'] ?? '';
                   final String shortName = item['leave_short_name'] ?? '';
-                  final balanceRaw = item['available_balance'] ?? 0;
+                  final balanceRaw = item['current_balance'] ?? 0;
                   final double balance = double.tryParse(balanceRaw.toString()) ?? 0.0;
 
                   print('Balance: $balanceRaw');
@@ -159,7 +206,7 @@ class _LeaveBalancePageState extends State<LeaveBalancePage> {
                   return Container(
                     margin: const EdgeInsets.only(bottom: 16),
                     child: Material(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Theme.of(context).brightness == Brightness.light ? Colors.white.withOpacity(0.9) : Colors.grey.shade900,
                       borderRadius: BorderRadius.circular(16),
                       elevation: 4,
                       child: InkWell(
@@ -193,7 +240,7 @@ class _LeaveBalancePageState extends State<LeaveBalancePage> {
                                       style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.w700,
-                                        color: Colors.black87,
+                                        // color: Colors.black87,
                                       ),
                                     ),
                                     const SizedBox(height: 6),
@@ -227,19 +274,19 @@ class _LeaveBalancePageState extends State<LeaveBalancePage> {
 
 
 void _showLeaveDetailSheet(BuildContext context, Map<String, dynamic> leave) {
-  final String name = leave['leave_type_name'] ?? 'N/A';
+  final String name = leave['name'] ?? 'N/A';
   final String shortName = leave['leave_short_name'] ?? '';
-  final balanceRaw = leave['available_balance'] ?? 0;
-  final double balance = (balanceRaw is int) ? balanceRaw.toDouble() : balanceRaw;
-  final totalLeaves = leave['credit'] ?? '0';
-  final usedLeaves = leave['debit'] ?? '0';
+  final balanceRaw = leave['current_balance'] ?? 0;
+  // final double balance = (balanceRaw is int) ? balanceRaw.toDouble() : balanceRaw;
+  final totalLeaves = leave['total_leave'] ?? '0';
+  final usedLeaves = leave['debit_leave'] ?? '0';
 
   showModalBottomSheet(
     context: context,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
-    backgroundColor: Colors.white,
+    backgroundColor: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.grey.shade900,
     builder: (BuildContext context) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
@@ -279,14 +326,14 @@ void _showLeaveDetailSheet(BuildContext context, Map<String, dynamic> leave) {
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
-                      color: Colors.black87,
+                      // color: Colors.black87,
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            _buildDetailRow(Icons.calendar_month, "Available Balance", "$balance days"),
+            _buildDetailRow(Icons.calendar_month, "Available Balance", "$balanceRaw days"),
             const SizedBox(height: 12),
             _buildDetailRow(Icons.add_circle_outline, "Total Leaves", "$totalLeaves days"),
             const SizedBox(height: 12),
@@ -301,7 +348,7 @@ void _showLeaveDetailSheet(BuildContext context, Map<String, dynamic> leave) {
                 icon: const Icon(Icons.close, color: Colors.redAccent),
                 label: const Text(
                   'Close',
-                  style: TextStyle(fontSize: 16, color: Colors.black),
+                  style: TextStyle(fontSize: 16),
                 ),
               ),
             ),
@@ -321,7 +368,9 @@ Widget _buildDetailRow(IconData icon, String label, String value) {
       Expanded(
         child: Text(
           label,
-          style: const TextStyle(fontSize: 16, color: Colors.black87),
+          style: const TextStyle(fontSize: 16, 
+          // color: Colors.black87
+          ),
         ),
       ),
       Text(
@@ -329,7 +378,7 @@ Widget _buildDetailRow(IconData icon, String label, String value) {
         style: const TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
-          color: Colors.black,
+          // color: Colors.black,
         ),
       ),
     ],

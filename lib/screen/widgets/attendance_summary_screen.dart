@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 class AttendanceSummaryWidget extends StatelessWidget {
   final String workingHours;
-  final int presentDays;
-  final int leaveDays;
-  final int absentDays;
+  final String presentDays;
+  final String leaveDays;
+  final String absentDays;
 
   const AttendanceSummaryWidget({
     super.key,
@@ -30,7 +30,7 @@ class AttendanceSummaryWidget extends StatelessWidget {
     Widget buildCard(String label, IconData icon, Color color, String value) {
         return Expanded(
           child: Card(
-            color: Colors.white,
+            color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.grey.shade900,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             elevation: 2,
             shadowColor: color.withOpacity(0.4),
@@ -59,7 +59,12 @@ class AttendanceSummaryWidget extends StatelessWidget {
                          children: [
                           Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
                           const SizedBox(height: 4),
-                          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87)),
+                           Text(
+                            value,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                           ),
+                          ),
                          ],
                       )
                     ],

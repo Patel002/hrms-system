@@ -1,42 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
 class OdDetailPage extends StatelessWidget {
   final Map<String, dynamic> od;
-  // final String? departmentName;
-  // final String compFname;
   final void Function(String action, [String? rejectreason]) onAction;
   final bool showActions;
-  final baseUrl = dotenv.env['API_BASE_URL'];
 
   OdDetailPage({
     super.key, 
     required this.od,
     required this.onAction,
-    // required this.departmentName,
-    // required this.compFname,
     this.showActions = false,
   });
 
 
-    @override
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final status = od['approved'] ?? 'pending';
+    final status = od['approval_status'] ?? 'pending';
     return Scaffold(
-      backgroundColor: Color(0xFFF2F5F8),
+      backgroundColor: Theme.of(context).brightness == Brightness.light
+        ? Color(0xFFF2F5F8)
+        : Color(0xFF121212),
       appBar: AppBar(
-        title: const Text("Od Pass Details", style: TextStyle(fontWeight: FontWeight.bold),),
+        title: const Text("On-Duty Details", style: TextStyle(fontWeight: FontWeight.bold),),
         centerTitle: false,
         forceMaterialTransparency: true,
-        elevation: 0,
+        elevation: 2,
+        foregroundColor: Theme.of(context).brightness == Brightness.dark
+      ? Colors.white
+      : Colors.black87,
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
                 child: Card(
-                  color: Colors.white,
+                  color:Theme.of(context).brightness == Brightness.light ? Color(0xFFF2F5F8) : Colors.grey.shade900,
                   elevation: 2,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -75,25 +73,34 @@ class OdDetailPage extends StatelessWidget {
                         const SizedBox(height: 12),
                     
                         _buildSectionHeader(Icons.person_outline, 'Employee Information'),
-                        _buildInfoTile(Icons.badge_outlined, "Employee ID", od['emp_id'].toString()),
-                        _buildInfoTile(Icons.business_outlined, "Company Name", od['employee']?['company']?['comp_fname'] ?? '-'),
-                        _buildInfoTile(Icons.credit_card_outlined, "Department Name", od['employee']?['department']?['dep_name'] ?? '-'),
-
+                        _buildInfoTile(context,Icons.badge_outlined, "Employee ID", od['emp_id'].toString()),
+                        _buildInfoTile(context,Icons.person, "Name",od['empname']),
+                        _buildInfoTile(context,Icons.business_outlined, "Company",od['compname']),
+                        _buildInfoTile(context,Icons.credit_card_outlined, "Department",od['dep_name']),
                         
                         const Divider(height: 32),
                         
                         _buildSectionHeader(Icons.date_range_outlined, 'Od Dates'),
-                        _buildInfoTile(Icons.play_circle_outline, "Start Date", od['fromdate']),
-                        _buildInfoTile(Icons.stop_circle_outlined, "End Date", od['todate']),
-                        _buildInfoTile(Icons.timelapse_outlined, "Duration", "${od['oddays']} day(s)"),
+                        _buildInfoTile(context,Icons.play_circle_outline, "Start Date", od['fromdate']),
+                        _buildInfoTile(context,Icons.stop_circle_outlined, "End Date", od['todate']),
+                        _buildInfoTile(context,Icons.timelapse_outlined, "Duration", "${od['oddays']} day(s)"),
                         
                         const Divider(height: 32),
                         
-                        _buildInfoTile(Icons.note_outlined, "Reason", od['remark']),
+                        _buildInfoTile(context,Icons.note_outlined, "Reason", od['remark']),
 
-                        if ((od['rejectreason'] != null && od['rejectreason'] != '') &&
-                        status.toLowerCase().trim() == 'rejected')
-                        _buildInfoTile(Icons.block_outlined, "Reject Reason", od['rejectreason'], color: Colors.red),
+                        if (od['approval_status'] == 'REJECTED' && od['rejectreason'] != null && od['rejectreason'] != '') ... [
+                        _buildInfoTile(context,Icons.block_outlined, "Reject Reason", od['rejectreason'], color: Colors.red),
+
+                        _buildInfoTile(context,Icons.confirmation_num, "Rejected By", od['approval_by'], color: Colors.red),
+
+                        _buildInfoTile(context,Icons.timer, "Rejected At", od['approval_at'], color: Colors.red),
+                        ],
+
+                        if(od['approval_status'] == 'APPROVED') ...[
+                          _buildInfoTile(context,Icons.confirmation_num, "Approved By", od['approval_by'], color: Colors.green),
+                          _buildInfoTile(context,Icons.timer, "Approved At", od['approval_at'], color: Colors.green),
+                        ],
                         
                         if (showActions && status.toLowerCase().trim() == 'pending') ...[
                           const Divider(height: 32),
@@ -129,31 +136,48 @@ class OdDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoTile(IconData icon, String label, String value, {
-  Color color = Colors.black, 
+  Widget _buildInfoTile(
+  BuildContext context,
+  IconData icon,
+  String label,
+  String value, {
+  Color? color,
   VoidCallback? onTap,
 }) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+
   return InkWell(
-    onTap: onTap, 
+    onTap: onTap,
     child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: Colors.grey),
+          Icon(
+            icon,
+            size: 20,
+            color: isDark ? Colors.grey[300] : Colors.grey[700],
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (label.isNotEmpty) Text(
-                  label,
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                ),
+                if (label.isNotEmpty)
+                  Text(
+                    label,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
                 if (label.isNotEmpty) const SizedBox(height: 4),
                 Text(
                   value.isNotEmpty ? value : '-',
-                  style: TextStyle(color: color, fontSize: 16),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: color ?? theme.textTheme.bodyLarge?.color,
+                    fontSize: 16,
+                  ),
                 ),
               ],
             ),
@@ -163,6 +187,7 @@ class OdDetailPage extends StatelessWidget {
     ),
   );
 }
+
 
   Widget _buildActionButtons(BuildContext context) {
   return Column(

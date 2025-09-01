@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-// import 'package:shared_preferences/shared_preferences.dart';
-// import 'package:jwt_decode/jwt_decode.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:photo_view/photo_view.dart';
@@ -101,7 +99,7 @@ class _UserInfoState extends State<UserInfo> with SingleTickerProviderStateMixin
         },
       );
 
-      debugPrint('Response Status: ${response.statusCode}');
+      // debugPrint('Response Status: ${response.statusCode}');
 
       await UserSession.checkInvalidAuthToken(
         context,
@@ -112,7 +110,7 @@ class _UserInfoState extends State<UserInfo> with SingleTickerProviderStateMixin
       if (response.statusCode == 200) {
         final finalData = json.decode(response.body);
         final data = finalData['data_packet'];
-        print('Data: $data');
+        // print('Data: $data');
 
         setState(() {
           employeeId = data['em_id'];
@@ -391,7 +389,10 @@ Future<void> updateUserPassword() async {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Color(0xFFF2F5F8),
+      backgroundColor: Theme.of(context).brightness == Brightness.light
+        ? Color(0xFFF2F5F8)
+        : Color(0xFF121212),
+
     //    appBar: AppBar(
     //     title: const Text(
     //       "Profile ",
@@ -405,25 +406,31 @@ Future<void> updateUserPassword() async {
   body: Stack(
   children: [
     Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
-      ),
+      decoration: BoxDecoration(
+              gradient: Theme.of(context).brightness == Brightness.dark
+                  ? const LinearGradient(
+                      colors: [Color(0xFF121212), Color(0xFF121212)],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)], 
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
+            ),
     ),
 
     (_error != null)
       ? NoInternetWidget(onRetry: _onRefresh) 
     :isLoading
-        ? const Center(
-          child: CircularProgressIndicator(color: Colors.black),
+        ?  Center(
+          child: CircularProgressIndicator(color: Theme.of(context).iconTheme.color),
         )
         : RefreshIndicator(
           onRefresh: _onRefresh,
-          backgroundColor: Colors.white,
-          color: Colors.black,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          color: Theme.of(context).iconTheme.color,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16.0),
@@ -434,7 +441,9 @@ Future<void> updateUserPassword() async {
                 Container(
                   margin: const EdgeInsets.only(top: 60),
                   child: Card(
-                    color: const Color(0xFFFDFDFD),
+                    color: Theme.of(context).brightness == Brightness.light
+                      ? Color(0xFFFDFDFD)
+                      : Color(0xFF121212),
                     elevation: 2,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -657,6 +666,7 @@ Future<void> updateUserPassword() async {
                           children: [
                             Expanded(
                               child: _buildDatePickerField(
+                                context: context,
                                 icon: Icons.calendar_today,
                                 title: 'Date of Birth',
                                 date: dateOfBirth,
@@ -673,6 +683,7 @@ Future<void> updateUserPassword() async {
 
                             Expanded(
                               child: _buildDatePickerField(
+                                context: context,
                                 icon: Icons.calendar_today,
                                 title: 'Date of Joining',
                                 date: dateOfJoining,
@@ -942,53 +953,58 @@ Future<void> updateUserPassword() async {
     return Text(
       title,
       style: theme.textTheme.titleSmall?.copyWith(
-        color: Colors.black,
+        // color: Colors.black,
         fontWeight: FontWeight.bold,
       ),
     );
   }
 
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              "$label:",
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-                color: Color.fromARGB(221, 0, 0, 0),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 15, color: Colors.black87),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Widget _infoRow(String label, String value) {
+  //   return Padding(
+  //     padding: const EdgeInsets.symmetric(vertical: 8),
+  //     child: Row(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         SizedBox(
+  //           width: 120,
+  //           child: Text(
+  //             "$label:",
+  //             style: const TextStyle(
+  //               fontWeight: FontWeight.w600,
+  //               fontSize: 15,
+  //               color: Color.fromARGB(221, 0, 0, 0),
+  //             ),
+  //           ),
+  //         ),
+  //         Expanded(
+  //           child: Text(
+  //             value,
+  //             style: const TextStyle(fontSize: 15, color: Colors.black87),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildDatePickerField({
+    required BuildContext context, 
     required IconData icon,
     required String title,
     required DateTime? date,
     required Function(DateTime) onDateSelected,
     bool enabled = true,
   }) {
+
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: Colors.grey),
+          Icon(icon, size: 20, color: theme.iconTheme.color),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1023,16 +1039,20 @@ Future<void> updateUserPassword() async {
                       horizontal: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    color: isDark
+                        ? Colors.grey.shade800 
+                        : Colors.grey.shade200, 
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                     child: Text(
                       date != null
                           ? DateFormat('dd MMM yyyy').format(date)
                           : 'Select Date',
                       style: TextStyle(
                         fontSize: 15,
-                        color: enabled ? Colors.black87 : Colors.grey,
+                        color: enabled
+                          ? theme.textTheme.bodyLarge?.color
+                          : Colors.grey,
                       ),
                     ),
                   ),
@@ -1196,14 +1216,14 @@ Future<void> updateUserPassword() async {
                     fontSize: 15,
                   ),
                 ),
-                const SizedBox(height: 4),
+                 SizedBox(height: 4),
                 TextFormField(
                   controller: controller,
                   readOnly: !enabled,
                   enabled: enabled,
                   style: TextStyle(
                     fontSize: 15,
-                    color: enabled ? Colors.black : Colors.blueGrey.shade900,
+                    color: enabled ? Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.blueGrey.shade900 : Colors.grey.shade600,
                   ),
                   decoration: InputDecoration(
                     isDense: true,

@@ -1,12 +1,15 @@
 import 'package:camera/camera.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:jwt_decode/jwt_decode.dart';
 import 'package:file_picker/file_picker.dart';
+import '../helper/top_snackbar.dart';
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:io';
+import 'package:intl/intl.dart';
+import '../utils/network_failure.dart';
+import '../utils/user_session.dart';
 
 class LeaveApplicationPage extends StatefulWidget {
 const LeaveApplicationPage({super.key});
@@ -18,23 +21,27 @@ State<LeaveApplicationPage> createState() => _LeaveApplicationPageState();
 class _LeaveApplicationPageState extends State<LeaveApplicationPage> {
 final _formKey = GlobalKey<FormState>();
 
-List<dynamic> leaveTypes = [];
+List leaveTypes = [];
 String? selectedLeaveType;
 String? reason;
 DateTime? startDate, endDate;
 XFile? selectedFile;
-String? emUsername, compFname, empId;
+String? _token;
+String? _empId,_error;
+String? _emUsername;
+String? _compFname;
 bool isLoading = false;
 String? type;
 bool isSubmitting = false;
 final baseUrl = dotenv.env['API_BASE_URL'];
+final apiToken = dotenv.env['ACCESS_TOKEN'];
 
 
 @override
 void initState() {
 super.initState();
 loadTokenData();
-fetchLeaveTypes();
+// fetchLeaveTypes();
 }
 
 Future<void> pickFile() async {
@@ -46,84 +53,122 @@ Future<void> pickFile() async {
       withData: false
     );
 
-if (result != null && result.files.single.path != null) {
-  final fileName = File(result.files.single.path!);
-  final fileSizeInMB  = await fileName.length()/(1024 * 1024); 
+    if (result != null && result.files.single.path != null) {
+      final fileName = File(result.files.single.path!);
+      final fileSizeInMB  = await fileName.length()/(1024*1024); 
 
- if (fileSizeInMB > 10) {
-        _showCustomSnackBar(
+      if (fileSizeInMB > 4) {
+        showCustomSnackBar(
           context,
-          'File must be less than 10MB (${fileSizeInMB.toStringAsFixed(2)} MB)',
+          'File must be less than 4MB (${fileSizeInMB.toStringAsFixed(2)} MB)',
           Colors.orange,
           Icons.warning,
         );
         return;
       }
 
-  setState(() {
-  selectedFile = XFile(fileName.path);
-  });
-  }
-}catch(e){
-debugPrint('File selection error: $e');
-    _showCustomSnackBar(context, 'Error selecting file', Colors.red, Icons.error);
+    setState(() {
+    selectedFile = XFile(fileName.path);
+    });
+    }
+  }catch(e){
+  debugPrint('File selection error: $e');
+      showCustomSnackBar(context,'Error selecting file', Colors.red, Icons.error);
 
-}
+  }
 }
 
 Future<void> loadTokenData() async {
-final prefs = await SharedPreferences.getInstance();
-final token = prefs.getString('token');
+ _token = await UserSession.getToken();
 
-if (token != null) {
-  Map<String, dynamic> payload = Jwt.parseJwt(token);
-  setState(() {
-    empId = payload['em_id'];
-    emUsername = payload['first_name'];
-    compFname = payload['comp_fname'];
-  });
+if (_token != null) {
+    _empId = await UserSession.getUserId();
+    _emUsername = await UserSession.getUserName();
 }
+    await fetchDataPacketApi();
+    await fetchLeaveTypes();
 }
 
 Future<void> fetchLeaveTypes() async {
-if (leaveTypes.isNotEmpty) return;
+    if (leaveTypes.isNotEmpty) return;
 
-try {
-final response = await http.get(Uri.parse('$baseUrl/api/leave-type/list'));
-if (response.statusCode == 200) {
-  final data = jsonDecode(response.body);
-  setState(() {
-    leaveTypes = List<Map<String, dynamic>>.from(data);
-  });
-} else {
-  print("Failed to load leave types");
+    try {
+    final response = await http.get(Uri.parse('$baseUrl/MyApis/leavethetypes?user_id=$_empId'),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $apiToken',
+      'auth_token': _token!,
+            },
+    );
+
+      print("response:- $response");
+
+      final jsonData = json.decode(response.body);
+
+      await UserSession.checkInvalidAuthToken(
+            context,
+            json.decode(response.body),
+            response.statusCode,
+          );
+
+      if (response.statusCode == 200) {
+        if(jsonData['data_packet'] != null && jsonData['data_packet'] is List){
+        setState(() {
+          leaveTypes = jsonData['data_packet'];
+        });
+        }
+      } else {
+        print("Failed to load leave types");
+      }
+
+    } catch (e) {
+  if (e is SocketException) {
+    setState(() {
+      _error = 'No internet connection.';
+    });
+  } else {
+    setState(() {
+      _error = 'Error fetching leave types: $e';
+    });
+  }
+}
+    }
+
+Future<void> fetchDataPacketApi() async {
+
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/MyApis/userinfo?user_id=$_empId'),
+      headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiToken',
+          'auth_token': _token!,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body)['data_packet'];
+
+        if(mounted){ 
+        setState(() {
+          _compFname = data['comp_fname'];
+        });
+        }
+      }
+
+    } catch (e) {
+  if (e is SocketException) {
+    setState(() {
+      _error = 'No internet connection.';
+    });
+  } else {
+    setState(() {
+      _error = 'Error fetching user info: $e';
+    });
+  }
 }
 
-} catch (e) {
-print("Error fetching leave types: $e");
-}
-}
+  }
 
-//   Future<void> fetchAvailableLeaves() async {
-//   //  final leaveDuration = type == 'Half Day' ? 0.5 : (endDate!.difference(startDate!).inDays + 1);
-
-//   final response = await http.get(Uri.parse('[http://192.168.1.5:8071/api/emp-leave/available/?em_username=$emUsername&leave_type=$selectedLeaveType](http://192.168.1.5:8071/api/emp-leave/available/?em_username=$emUsername&leave_type=$selectedLeaveType)'));
-
-//   print("selectedLeaveType: $selectedLeaveType");
-//   print("username:- $emUsername");
-
-//     if (response.statusCode == 200) {
-//     final data = jsonDecode(response.body);
-//     print('Available Leaves Response: $response');
-//     print('Available Leaves: $data["remaining"]');
-//    setState(() {
-//       availableBalance = data['remaining'];
-//     });
-//   } else {
-//     throw Exception('Failed to load available leaves');
-//   }
-
-// }
 
 Future<void> submitForm() async {
 
@@ -136,7 +181,7 @@ if (isSubmitting) return;
     }
 
   if (startDate == null && endDate == null) {
-  _showCustomSnackBar(context, "Please select a date", Colors.yellow.shade900, Icons.date_range_outlined);
+  showCustomSnackBar(context, "Please select a date", Colors.yellow.shade900, Icons.date_range_outlined);
   hasError = true;
 }
 
@@ -152,19 +197,36 @@ if (isSubmitting) return;
 try{
 var request = http.MultipartRequest(
 'POST',
-Uri.parse('$baseUrl/api/emp-leave/leave'),
+Uri.parse('$baseUrl/MyApis/leavetheadd'),
 );
 
-request.fields['em_id'] = empId ?? '';
-request.fields['leave_type'] = selectedLeaveType ?? '';
-request.fields['comp_fname'] = compFname ?? '';
-request.fields['start_date'] = startDate!.toIso8601String();
-request.fields['end_date'] = endDate!.toIso8601String();
-request.fields['apply_date'] = DateTime.now().toIso8601String();
+request.headers['Authorization'] = 'Bearer $apiToken';
+request.headers['Accept'] = 'application/json';
+request.headers['auth_token'] = _token!;
+request.headers['user_id'] = _empId!;
+
+request.fields['leave_type_id'] = int.parse(selectedLeaveType!).toString();
+
+print("selectedLeaveType:- $selectedLeaveType");
+
+request.fields['leave_type'] = type ?? '';  
+
+print("type:- $type");
+
+// request.fields['comp_fname'] = _compFname ?? '';
+request.fields['from_date'] = DateFormat('yyyy-MM-dd').format(startDate!);
+
+print("startDate:- $startDate");
+
+request.fields['to_date'] = DateFormat('yyyy-MM-dd').format(endDate!);
+print("endDate:- $endDate");
+// request.fields['apply_date'] = DateTime.now().toIso8601String();
 request.fields['reason'] = reason ?? '';
+
+print("reason:- $reason");
 request.fields['leave_status'] = 'Pending';
-request.fields['created_by'] = empId ?? '';
-request.fields['update_id'] = empId ?? '';
+request.fields['created_by'] = _empId ?? '';
+request.fields['update_id'] = _empId ?? '';
 
 if(startDate !=null && endDate !=null){
   if(type == 'Half Day'){
@@ -174,27 +236,36 @@ if(startDate !=null && endDate !=null){
   request.fields['leave_duration'] = diffDays.toString();
   }
 }
+
     if (selectedFile != null) {
       request.files.add(await http.MultipartFile.fromPath(
         'leaveattachment',  
         selectedFile!.path,
       ));
   }
+  else {
+  request.fields['leaveattachment'] = '';
+}
+
+
+  print("Request Fields: ${request.fields}");
+  print("Request Files: ${request.files}");
         final response = await request.send();
-        // print("Response Status Code: ${response.reasonPhrase}");
+        print("Response Status Code: ${response.reasonPhrase}");
+
 
         final responseBody = await response.stream.bytesToString();
         print("Response Body: $responseBody");
 
-        setState(() {
-        isLoading = false;  
-      });
+      //   setState(() {
+      //   isLoading = false;  
+      // });
           setState(() {
       isSubmitting = false; 
     });
       
-        if (response.statusCode == 201) {
-        _showCustomSnackBar(
+        if (response.statusCode == 200) {
+        showCustomSnackBar(
           context,
           "Leave submitted successfully",
           Colors.green,
@@ -204,10 +275,12 @@ if(startDate !=null && endDate !=null){
         await Future.delayed(const Duration(seconds: 1));
 
            _resetForm();
+           await refreshPage();
 
       } else {
         final error = jsonDecode(responseBody);
-        _showCustomSnackBar(
+        // print("error:- $error");
+        showCustomSnackBar(
           context,
           "${error['message']}",
           Colors.red,
@@ -218,7 +291,7 @@ if(startDate !=null && endDate !=null){
 
       }
     }catch(e){
-      _showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
+      showCustomSnackBar(context,'Unexpected error format', Colors.red, Icons.error);
       await Future.delayed(const Duration(seconds: 1));
     }finally {
       setState(() {
@@ -226,12 +299,15 @@ if(startDate !=null && endDate !=null){
       });
     }
   }
+
     Future<void> refreshPage() async {
     setState(() {
      isLoading = true;
+     _error = null;
     });
 
     await fetchLeaveTypes();
+
     _resetForm();
 
     setState(() {
@@ -251,82 +327,60 @@ if(startDate !=null && endDate !=null){
   });
 }
 
-  void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    scaffoldMessenger.clearSnackBars();
-
-    final snackBar = SnackBar(
-      content: Row(
-        children: [
-          Icon(icon, color: Colors.white),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ),
-        ],
-      ),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      margin: const EdgeInsets.all(16),
-      duration: const Duration(seconds: 1),
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  }
-
-
 @override
 Widget build(BuildContext context) {
 return Scaffold(
-backgroundColor: Colors.transparent,
-appBar: PreferredSize(
- preferredSize: const Size.fromHeight(kToolbarHeight),
-child: Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-child: AppBar(
+backgroundColor: Theme.of(context).brightness == Brightness.light
+        ? Color(0xFFF2F5F8)
+        : Color(0xFF121212),
+appBar: AppBar(
+  backgroundColor: Colors.transparent, 
         title: const Text(
           "Leave Application",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-       backgroundColor: Colors.transparent, 
-        foregroundColor: Colors.black,
-        elevation: 0,
+       foregroundColor: Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black87,
+      forceMaterialTransparency: true,
       ),
-    ),
-  ),
 
-  body: Stack(
+  body:_error != null
+  ? NoInternetWidget(
+      onRetry: () {
+        setState(() {
+          _error = null;
+        });
+        loadTokenData();
+      },
+    )
+  :  Stack(
   children: [
   Container(
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-         begin: Alignment.topRight,
-         end: Alignment.bottomLeft,
-      ),
-    ),
+    decoration: BoxDecoration(
+              gradient: Theme.of(context).brightness == Brightness.dark
+                  ? const LinearGradient(
+                      colors: [Color(0xFF121212), Color(0xFF121212)],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)], 
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
+            ),
           padding: const EdgeInsets.all(16.0),
-          child: emUsername == null || compFname == null
-          ? const Center(child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>( Color(0xFF4361EE)),
+          child: _emUsername == null || _compFname == null
+          ? Center(child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>( Theme.of(context).iconTheme.color ?? Colors.black),
         ))
       : Form(
           key: _formKey,
           child: RefreshIndicator(
           onRefresh: refreshPage,
-          color: Colors.black,
-          backgroundColor: Colors.white,
+          color: Theme.of(context).iconTheme.color,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor ,
           child: ListView(
             children: [
                Padding(
@@ -334,24 +388,38 @@ child: AppBar(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      buildReadOnlyField("Employee Username", emUsername!),
-                      buildReadOnlyField("Company Name", compFname!),
+                      buildReadOnlyField(context,"Employee Username", _emUsername!),
+                      buildReadOnlyField(context,"Company Name", _compFname!),
                       const SizedBox(height: 10),
 
+                      leaveTypes.isNotEmpty?
                       DropdownButtonFormField<String>(
                         value: selectedLeaveType,
                         decoration: InputDecoration(
                           labelText: 'Leave Type',
+                         labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
                           filled: true,
-                          fillColor: Colors.white60
+                          fillColor: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey.shade900
+                          : Colors.white,
+                          enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
                         ),
-                        dropdownColor: Colors.white,
-                        icon: Icon(Icons.arrow_drop_down, color: const Color(0xFF4361EE)),
-                        style: TextStyle(color: const Color(0xFF212529)),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Color(0xFF123458), width: 1.5),
+                        ),
+                      ),
+                        dropdownColor: Theme.of(context).scaffoldBackgroundColor,
+                        icon: Icon(Icons.arrow_drop_down, color: Colors.grey.shade500),
+                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                         fontSize: 14,
+                      ),
                         items: leaveTypes.map((e) {
                           return DropdownMenuItem<String>(
-                            value: e['name'],
+                            value: e['type_id'],
                             child: Text(e['name']),
                           );
                         }).toList(),
@@ -359,27 +427,12 @@ child: AppBar(
                           setState(() {
                             selectedLeaveType = value;
                           });
-                              // fetchAvailableLeaves();
+                            // fetchAvailableLeaves();
                         },
                         validator: (value) => value == null ? 'Select leave type' : null,
-                      ),
+                      ):CupertinoActivityIndicator(),
                       const SizedBox(height: 20),
                       
-                      TextFormField(
-                        decoration: InputDecoration(
-                          labelText: 'Reason',
-                          filled: true,
-                          fillColor: Colors.white60,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(5),
-                            borderSide: BorderSide(color: Colors.grey.shade300)),
-                          alignLabelWithHint: true,
-                        ),
-                        maxLines: 3,
-                        onSaved: (val) => reason = val,
-                        validator: (val) => val == null || val.isEmpty ? 'Enter reason' : null,
-                      ),
-                      
-                      const SizedBox(height: 15),
                       Row(
                         children: [
                           Expanded(
@@ -391,14 +444,26 @@ child: AppBar(
                                   firstDate: DateTime(1947),
                                   lastDate: DateTime(2100),
                                    builder: (context, child) {
+                                     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
                               return Theme(
                                 data: Theme.of(context).copyWith(
-                                  colorScheme: ColorScheme.light(
-                                    primary: const Color(0xFF4361EE),
-                                    onPrimary: Colors.white,
-                                    surface: Colors.white,
-                                    onSurface: const Color(0xFF212529),
-                                  ), dialogTheme: DialogThemeData(backgroundColor: Colors.white),
+                                  colorScheme: isDarkMode
+                                      ? const ColorScheme.dark(
+                                          primary: Color(0xFF3C3FD5),
+                                          onPrimary: Colors.white,
+                                          surface: Color(0xFF1E1E1E),
+                                          onSurface: Colors.white,
+                                        )
+                                      : const ColorScheme.light(
+                                          primary: Color(0xFF3C3FD5),
+                                          onPrimary: Colors.white,
+                                          onSurface: Colors.black,
+                                        ),
+                                  textButtonTheme: TextButtonThemeData(
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: const Color(0xFF3C3FD5),
+                                    ),
+                                  ),
                                 ),
                                 child: child!,
                               );
@@ -406,7 +471,7 @@ child: AppBar(
                                 );
                            if (picked != null) {
                               if (endDate != null && picked.isAfter(endDate!)) {
-                                _showCustomSnackBar(context, "Start date cannot be after end date", Colors.yellow.shade900, Icons.date_range_outlined);
+                                showCustomSnackBar(context, "Start date cannot be after end date", Colors.yellow.shade900, Icons.date_range_outlined);
 
                                 setState(() {
                                   startDate = null;
@@ -436,14 +501,26 @@ child: AppBar(
                                   firstDate: DateTime(1947),
                                   lastDate: DateTime(2100),
                                   builder: (context, child) {
+                              final isDarkMode = Theme.of(context).brightness == Brightness.dark;
                               return Theme(
                                 data: Theme.of(context).copyWith(
-                                  colorScheme: ColorScheme.light(
-                                    primary: const Color(0xFF4361EE),
-                                    onPrimary: Colors.white,
-                                    surface: Colors.white,
-                                    onSurface: const Color(0xFF212529),
-                                  ), dialogTheme: DialogThemeData(backgroundColor: Colors.white),
+                                  colorScheme: isDarkMode
+                                      ? const ColorScheme.dark(
+                                          primary: Color(0xFF3C3FD5),
+                                          onPrimary: Colors.white,
+                                          surface: Color(0xFF1E1E1E),
+                                          onSurface: Colors.white,
+                                        )
+                                      : const ColorScheme.light(
+                                          primary: Color(0xFF3C3FD5),
+                                          onPrimary: Colors.white,
+                                          onSurface: Colors.black,
+                                        ),
+                                  textButtonTheme: TextButtonThemeData(
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: const Color(0xFF3C3FD5),
+                                    ),
+                                  ),
                                 ),
                                 child: child!,
                               );
@@ -451,7 +528,7 @@ child: AppBar(
                                 );
                               if (picked != null) {
                                 if (startDate != null && picked.isBefore(startDate!)) {
-                                  _showCustomSnackBar(context, "End date cannot be before start date", Colors.yellow.shade900, Icons.date_range_outlined);
+                                  showCustomSnackBar(context, "End date cannot be before start date", Colors.yellow.shade900, Icons.date_range_outlined);
 
                                   setState(() {
                                     endDate = null;
@@ -483,7 +560,7 @@ child: AppBar(
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF212529),
+                        // color: const Color(0xFF212529),
                       ),
                     ),
                   const SizedBox(height: 18),
@@ -493,8 +570,8 @@ child: AppBar(
                     final diff = endDate!.difference(startDate!).inDays;
                     final items = diff == 0
                         ? [
-                            DropdownMenuItem(value: 'Full Day', child: Text('Full Day')),
-                            DropdownMenuItem(value: 'Half Day', child: Text('Half Day')),
+                            DropdownMenuItem(value: 'Full-Day', child: Text('Full-Day')),
+                            DropdownMenuItem(value: 'Half-Day', child: Text('Half-Day')),
                           ]
                         : [
                             DropdownMenuItem(value: 'More than One Day', child: Text('More than One Day')),
@@ -504,11 +581,16 @@ child: AppBar(
                     }
                       return DropdownButtonFormField<String>(
                         value: type,
+                        dropdownColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey.shade900
+                      : Colors.white,
                         decoration: InputDecoration(
                           labelText: "Select Leave Type",
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
                           filled: true,
-                          fillColor: Colors.white60
+                          fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey.shade900
+                        : Colors.white,
                         ),
                         items: items,
                         onChanged: (value) {
@@ -521,8 +603,42 @@ child: AppBar(
                         },
                       ),
                     ],
+
+                    const SizedBox(height: 12),
+
+                    TextFormField(
+                        decoration: InputDecoration(
+                          labelText: 'Reason',
+                          labelStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          // color: Color(0xFF555555),
+                        ),
+                          filled: true,
+                          fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey.shade900
+                        : Colors.white,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(5),
+                            borderSide: BorderSide(color: Colors.grey.shade300)),
+                          alignLabelWithHint: true,
+                        
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Color(0xFF123458), width: 1.5),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                        ),
+                        maxLines: 3,
+                        onSaved: (val) => reason = val,
+                        validator: (val) => val == null || val.isEmpty ? 'Enter reason' : null,
+                      ),
+                      
                       const SizedBox(height: 18),
-                        Text("Document less than 10MB", style: TextStyle(fontWeight: FontWeight.normal)),
+                        Text("Document less than 4MB", style: TextStyle(fontWeight: FontWeight.normal)),
                         const SizedBox(height: 6),
                         Row(
                           children: [
@@ -531,8 +647,8 @@ child: AppBar(
                               icon: const Icon(Icons.attach_file),
                               label: const Text("Upload File"),
                               style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color.fromARGB(255, 219, 214, 209),
-                              foregroundColor: Color(0xFF030303),
+                              backgroundColor: Theme.of(context).iconTheme.color,
+                              foregroundColor: Theme.of(context).scaffoldBackgroundColor,
                               elevation: 0,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
@@ -572,11 +688,11 @@ child: AppBar(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          backgroundColor: Color(0xFFF5F7FA), 
-                          foregroundColor: Color(0XFF123458),
+                          backgroundColor: Theme.of(context).colorScheme.primary, 
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
                           elevation: 1,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          shadowColor: Colors.transparent,
+                          shadowColor: Color(0XFF123458),
                         ),
                           icon: const Icon(Icons.send),
                           label: const Text(
@@ -584,7 +700,7 @@ child: AppBar(
                             style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
+                            letterSpacing: 1.0,
                             ),
                           ),
                           onPressed: isSubmitting ? null : submitForm,
@@ -593,11 +709,11 @@ child: AppBar(
                     ],
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
     if (isSubmitting)
         Container(
           color: Colors.black.withOpacity(0.5), 
@@ -616,10 +732,10 @@ child: AppBar(
               ),
             ),
           ),
-    ],
-  ),
-);
-} 
+        ],
+      ),
+    );
+  } 
 
 // Widget buildReadOnlyField(String label, String value) {
 //   return Padding(
@@ -638,26 +754,32 @@ child: AppBar(
 //   );
 // }
 
-          Widget buildReadOnlyField(String label, String value) {
+          Widget buildReadOnlyField(BuildContext context, String label, String value) {
           return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
           Text(
           label,
-          style: TextStyle(
-          fontSize: 14,
-          color: const Color(0xFF6C757D),
-          fontWeight: FontWeight.w500,
-        ),
-      ),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey.shade300 
+                  : const Color(0xFF6C757D), 
+            ),
+         ),
           const SizedBox(height: 8),
           Container(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.grey.shade900
+              : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(5),
-          border: Border.all(color: Colors.grey.shade300),
-          ),
+          border: Border.all(color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey.shade700
+                : Colors.grey.shade300,
+          ),),
           child: Row(
           children: [
           Expanded(
@@ -665,7 +787,9 @@ child: AppBar(
           value,
           style: TextStyle(
           fontSize: 15,
-          color:  const Color(0xFF212529),
+          color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : const Color(0xFF212529),
           ),
         ),
         ),
@@ -682,17 +806,21 @@ child: AppBar(
         decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(5),
-        color: Colors.white60,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey.shade900
+            : Colors.grey.shade50,
         ),
         child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-        Icon(Icons.calendar_today, color: const Color(0xFF4361EE)),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          
+        Icon(Icons.calendar_today, color: Theme.of(context).brightness == Brightness.light ? Color(0xFF4361EE) : Colors.white),
+
+        Text(label, style: const TextStyle(fontSize: 12)),
         const SizedBox(height: 4),
         Text(
-        date != null ? date.toLocal().toString().split(' ')[0] : 'Select',
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF212529)),
+        date != null ? DateFormat('dd-MM-yyyy').format(date) : 'Select',
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
        ],
       ),

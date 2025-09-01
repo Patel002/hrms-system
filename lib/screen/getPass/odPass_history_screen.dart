@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:jwt_decode/jwt_decode.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:convert';
 import 'dart:async';
 import 'package:intl/intl.dart';
-
+import '../utils/user_session.dart';
+import '../helper/top_snackbar.dart';
+import 'package:lottie/lottie.dart';
 class OdHistory extends StatefulWidget {
   const OdHistory({super.key});
 
@@ -20,25 +21,36 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
   String? compFname;
   String? departmentName, duration, oddays;
   late TabController _tabController;
+  Set<String> selectedLeaves = {};
+  bool selectionMode = false;
+  final apiToken = dotenv.env['ACCESS_TOKEN'];
   final baseUrl = dotenv.env['API_BASE_URL'];
+
+  late Future<List<Map<String, dynamic>>> _pendingLeavesFuture;
+  late Future<List<Map<String, dynamic>>> _approvedLeavesFuture;
+  late Future<List<Map<String, dynamic>>> _rejectedLeavesFuture;
 
    @override
   void initState() {
     _tabController = TabController(length:3, vsync: this);
     super.initState();
+    _pendingLeavesFuture = fetchOdHistory("pending");
+    _approvedLeavesFuture = fetchOdHistory("approved");
+    _rejectedLeavesFuture = fetchOdHistory("rejected");
   }
 
   Future<List<Map<String, dynamic>>> fetchOdHistory(String approved) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
-      final decodedToken = Jwt.parseJwt(token);
-      final empId = decodedToken['em_id'];
 
-      // print('Employee Username: $empId');
-      // print('Company Name: $compFname');
-    
-    
+      final token = await UserSession.getToken();
+
+      if(token == null){
+        Navigator.pushReplacementNamed(context, '/login');
+        return [];
+      }
+
+      final empId = await UserSession.getUserId();
+
       final statusMap = {
         'pending': 'PENDING',
         'approved': 'APPROVED',
@@ -49,17 +61,30 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
       print('API Status: $apiStatus');
 
       final url = Uri.parse(
-        '$baseUrl/api/od-pass/history/?emp_id=$empId&approved=$apiStatus',
+        '$baseUrl/MyApis/odpasstherecords?fetch_type=SELF&approval_status=$apiStatus',
       );
       print('API URL: $url');
       print('Calling fetchOdHistory with approved=$approved');
 
-      final response = await http.get(url);
+      final response = await http.get(url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiToken',
+        'auth_token': token,
+        'user_id': empId!,
+      }
+      );
+
+       await UserSession.checkInvalidAuthToken(
+        context,
+        json.decode(response.body),
+        response.statusCode,
+      );
       
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         print('Od History: $decoded');
-        final List<dynamic> dataList = decoded['odPass'];
+        final List<dynamic> dataList = decoded['data_packet'];
         return dataList.cast<Map<String, dynamic>>();
       } else {
         print('Failed to fetch leaves: ${response.body}');
@@ -70,31 +95,261 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
       return [];
     }
   }
+
+  Future<bool> deleteLeave(String odId) async {
+  try {
+    final _token = await UserSession.getToken();
+    final _empId = await UserSession.getUserId();
+
+    if (_token == null) {
+      Navigator.pushReplacementNamed(context, '/login');
+      return false;
+    }
+
+    final url = Uri.parse('$baseUrl/MyApis/odpassthedelete?id=$odId');
+
+    print('URL: $url');
+
+    final response = await http.patch(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiToken',
+        'auth_token': _token,
+        'user_id': _empId!,
+      },
+    );
+
+    await UserSession.checkInvalidAuthToken(
+      context,
+      json.decode(response.body),
+      response.statusCode,
+    );
+
+    if (response.statusCode == 200) {
+      showCustomSnackBar(context, "Od pass deleted successfully", Colors.green, Icons.check_circle);
+      _refreshData();
+      return true;
+    } else {
+      print('Failed to delete Od pass: ${response.body}');
+      showCustomSnackBar(context, "Failed to delete Od pass", Colors.red, Icons.error);
+      return false;
+    }
+  } catch (e) {
+    showCustomSnackBar(context, "Error: $e", Colors.red, Icons.error);
+    return false;
+  }
+}
+
+ Future<void> deleteMultipleLeaves(List<String> odId) async {
+  int successCount = 0;
+
+  print('sccesscount,$successCount');
+
+  for (String id in odId) {
+    bool success = await deleteLeave(id);
+
+    print('sccesscount1,$success');
+    if (success) successCount++;
+  }
+
+  if (mounted) {
+    setState(() {
+      _pendingLeavesFuture = fetchOdHistory("pending");
+      selectionMode = false;
+      selectedLeaves.clear();
+    });
+
+    if (successCount > 0) {
+      showCustomSnackBar(
+        context,
+        "$successCount Od pass(s) deleted successfully",
+        Colors.green,
+        Icons.check_circle,
+      );
+    } else {
+      showCustomSnackBar(
+        context,
+        "Failed to delete selected od pass(s)",
+        Colors.red,
+        Icons.error,
+      );
+      print("Failed to delete selected leave(s)");
+    }
+  }
+}
+
+void _refreshData() {
+  setState(() {
+    _pendingLeavesFuture = fetchOdHistory("pending");
+    _approvedLeavesFuture = fetchOdHistory("approved");
+    _rejectedLeavesFuture = fetchOdHistory("rejected");
+  });
+}
+
+Future<void> _confirmDelete(List<String> odId) async {
+  bool isDeleting = false;
+
+  await showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+               Lottie.asset(
+                  'assets/icon/trash.json',
+                  repeat: true,
+                  height: 125,
+                  ),
+                const SizedBox(height: 16),
+                const Text(
+                  "Delete gate pass(s)?",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Gate pass will be deleted parmanently from your device.you can't restore them once deleted.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: Colors.black54),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ElevatedButton.icon(
+                      icon: isDeleting
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(Icons.delete),
+                      label: Text(isDeleting ? "Deleting..." : "Delete"),
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.redAccent,
+                      ),
+                      onPressed: isDeleting
+                          ? null
+                          : () async {
+                              setModalState(() {
+                                isDeleting = true;
+                              });
+
+                              try {
+                                await deleteMultipleLeaves(odId);
+                                if (mounted) {
+                                  Navigator.pop(context);
+
+                                  setState(() {
+                                    _pendingLeavesFuture =
+                                    fetchOdHistory("pending");
+                                    selectionMode = false;
+                                    selectedLeaves.clear();
+                                  });
+                                }
+                              } catch (e) {
+                                setModalState(() {
+                                  isDeleting = false;
+                                });
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        "Failed to delete gatepass(s): $e"),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
 @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF2F5F8),
+    backgroundColor: Theme.of(context).brightness == Brightness.light
+    ? Color(0xFFF2F5F8)
+    : Color(0xFF121212),
     appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: Text("OD-Pass History",
-        style: TextStyle(fontWeight: FontWeight.bold),),
+        title: Text("On-Duty History",
+        style: TextStyle(fontWeight: FontWeight.bold)),
         forceMaterialTransparency: true,
-        foregroundColor: Colors.black,
+        foregroundColor: Theme.of(context).brightness == Brightness.dark
+      ? Colors.white
+      : Colors.black87,
+        leading: selectionMode
+        ? IconButton(
+            icon: Icon(Icons.close),
+            onPressed: () {
+              setState(() {
+                selectionMode = false;
+                selectedLeaves.clear();
+              });
+            },
+          )
+        : null,
+        actions: selectionMode
+        ? [
+            IconButton(
+              icon: Icon(FontAwesomeIcons.trashCan,size: 18.5,),
+              onPressed: () async {
+              if (selectedLeaves.isNotEmpty) {
+              _confirmDelete(selectedLeaves.toList());
+            }
+              },
+            ),
+          ]
+        : [],
     ),
       body: Container(
-        decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
+        decoration: BoxDecoration(
+              gradient: Theme.of(context).brightness == Brightness.dark
+                  ? const LinearGradient(
+                      colors: [Color(0xFF121212), Color(0xFF121212)],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)], 
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
             ),
-          ),
    child: Column(
   children: [
     TabBar(
-      controller: _tabController,
-      labelColor: Colors.black,
+    controller: _tabController,
       indicatorColor: Colors.blue,
+      labelColor: Theme.of(context).iconTheme.color,
+      unselectedLabelColor: Colors.grey,
       tabs: const [
         Tab(text: 'Pending'),
         Tab(text: 'Approved'),
@@ -109,48 +364,128 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
           buildOdList('approved'),
           buildOdList('rejected'),
         ],
+       ),
       ),
-      ),
-  ],
+     ],
     ),
-),
-
-    );
-  }
+   ),
+  );
+}
 
    Widget buildOdList(String approved) {
-     return FutureBuilder<List<Map<String, dynamic>>>(
-    future: fetchOdHistory(approved),
+    final future = approved == "pending"
+        ? _pendingLeavesFuture
+        : approved == "approved"
+            ? _approvedLeavesFuture
+            : _rejectedLeavesFuture;
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+    future: future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator(color: Colors.black87,));
-        } else if (snapshot.hasError) {
-          return Center(child: Text("Error loading $approved Od-Pass"));
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(child: Text("No $approved Od-Pass."));
-        }
+        } 
+        else if (snapshot.hasError) {
+      return Center(child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+          Lottie.asset(
+              'assets/image/error.json', 
+              height: 250,
+              width: 250,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 16),
+            Text("Error loading $approved Od-Pass"),
+          ],
+        ),
+      );
+    }
+    else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Lottie.asset(
+              'assets/image/Animation.json', 
+              height: 200,
+              width: 200,
+              fit: BoxFit.fill,
+            ),
+            const SizedBox(height: 16),
+            Text("No $approved Od-Pass", style: TextStyle(fontWeight: FontWeight.w500, color: Colors.grey)),
+          ],
+        ),
+      );
+    }
 
         final odPass = snapshot.data!;
         return ListView.builder(
           itemCount: odPass.length,
           itemBuilder: (context, index) {
             final leave = odPass[index];
-            return Card(
+            return GestureDetector(
+            onLongPress: () {
+              if(approved == "pending") {
+              setState(() {
+                selectionMode = true;
+                selectedLeaves.add(leave['id'].toString());
+              });
+            }
+            },
+            onTap: () {
+               if (approved == "pending" && selectionMode) {
+                setState(() {
+                  final id = leave['id'].toString();
+                  if (selectedLeaves.contains(id)) {
+                    selectedLeaves.remove(id);
+                    if (selectedLeaves.isEmpty) selectionMode = false;
+                  } else {
+                    selectedLeaves.add(id);
+                  }
+                });
+              } else {
+                Navigator.push(
+                  context,
+                   MaterialPageRoute(
+                      builder:
+                          (context) => OdDetailsPage(
+                            emUsername: leave['empname'],
+                            departmentName: leave['dep_name'],
+                            compFname: leave['compname'],
+                            fromDate: leave['fromdate'],
+                            toDate: leave['todate'],
+                            remark: leave['remark'],
+                            rejectreason: leave['rejectreason'],
+                            approved: leave['approval_status'],
+                            approval_by: leave['approval_by'],
+                            approval_at: leave['approval_at'],
+                            date: leave['add_date_formatted'],
+                            oddays: leave['oddays'],
+                            id: leave['id'].toString(),
+                          ),
+                    ),
+                );
+              }
+            },
+            child: Card(
               margin: EdgeInsets.all(10),
+             color:Theme.of(context).brightness == Brightness.light ? Color(0xFFF2F5F8) : Colors.grey.shade900,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Container(
-              decoration: BoxDecoration(
-                 gradient: LinearGradient(
-          colors: [Color.fromARGB(255, 240, 240, 235), Color.fromARGB(255, 255, 255, 255), Color.fromARGB(220, 247, 250, 248)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-                borderRadius: BorderRadius.circular(16)
-              ),
               child: ListTile(
-                leading: Icon(Icons.event_note, color: Colors.blue),
+                leading: (approved == "pending" && selectionMode)
+          ? Icon(
+              selectedLeaves.contains(leave['id'].toString())
+                  ? Icons.check_circle
+                  : Icons.radio_button_unchecked,
+              color: selectedLeaves.contains(leave['id'].toString())
+                  ? Colors.blue
+                  : Colors.grey,
+            )
+          : Icon(Icons.event_note, color: Colors.blue),
                 title: Text("${leave['fromdate']} → ${leave['todate']}"),
                 subtitle: Text(leave['remark']),
                 trailing: Container(
@@ -167,35 +502,8 @@ class _OdHistoryState extends State<OdHistory> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
-                onTap: () async {
-                  final prefs = await SharedPreferences.getInstance();
-                  final token = prefs.getString('token') ?? '';
-                  final decoded = Jwt.parseJwt(token);
-                  // final emUsername = decoded['em_username'];
-                  // final departmentName = decoded['dep_name'];
-                  // print("department name: $departmentName");
-                  // print("od pass id,${leave['id']}");
-                  final compFname = decoded['comp_fname'];
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) => OdDetailsPage(
-                            emUsername: leave['employee_name'],
-                            departmentName: leave['department_name'],
-                            compFname: compFname ?? '',
-                            fromDate: leave['fromdate'],
-                            toDate: leave['todate'],
-                            remark: leave['remark'],
-                            approved: leave['approved'],
-                            date: leave['add_date'],
-                            oddays: leave['oddays'],
-                            id: leave['id'].toString(),
-                          ),
-                    ),
-                  );
-                },
               ),
+            ),
             ),
             );
           },
@@ -226,8 +534,11 @@ class OdDetailsPage extends StatefulWidget {
   final String toDate, date;
   final String remark;
   final String approved;
+  final String approval_by;
+  final String approval_at;
   final String oddays;
   final String id;
+  final String rejectreason;
 
   const OdDetailsPage({
     super.key,
@@ -238,9 +549,12 @@ class OdDetailsPage extends StatefulWidget {
     required this.toDate,
     required this.remark,
     required this.approved,
+    required this.approval_by,
+    required this.approval_at,
     required this.date,
     required this.oddays,
     required this.id,
+    required this.rejectreason,
   });
 
   @override
@@ -271,6 +585,7 @@ class _OdDetailsPageState extends State<OdDetailsPage> {
   // }
 
   final baseUrl = dotenv.env['API_BASE_URL'];
+  final apiToken = dotenv.env['ACCESS_TOKEN'];
   // final _formKey = GlobalKey<FormState>();
   late TextEditingController remarkController;
   late DateTime fromDate;
@@ -327,16 +642,24 @@ void initState() {
       firstDate: firstDate,
       lastDate: lastDate,
       builder: (context, child) {
+           final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF3C3FD5),
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
+            colorScheme: isDarkMode
+                ? const ColorScheme.dark(
+                    primary: Color(0xFF3C3FD5),
+                    onPrimary: Colors.white,
+                    surface: Color(0xFF1E1E1E),
+                    onSurface: Colors.white,
+                  )
+                : const ColorScheme.light(
+                    primary: Color(0xFF3C3FD5),
+                    onPrimary: Colors.white,
+                    onSurface: Colors.black,
+                  ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
-                foregroundColor: Color.fromARGB(255, 25, 28, 232),
+                foregroundColor: const Color(0xFF3C3FD5),
               ),
             ),
           ),
@@ -365,6 +688,15 @@ void initState() {
 
     Future<void> _saveUpdates() async {
 
+      final token = await UserSession.getToken();
+
+      if(token == null){
+        Navigator.pushReplacementNamed(context, '/login');
+        return;
+      }
+
+      final empId = await UserSession.getUserId();
+
       if(isSubmitting) return;
 
       setState(() {
@@ -379,6 +711,13 @@ void initState() {
 
       print('Leave Duration: $leaveDuration');
       print('base url: $baseUrl');
+
+      final DateFormat apiFormat = DateFormat('yyyy-MM-dd');
+
+      final fromDateStr = apiFormat.format(fromDate);
+      final toDateStr = apiFormat.format(toDate);
+
+      print('From Date: $fromDateStr');
  
     if (baseUrl == null) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -387,36 +726,40 @@ void initState() {
     return;
   }
     try {
-    final url = Uri.parse('$baseUrl/api/od-pass/update/$id');
+    final url = Uri.parse('$baseUrl/MyApis/odpasstheedit?id=$id');
+
     print("url: $url");
 
       final response = await http.patch(
         url,
         headers: {
-          'Content-Type': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiToken',
+        'auth_token': token,
+        'user_id': empId!,
         },
         body: jsonEncode({
-          'fromdate': fromDate.toIso8601String(),
-          'todate': toDate.toIso8601String(),
+          'from_date': fromDateStr,
+          'to_date': toDateStr,
           'remark': remarkController.text,
-          'oddays': leaveDuration.toString(),
-          'odtype': odType.toString(),
+          'od_type': leaveDuration.toString(),
+          // 'od_type': odType.toString(),
         }),
       );
 
      final decode = jsonDecode(response.body);
-      print(decode['data']);
+      print(decode);
 
-      if (response.statusCode == 201) {
-        _showCustomSnackBar(
+      if (response.statusCode == 200) {
+        showCustomSnackBar(
           context,
-          "Leave submitted successfully",
+          "Od Pass submitted successfully",
           Colors.green,
           Icons.check_circle,
         );
       } else {
         final error = jsonDecode(response.body);
-        _showCustomSnackBar(
+        showCustomSnackBar(
           context,
           "${error['message']}",
           Colors.red,
@@ -424,7 +767,7 @@ void initState() {
         );
       }
     } catch (e) {
-      _showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
+      showCustomSnackBar(context, 'Unexpected error format', Colors.red, Icons.error);
     } finally {
       setState(() {
         isSubmitting = false;
@@ -433,34 +776,34 @@ void initState() {
   }
 
 
- void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
+//  void showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
 
-  final scaffoldMessenger = ScaffoldMessenger.of(context);
+//   final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-  scaffoldMessenger.clearSnackBars();
+//   scaffoldMessenger.clearSnackBars();
 
-    final snackBar = SnackBar(
-      content: Row(
-        children: [
-          Icon(icon, color: Colors.white),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ),
-        ],
-      ),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      margin: const EdgeInsets.all(16),
-      duration: const Duration(seconds: 2),
-    );
+//     final snackBar = SnackBar(
+//       content: Row(
+//         children: [
+//           Icon(icon, color: Colors.white),
+//           const SizedBox(width: 10),
+//           Expanded(
+//             child: Text(
+//               message,
+//               style: const TextStyle(color: Colors.white, fontSize: 16),
+//             ),
+//           ),
+//         ],
+//       ),
+//       backgroundColor: color,
+//       behavior: SnackBarBehavior.floating,
+//       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+//       margin: const EdgeInsets.all(16),
+//       duration: const Duration(seconds: 2),
+//     );
 
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  }
+//     ScaffoldMessenger.of(context).showSnackBar(snackBar);
+//   }
 
 
   @override
@@ -469,32 +812,41 @@ void initState() {
     final theme = Theme.of(context);
     final screenHeight = MediaQuery.of(context).size.height;
     final isApproved = widget.approved.toLowerCase() == 'approved';
-    final isRejected =
-        widget.approved.toLowerCase() == 'rejected';
+    final isRejected = widget.approved.toLowerCase() == 'rejected';
+    final bool isReadOnly = isApproved || isRejected;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
+       backgroundColor: Theme.of(context).brightness == Brightness.light
+        ? Color(0xFFF2F5F8)
+        : Color(0xFF121212),
       appBar: AppBar(
-        title: const Text('OD Pass Details',
+        title: const Text('On-Duty Details',
         style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Color(0xFFF5F7FA),
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Colors.black,
+       foregroundColor: Theme.of(context).brightness == Brightness.dark
+      ? Colors.white
+      : Colors.black87,
       ),
       body: Stack(
         children: [ 
       Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFFF5F7FA), Color(0xFFE4EBF5), 
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+        decoration: BoxDecoration(
+              gradient: Theme.of(context).brightness == Brightness.dark
+                  ? const LinearGradient(
+                      colors: [Color(0xFF121212), Color(0xFF121212)],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)], 
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
+            ),
         child: SingleChildScrollView(
           child: ConstrainedBox(
             constraints: BoxConstraints(
@@ -507,7 +859,7 @@ void initState() {
                   children: [
                     Card(
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      color: const Color(0xFFFDFDFD),
+                     color:Theme.of(context).brightness == Brightness.light ? Color(0xFFF2F5F8) : Colors.grey.shade900,
                        elevation: 2,
                       shadowColor: Colors.black26,
                       child: Padding(
@@ -557,8 +909,8 @@ void initState() {
                             _sectionTitle("OD Duration"),
                             const SizedBox(height: 10),
                             _infoRow("Applied Date", widget.date),
-                           _editableDateField("From", fromDate, () => _pickDate(context, true)),
-                          _editableDateField("To", toDate, () => _pickDate(context, false)),
+                           _editableDateField(context,"From", fromDate, () => _pickDate(context, true),isReadOnly: isReadOnly),
+                          _editableDateField(context,"To", toDate, () => _pickDate(context, false),isReadOnly: isReadOnly),
 
                           _infoRow("Duration",'${calculateDuration(fromDate, toDate)} days',),
 
@@ -572,6 +924,7 @@ void initState() {
                               const SizedBox(width: 8),
                               DropdownButton<String>(
                                 value: type,
+                                dropdownColor: Theme.of(context).canvasColor,
                                 items:
                               ['Full Day', 'Half Day']
                                   .map(
@@ -581,7 +934,9 @@ void initState() {
                                     ),
                                   )
                                   .toList(),
-                                onChanged: (val) {
+                                onChanged: isReadOnly
+                                ? null
+                                : (val) {
                                   setState(() {
                                     type = val!;
                                     duration = calculateDuration(fromDate, toDate);
@@ -600,6 +955,7 @@ void initState() {
                              TextFormField(
                             controller: remarkController,
                             maxLines: 2,
+                            readOnly: isReadOnly,
                             decoration: const InputDecoration(
                               border: OutlineInputBorder(),
                               hintText: "Enter reason for OD...",
@@ -608,6 +964,123 @@ void initState() {
                           ),
 
                             const SizedBox(height: 10),
+
+                            if(isApproved) ...[
+                              const SizedBox(height: 12),
+                            Text(
+                              'Approved By',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                // color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.05),
+                            border: Border.all(color: Colors.green.shade200),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            widget.approval_by,
+                            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.green.shade700),
+                          ),
+                        ),
+                              const SizedBox(height: 12),
+                            Text(
+                              'Approved At',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                // color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.05),
+                            border: Border.all(color: Colors.green.shade200),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            widget.approval_at,
+                            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.green.shade700),
+                          ),
+                        ),
+                            ],
+
+                            if(isRejected &&  widget.rejectreason.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              Text(
+                                'Reject Reason',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  // color: Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.05),
+                                  border: Border.all(color: Colors.red.shade200),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  widget.rejectreason,
+                                  style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red.shade700),
+                                ),
+                              ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Rejected By',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                // color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.05),
+                            border: Border.all(color: Colors.red.shade200),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            widget.approval_by,
+                            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red.shade700),
+                          ),
+                        ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Rejected At',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                // color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.05),
+                            border: Border.all(color: Colors.red.shade200),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            widget.approval_at,
+                            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red.shade700),
+                          ),
+                        ),
+
+                            ],
 
                              if (!isApproved && !isRejected) ...[
                              const SizedBox(height: 12),
@@ -671,7 +1144,7 @@ void initState() {
     return Text(
       title,
       style: theme.textTheme.titleSmall?.copyWith(
-      color: Colors.black,
+      // color: Colors.black,
         fontWeight: FontWeight.bold,
       ),
     );
@@ -690,7 +1163,7 @@ void initState() {
               style: const TextStyle(
                 fontWeight: FontWeight.w400,
                 fontSize: 15,
-                color: Colors.black87,
+                // color: Colors.black87,
               ),
             ),
           ),
@@ -699,7 +1172,7 @@ void initState() {
               value,
               style: const TextStyle(
                 fontSize: 15,
-                color: Colors.black87,
+                // color: Colors.black87,
               ),
             ),
           ),
@@ -709,25 +1182,25 @@ void initState() {
   }
 }
 
-Widget _editableDateField(String label, DateTime date, VoidCallback onTap) {
+Widget _editableDateField(BuildContext context, String label, DateTime date, VoidCallback onTap,{bool isReadOnly = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: InkWell(
-        onTap: onTap,
+        onTap: isReadOnly ? null : onTap,
         child: Row(
           children: [
             SizedBox(
               width: 120,
               child: Text(
                 "$label:",
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87),
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
               ),
             ),
             Expanded(
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade900 : Colors.grey.shade50,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(

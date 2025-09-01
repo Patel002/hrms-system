@@ -1,40 +1,42 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-import 'dart:math' as math;
 import 'package:image/image.dart' as img;
 import 'package:camera/camera.dart';
+import 'dart:convert';
+import 'dart:async';
+import 'dart:io';
+import '../helper/top_snackbar.dart';
 import '../utils/user_session.dart';
 import '../utils/network_failure.dart';
-import '../helper/top_snackbar.dart';
 
-class AttendanceScreenOut extends StatefulWidget {
-  const AttendanceScreenOut({super.key});
+class ExpenseApplyScreen extends StatefulWidget {
+  const ExpenseApplyScreen({super.key});
 
   @override
-  State<AttendanceScreenOut> createState() => _AttendanceScreenOutState();
+  State<ExpenseApplyScreen> createState() => _ExpenseScreen();
 }
 
-class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
+class _ExpenseScreen extends State<ExpenseApplyScreen> {
   final baseUrl = dotenv.env['API_BASE_URL'];
   final apiToken = dotenv.env['ACCESS_TOKEN'];
   
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _narrationController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _amountController = TextEditingController();
 
-  String? narration,loadingText;
-  String? field;
+  List expenseTypes = [];
+  String? selectExpenseType;
+  String? description,loadingText;
   String? _token;
   String? _emId,_error;
   String? _emUsername;
   String? _compFname;
+  int? amount;
   Position? currentPosition;
   String? base64Image;
   File? _imageFile;
@@ -46,8 +48,11 @@ class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
   bool isSubmitting = false;
   bool isDataLoading = false;
 
-  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  List<CameraDescription> _cameras = [];
+  int _selectedCameraIndex = 0;
 
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  
 
   @override
   void initState() {
@@ -56,7 +61,7 @@ class _AttendanceScreenOutState extends State<AttendanceScreenOut> {
     await initializePage();
    });
 
-  _connectivitySubscription = Connectivity()
+_connectivitySubscription = Connectivity()
     .onConnectivityChanged
     .listen((List<ConnectivityResult> results) {
   if (results.contains(ConnectivityResult.none)) {
@@ -129,7 +134,8 @@ initialStatus.then((status) {
   }
 }
 
-  Future<void> getEmpCodeFromToken() async {
+
+Future<void> getEmpCodeFromToken() async {
     
    _token = await UserSession.getToken();
 
@@ -202,19 +208,31 @@ Future<void> getLocation() async {
 } 
 
 
-Future<void> _initializeCamera() async {
-  final cameras = await availableCameras();
-  final frontCamera = cameras.firstWhere(
-    (cam) => cam.lensDirection == CameraLensDirection.front,
-  );
+Future<void> _initializeCamera([int cameraIndex = 0]) async {
+  try {
+    _cameras = await availableCameras();
+    _selectedCameraIndex = cameraIndex;
 
-  _cameraController = CameraController(
-    frontCamera,
-    ResolutionPreset.medium,
-    enableAudio: false,
-  );
+    _cameraController?.dispose(); 
 
-  await _cameraController!.initialize();
+    _cameraController = CameraController(
+      _cameras[_selectedCameraIndex],
+      ResolutionPreset.medium,
+      enableAudio: false,
+    );
+
+    await _cameraController!.initialize();
+    if (mounted) setState(() {});
+  } catch (e) {
+    debugPrint('Error initializing camera: $e');
+  }
+}
+
+Future<void> _flipCamera() async {
+  if (_cameras.length < 2) return;
+
+  final newIndex = (_selectedCameraIndex + 1) % _cameras.length;
+  await _initializeCamera(newIndex);
 }
 
 Future<void> _captureImage() async {
@@ -229,9 +247,9 @@ Future<void> _captureImage() async {
     final decoded = img.decodeImage(originalBytes);
     if (decoded == null) return;
 
-    final flipped = img.flipHorizontal(decoded);
+    // final flipped = img.flipHorizontal(decoded);
 
-    final resized = img.copyResize(flipped, width: 400, height: 400);
+    final resized = img.copyResize(decoded, width: 400, height: 400);
     final resizedBytes = img.encodePng(resized);
     final base64Str = base64Encode(resizedBytes);
 
@@ -251,14 +269,19 @@ Future<void> _captureImage() async {
 
   Future<void> fetchDataPacketApi() async {
 
+    if(expenseTypes.isNotEmpty) return;
+
     try {
-      final response = await http.get(Uri.parse('$baseUrl/MyApis/userinfo?user_id=$_emId'),
+      final response = await http.get(Uri.parse('$baseUrl/MyApis/expensethetype'),
       headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $apiToken',
           'auth_token': _token!,
+          'user_id': _emId!
         },
       );
+      
+      final jsonData = json.decode(response.body);
 
       await UserSession.checkInvalidAuthToken(
         context,
@@ -267,16 +290,25 @@ Future<void> _captureImage() async {
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body)['data_packet'];
+        final data = json.decode(response.body)['user_details'];
 
         if(mounted){ 
         setState(() {
           _compFname = data['comp_fname'];
         });
-        }
       }
 
-      } catch (e) {
+        print('Company Name: $_compFname');
+
+        if(jsonData['data_packet'] != null && jsonData['data_packet'] is List){
+        setState(() {
+          expenseTypes = jsonData['data_packet'];
+        });
+      }
+
+      print('Expense Types: $expenseTypes');
+    }
+   } catch (e) {
   if (e is SocketException) {
     setState(() {
       _error = 'No internet connection.';
@@ -289,14 +321,14 @@ Future<void> _captureImage() async {
 }
   }
 
-    Future<void> submitAttendance() async {
+  Future<void> submitExpense() async {
   if (isSubmitting) return;
 
-  if (!_formKey.currentState!.validate() || field == null) {
+  if (!_formKey.currentState!.validate() || selectExpenseType == null && description == null && amount == null) {
     if (mounted) {
       showCustomSnackBar(
         context,
-        "Please fill all fields",
+        "Please fill all field for expense",
         Colors.yellow.shade900,
         Icons.warning_amber_outlined,
       );
@@ -305,18 +337,6 @@ Future<void> _captureImage() async {
     return;
   }
 
-  if (field == 'FIELD' && (narration?.trim().isEmpty ?? true)) {
-    if (mounted) {
-      showCustomSnackBar(
-        context,
-        'Please enter a remark for Field work',
-        Colors.orange,
-        Icons.edit_note,
-      );
-      setState(() => isSubmitting = false);
-    }
-    return;
-  }
 
   if (base64Image == null) {
     if (mounted) {
@@ -331,35 +351,36 @@ Future<void> _captureImage() async {
     return;
   }
 
- 
   if (mounted) {
     setState(() {
       isSubmitting = true;
-      loadingText = 'Submitting, please wait...';
+      loadingText = 'Submitting Expense, please wait...';
     });
   }
 
   try {
-    
-    currentPosition ??= await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+    if (currentPosition == null) {
+      currentPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+    }
 
-
-    // _formKey.currentState!.save();
-
-    if (field == 'OFFICE') narration = '';
+    _formKey.currentState!.save();
 
     final body = {
-      'punch_remark': narration,
-      'punch_place': field,
-      'punch_type': 'OUT',
+      'exp_description': description,
+      'expense_type': selectExpenseType,
+      'expense_amount': amount,
       'latitude': currentPosition?.latitude,
       'longitude': currentPosition?.longitude,
-      'punch_img': base64Image,
+      'expense_img': base64Image,
     };
 
-    final uri = Uri.parse('$baseUrl/MyApis/punchthein');
+    print('Body: $body');
+
+    final uri = Uri.parse('$baseUrl/MyApis/expensetheadd');
+
+    print('URI: $uri');
 
     final response = await http.post(
       uri,
@@ -377,22 +398,15 @@ Future<void> _captureImage() async {
     await UserSession.checkInvalidAuthToken(context, resBody, response.statusCode);
 
     if (response.statusCode == 200) {
-
-      // final player = AudioPlayer();
-      // await player.play(AssetSource('assets/icon/drop.mp3'));
-
-       if (!mounted) return;
-      showCustomSnackBar(
-        context,
-        'Punch Out marked successfully',
-        Colors.green,
-        Icons.check_circle,
-      );
-     
-      await _resetForm();
-
-      Navigator.pop(context,true);
-
+      if (mounted) {
+        showCustomSnackBar(
+          context,
+          'Expense Is Entered successfully',
+          Colors.green,
+          Icons.check_circle,
+        );
+        await _resetForm();
+      }
     } else {
       if (mounted) {
         showCustomSnackBar(
@@ -404,7 +418,6 @@ Future<void> _captureImage() async {
       }
     }
   } catch (e) {
-    print('Error: $e');
     if (mounted) {
       showCustomSnackBar(
         context,
@@ -414,14 +427,11 @@ Future<void> _captureImage() async {
       );
     }
   } finally {
-  if (!mounted) return;
-  setState(() {
-    isSubmitting = false;
-    loadingText = null;
-  });
+    if (mounted) {
+      setState(() => isSubmitting = false);
+    }
+  }
 }
-}
-
 
   Future<void> handlePullToRefresh() async {
     setState(() {
@@ -438,33 +448,62 @@ Future<void> _captureImage() async {
 
     Future<void> _resetForm() async{
       _formKey.currentState?.reset();
-      _narrationController.clear();
+      _descriptionController.clear();
+      _amountController.clear();
+      
       setState(() {
-      narration = null;
-      field = null;
+      description = null;
+      selectExpenseType = null;
       base64Image = null;
       _imageFile = null;
-      // currentPosition = null;
       });
     }
 
     @override
     void dispose() {
-     _connectivitySubscription?.cancel();
+    _connectivitySubscription?.cancel();
     _cameraController?.dispose();
     super.dispose();
     }
-    
+
+
+//  void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
+//   final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+//     scaffoldMessenger.clearSnackBars();
+//     final snackBar = SnackBar(
+//       content: Row(
+//         children: [
+//           Icon(icon, color: Colors.white),
+//           const SizedBox(width: 10),
+//           Expanded(
+//             child: Text(
+//               message,
+//               style: const TextStyle(color: Colors.white, fontSize: 16),
+//             ),
+//           ),
+//         ],
+//       ),
+//       backgroundColor: color,
+//       behavior: SnackBarBehavior.floating,
+//       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+//       margin: const EdgeInsets.all(16),
+//       duration: const Duration(seconds: 3),
+//     );
+
+//     ScaffoldMessenger.of(context).showSnackBar(snackBar);
+//   }
+
 @override
 Widget build(BuildContext context) {
   return Scaffold(
-   backgroundColor: Theme.of(context).brightness == Brightness.light
+    backgroundColor: Theme.of(context).brightness == Brightness.light
         ? Color(0xFFF2F5F8)
         : Color(0xFF121212),
    appBar:AppBar(
     backgroundColor: Colors.transparent, 
       title: Text(
-        "Check-Out",
+        "Apply Expense",
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -478,13 +517,12 @@ Widget build(BuildContext context) {
     body:_error != null
      ? NoInternetWidget(
       onRetry: () async{
-        setState(() {
+        setState(() { 
           _error = null;
         });
         await fetchDataPacketApi();
       },
-    )
-    : isDataLoading
+    ) : isDataLoading
     ? Stack(
     children: [
     Container (
@@ -507,8 +545,8 @@ Widget build(BuildContext context) {
         key: _formKey,
         child: RefreshIndicator(
           onRefresh: handlePullToRefresh,
-          color: Theme.of(context).iconTheme.color,
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor  ,
+          color: Colors.black,
+          backgroundColor: Colors.white ,
           child: ListView(
             children: [
             Padding(
@@ -521,72 +559,94 @@ Widget build(BuildContext context) {
           buildReadOnlyField(context,"Employee Name", _emUsername ?? "N/A"),
           const SizedBox(height: 16),
           buildReadOnlyField(context,"Company Name", _compFname ?? "N/A"),
+          
           const SizedBox(height: 24),
 
-          Text("Punch Place*", style: labelStyle),
-          
+          Text("Expense Type*", style: labelStyle),
           const SizedBox(height: 8),
 
+          expenseTypes.isNotEmpty?
           DropdownButtonFormField<String>(
-            value: field,
+            value: selectExpenseType,
             decoration: inputDecoration(context),
             dropdownColor: Theme.of(context).scaffoldBackgroundColor,
-            items: ['OFFICE', 'FIELD'].map((String value) {
+            icon: Icon(Icons.arrow_drop_down, color: Colors.grey.shade500),
+            items: expenseTypes.map((e) {
               return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value, style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize: 14,
-                  )),
+                value: e["id"].toString(),
+                child: Text(e["expense_name"]),
               );
             }).toList(),
-            onChanged: (val) => setState(() => field = val),
-            validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select a punch place';
-            }
-            return null;
-          },
-        ),
-
-          const SizedBox(height: 24),
+            onChanged: (val) => setState(() => selectExpenseType = val),
+            validator: (value) => value == null ? 'Select expense type' : null,
+            ):CupertinoActivityIndicator(),
         
-          if(field == 'FIELD') ...[
-          Text("Narration*", style: labelStyle),
+          const SizedBox(height: 24),
+
+            TextFormField(
+              controller: (_amountController),
+            keyboardType: TextInputType.number,
+            style: inputTextStyle,
+            decoration: inputDecoration(context).copyWith(
+              hintText: "Amount*",
+              prefixText: "\₹ ",
+              prefixStyle: TextStyle(
+                color: Colors.green.shade700,
+                fontWeight: FontWeight.bold
+              )
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter an amount';
+              }
+              return null;
+            },
+            onChanged: (value) {
+              setState(() {
+                if(value.isNotEmpty){
+                  final doubleVal = double.tryParse(value);
+                  if(doubleVal != null){
+                    amount = doubleVal.round();
+                  }
+                }
+              });
+            },
+          ),
+          
+          const SizedBox(height: 8),
+        
+          // Text("Description*", style: labelStyle),
 
           const SizedBox(height: 8),
 
           TextFormField(
-            controller: _narrationController,
+            controller: _descriptionController,
             maxLines: 2,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize: 14,
-                  ),
+            style: inputTextStyle,
             decoration: inputDecoration(context).copyWith(
-              hintText: "Remark",
+              hintText: " Description*",
             ),
             validator: (value) {
-            if (field == 'FIELD' && (value == null || value.trim().isEmpty)) 
+            if ((value == null || value.trim().isEmpty)) 
             {
-              return 'Please enter a remark';
+              return 'Please give a description of the expense';
             }
             return null;
           },
             onChanged: (val) {
             setState(() {
-              narration = val;
+              description = val;
             });
           },
         ),
-        ],
 
          const SizedBox(height: 24),
 
-          if (_imageFile == null) ...[
           FutureBuilder(
             future: _initializeControllerFuture,
             builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                  return  Center(child: CircularProgressIndicator(color: Theme.of(context).iconTheme.color));
+                  return Center(child: CircularProgressIndicator(color: Theme.of(context).iconTheme.color));
                 }
 
                 if (snapshot.connectionState == ConnectionState.done) {
@@ -641,20 +701,31 @@ Widget build(BuildContext context) {
 
           const SizedBox(height: 12),
           Center(
-            child: Text(
-              _isCapturing
-                  ? 'Capturing image...'
-                  : (_imageFile != null
-                      ? 'Image captured'
-                      : 'Press button to capture image'),
-              style: TextStyle(
-                fontSize: 16,
-                color: _isCapturing ? Colors.red : Colors.black87,
-                fontWeight: FontWeight.w500,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _isCapturing
+                        ? 'Capturing image...'
+                        : (_imageFile != null
+                            ? 'Image captured'
+                            : 'Press button to flip camera'),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: _isCapturing ? Colors.red : Theme.of(context).iconTheme.color,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 12), 
+                  IconButton(
+                    icon: const Icon(Icons.cameraswitch_rounded),
+                    tooltip: 'Flip Camera',
+                    onPressed: _flipCamera,
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+
 
           if (_imageFile != null) 
             ...[
@@ -674,9 +745,6 @@ Widget build(BuildContext context) {
                   
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child:Transform(
-                    alignment: Alignment.center,
-                  transform: Matrix4.rotationY(math.pi),
                     child: Image.file(
                       _imageFile!,
                       height: 120,
@@ -686,10 +754,8 @@ Widget build(BuildContext context) {
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
             
-
          const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: () async {
@@ -708,7 +774,7 @@ Widget build(BuildContext context) {
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: _imageFile != null
-                  ? Colors.redAccent.shade200 
+                  ? Colors.green 
                   : const Color.fromARGB(255, 80, 140, 184), 
               foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(48),
@@ -723,9 +789,9 @@ Widget build(BuildContext context) {
                 
                 ElevatedButton.icon(
                   onPressed: isSubmitting? null : () async {
-                    await submitAttendance();
+                    await submitExpense();
                   },
-                  label: const Text("Submit"),
+                  label: const Text("Submit Expense"),
                   style: greenButtonStyle,
                   icon: const Icon(Icons.send_outlined, size: 20),
                 ),
@@ -765,7 +831,7 @@ Widget build(BuildContext context) {
   }
 }
 
- Widget buildReadOnlyField(BuildContext context,String label, String value) {
+ Widget buildReadOnlyField(BuildContext context, String label, String value) {
           return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -778,12 +844,12 @@ Widget build(BuildContext context) {
                   ? Colors.grey.shade300 
                   : const Color(0xFF6C757D), 
             ),
-      ),
+         ),
           const SizedBox(height: 8),
           Container(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark
               ? Colors.grey.shade900
               : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(5),

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
-import 'package:jwt_decode/jwt_decode.dart';
-import './odPass_details_screen.dart';
+import 'package:lottie/lottie.dart';
+import 'odpass_details_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../utils/user_session.dart';
+import '../helper/top_snackbar.dart';
 
 class ODPassRequest extends StatefulWidget {
   const ODPassRequest({super.key});
@@ -16,13 +18,14 @@ class ODPassRequest extends StatefulWidget {
 class _ODPassRequestState extends State<ODPassRequest> with SingleTickerProviderStateMixin {
  
  bool isLoading = true;
-  String? employeeCode,compFname,departmentName;
+  String? compFname,departmentName;
   List<dynamic> pendingRequests = [];
   List<dynamic> approvedRequests = [];
   List<dynamic> rejectedRequests = [];
   late TabController _tabController;
 
   final baseUrl = dotenv.env['API_BASE_URL'];
+  final apiToken = dotenv.env['ACCESS_TOKEN'];
 
   @override
   void initState() {
@@ -31,9 +34,12 @@ class _ODPassRequestState extends State<ODPassRequest> with SingleTickerProvider
     initData();
   }
 
+  String formattedDate(String date) {
+  return DateFormat('dd-MM-yyyy').format(DateTime.parse(date));
+ }
+
   Future<void> initData() async {
-    await parseToken();
-     final pending = await fetchRequests('pending');
+    final pending = await fetchRequests('pending');
     final approved = await fetchRequests('approved');
     final rejected = await fetchRequests('rejected');
 
@@ -46,24 +52,21 @@ class _ODPassRequestState extends State<ODPassRequest> with SingleTickerProvider
 
   }
 
-  Future<void> parseToken() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    if (token != null) {
-      Map<String, dynamic> decoded = Jwt.parseJwt(token);
-      employeeCode = decoded['em_id'];
-      print('Employee Code: $employeeCode');
-      // compFname = decoded['comp_fname'];
-      // departmentName = decoded['dep_name'];
-    }
-  }
 
   Future<List<Map<String, dynamic>>> fetchRequests(String status) async {
-    if (employeeCode == null) return [];  
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token'); 
-       if (token == null) return [];
+     
+     final token = await UserSession.getToken();
 
+     if(token == null){
+       Navigator.pushReplacementNamed(context, '/login');
+       return [];
+     }
+
+      final empId = await UserSession.getUserId();
+      if(empId == null){
+        Navigator.pushReplacementNamed(context, '/login');
+        return [];
+      }
 
     final statusMap = {
       'pending': 'PENDING',
@@ -74,41 +77,56 @@ class _ODPassRequestState extends State<ODPassRequest> with SingleTickerProvider
     final apiStatus = statusMap[status.toLowerCase()];
     print('API Status: $apiStatus');
 
-    final res = await http.get(Uri.parse('$baseUrl/api/od-pass/list/$apiStatus'),
+    final res = await http.get(Uri.parse('$baseUrl/MyApis/odpasstherecords?fetch_type=REQUEST&approval_status=$apiStatus'),
     headers: {
-      'Authorization': 'Bearer $token', 
+      'Authorization': 'Bearer $apiToken',
+      'auth_token': token,
+      'user_id': empId
     });
-    print("res,$res");
+    print("response ,$res");
+
+     await UserSession.checkInvalidAuthToken(
+        context,
+        json.decode(res.body),
+        res.statusCode,
+      );
 
     if (res.statusCode == 200) {
       final decoded = jsonDecode(res.body);
       print('Decoded: $decoded');
-      final List<dynamic> dataList = decoded['pendingOdRequests'];
+      final List<dynamic> dataList = decoded['data_packet'];
       print('Pending Od-Pass requests: $dataList');
       return dataList.cast<Map<String, dynamic>>();
 
     } else {
       final error = jsonDecode(res.body);
-      _showCustomSnackBar(context,"${error['message']}", Colors.red, Icons.error);
+      showCustomSnackBar(context,"${error['message']}", Colors.red, Icons.error);
      return [];
     }
   }
 
-  Future<void> _sendApprovalOrRejection(String odPassId, {required String action, String? rejectreason}) async {
+  Future<void> _sendApproval(String odPassId, {required String action}) async {
 
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = await UserSession.getToken();
 
-    final url = Uri.parse('$baseUrl/api/od-pass/approve-reject/$odPassId');
+    if(token == null){
+      Navigator.pushReplacementNamed(context, '/login');
+      return;
+    }
+
+    final empId = await UserSession.getUserId();
+
+    final url = Uri.parse('$baseUrl/MyApis/odpasstheapprove?id=$odPassId');
     print("url,$url");
     final response = await http.patch(
       url,
       headers: {'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token'
+      'Authorization': 'Bearer $apiToken',
+      'auth_token': token,
+      'user_id': empId!
       }, 
       body: jsonEncode({
         'action': action,
-        if (action == 'reject') 'reject_reason': rejectreason,
       }),
     );
 
@@ -116,37 +134,51 @@ class _ODPassRequestState extends State<ODPassRequest> with SingleTickerProvider
     print('responseBody,$responseBody');
 
     if (response.statusCode == 200) {
-     _showCustomSnackBar(context, 'Od pass details updated successfully ', Colors.green, Icons.check);
+     showCustomSnackBar(context, 'Od pass details updated successfully ', Colors.green, Icons.check);
       await initData(); 
     } else {
       final error = jsonDecode(responseBody);
-      _showCustomSnackBar(context,"${error['message']}", Colors.red, Icons.error);
+      showCustomSnackBar(context,"${error['message']}", Colors.red, Icons.error);
     }
   }
 
-  void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
-        final snackBar = SnackBar(
-          content: Row(
-            children: [
-              Icon(icon, color: Colors.white),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  message,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: color,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          duration: const Duration(seconds: 2),
-        );
+  Future<void> _sendRejection(String odPassId, {required String action, String? rejectreason}) async {
 
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-      }
+    final token = await UserSession.getToken();
+
+    if(token == null){
+      Navigator.pushReplacementNamed(context, '/login');
+      return;
+    }
+
+    final _empId = await UserSession.getUserId();
+
+    final url = Uri.parse('$baseUrl/MyApis/odpasssthereject?id=$odPassId');
+    print("url,$url");
+    final response = await http.patch(
+      url,
+      headers: {'Content-Type': 'application/json',
+      'Authorization': 'Bearer $apiToken',
+      'auth_token': token,
+      'user_id': _empId!
+      }, 
+      body: jsonEncode({
+        'action': action,
+        'reject_reason': rejectreason,
+      }),
+    );
+
+    final responseBody = response.body;
+    print('responseBody,$responseBody');
+
+    if (response.statusCode == 200) {
+     showCustomSnackBar(context, 'Od pass details updated successfully ', Colors.green, Icons.check);
+      await initData(); 
+    } else {
+      final error = jsonDecode(responseBody);
+      showCustomSnackBar(context,"${error['message']}", Colors.red, Icons.error);
+    }
+  }
 
   void _confirmApprove(String odPassId) {
   showModalBottomSheet(
@@ -174,7 +206,7 @@ class _ODPassRequestState extends State<ODPassRequest> with SingleTickerProvider
             Text(
               "Are you sure you want to approve this Od pass request?",
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.black54),
+              style: TextStyle(fontSize: 16),
             ),
             SizedBox(height: 24),
             Row(
@@ -198,7 +230,7 @@ class _ODPassRequestState extends State<ODPassRequest> with SingleTickerProvider
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _sendApprovalOrRejection(odPassId, action: 'approve');
+                      _sendApproval(odPassId, action: 'approve');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
@@ -256,7 +288,7 @@ class _ODPassRequestState extends State<ODPassRequest> with SingleTickerProvider
             Text(
               "Please provide a reason for rejecting this Od pass request.",
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.black54),
+              style: TextStyle(fontSize: 16),
             ),
             SizedBox(height: 16),
             TextField(
@@ -293,7 +325,7 @@ class _ODPassRequestState extends State<ODPassRequest> with SingleTickerProvider
                       final reason = reasonController.text.trim();
                       if (reason.isNotEmpty) {
                         Navigator.pop(context);
-                        _sendApprovalOrRejection(odPassId, action: 'reject', rejectreason: reason);
+                        _sendRejection(odPassId, action: 'reject', rejectreason: reason);
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -320,27 +352,51 @@ class _ODPassRequestState extends State<ODPassRequest> with SingleTickerProvider
 
 
 Widget _buildList(List<dynamic> list, {bool showActions = false}) {
-  if (list.isEmpty) return Center(child: Text("No requests."));
+if (list.isEmpty) {
+  return Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Lottie.asset(
+          'assets/image/Animation.json',
+          repeat: true,
+          height: 200,
+          width: 200,
+          fit: BoxFit.cover,
+        ),
+        const Text(
+          "No data available",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey,
+          ),
+        ),
+      ],
+    ),
+  );
+}
   return ListView.builder(
     padding: EdgeInsets.only(top: 8),
     itemCount: list.length,
     itemBuilder: (_, i) {
       Map<String, dynamic> od = list[i];
-      String status = od['approved'] ?? 'pending';
+      String status = od['approval_status'] ?? 'pending';
       print('Status: $status');
       
       return Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: Colors.white,
+        color:Theme.of(context).brightness == Brightness.light ? Color(0xFFF2F5F8) : Colors.grey.shade900,
         elevation: 4,
         margin: EdgeInsets.all(10),
         child: Column(
           children: [
             ListTile(
               leading: Icon(Icons.event_note, color: Colors.blue),
-              title: Text("${od['fromdate']} → ${od['todate']}"),
-              subtitle: Text("Employee: ${od['emp_id']}", 
-              style: TextStyle(fontWeight: FontWeight.bold)),
+              title: Text("${formattedDate(od['fromdate'])} → ${formattedDate(od['todate'])}"),
+              subtitle: Text("Employee: ${od['empname']}"
+              "\nDay: ${od['oddays_formatted']}", 
+              style: TextStyle(fontWeight: FontWeight.normal,color: Colors.grey)),
               trailing: Container(
                 padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
@@ -353,23 +409,14 @@ Widget _buildList(List<dynamic> list, {bool showActions = false}) {
                 ),
               ),
               onTap: () async {
-                // final pref = await SharedPreferences.getInstance();
-                // final token = pref.getString('token');
-                // final decoded = Jwt.parseJwt(token!);
-                // final employeeCode = decoded['em_code'];
-                // final departmentName = decoded['dep_name'];
-                // final compFname = decoded['comp_fname'];
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => OdDetailPage(
                       od: od,
-                      // departmentName: departmentName ?? '',
-                      // employeeCode: employeeCode ?? '',
-                      // compFname: compFname ?? '',
                       onAction: (action, [reason]) {
                         Navigator.pop(context);
-                        _sendApprovalOrRejection(od['id'].toString(), 
+                        _sendRejection(od['id'].toString(), 
                             action: action, rejectreason: reason);
                       },
                       showActions: false
@@ -422,10 +469,15 @@ Widget _buildList(List<dynamic> list, {bool showActions = false}) {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-      backgroundColor: Colors.white,
+     backgroundColor: Theme.of(context).brightness == Brightness.light
+        ? Color(0xFFF2F5F8)
+        : Color(0xFF121212),
         appBar: AppBar(
-          backgroundColor: Colors.white,
-          title: Text("Od Pass Requests", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          foregroundColor: Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black87,
+          backgroundColor: Colors.transparent,
+          title: Text("Team On-duty Request", style: TextStyle( fontWeight: FontWeight.bold)),
           bottom: TabBar(
             controller: _tabController,
             labelColor: Color(0XFF00A8CC),

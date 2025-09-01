@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'helper/top_snackbar.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,13 +14,14 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _idController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
 
   final baseUrl = dotenv.env['API_BASE_URL'];
+  final token = dotenv.env['ACCESS_TOKEN'];
 
  @override
  void initState(){
@@ -32,70 +34,75 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    final url = Uri.parse('$baseUrl/api/employee/login');
+    final url = Uri.parse('$baseUrl/MyApis/logthein');
 
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token'},
         body: jsonEncode({
-          'em_id': _idController.text.trim(),
-          'em_password': _passwordController.text.trim(),
+          'username': _usernameController.text.trim(),
+          'password': _passwordController.text.trim(),
         }),
       );
 
       final data = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && data['token'] != null) {
+      if (data['code'] == 200 && data['auth_token'] != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.clear();
-        await prefs.setString('token', data['token']);
+        await prefs.setString('auth_token', data['auth_token']);
+        await prefs.setString('data_packet', jsonEncode(data['data_packet']));
 
-        _showCustomSnackBar(context, 'Login successful', Colors.green, Icons.verified_outlined);
+        showCustomSnackBar(context, 'Login successful', Colors.green, Icons.verified_outlined);
+
         Navigator.pushReplacementNamed(context, '/home');
+        
       } else {
-        _showCustomSnackBar(context, data['message'] ?? 'Invalid login', Colors.red, Icons.error);
+        print('Login error: ${data['message']}'); 
+        showCustomSnackBar(context, data['message'] ?? 'Invalid login', Colors.red, Icons.error);
       }
     } catch (e) {
       print('Login error: $e');
-      _showCustomSnackBar(context, 'Network error. Please try again.', Colors.red, Icons.error);
+      showCustomSnackBar(context, 'Network error. Please try again.', Colors.red, Icons.error);
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
+  // void showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
 
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
+  //   final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-    scaffoldMessenger.clearSnackBars();
+  //   scaffoldMessenger.clearSnackBars();
 
-    final snackBar = SnackBar(
-      content: Row(
-        children: [
-          Icon(icon, color: Colors.white),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ),
-        ],
-      ),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      duration: const Duration(seconds: 1),
-    );
+  //   final snackBar = SnackBar(
+  //     content: Row(
+  //       children: [
+  //         Icon(icon, color: Colors.white),
+  //         const SizedBox(width: 10),
+  //         Expanded(
+  //           child: Text(
+  //             message,
+  //             style: TextStyle(color: Colors.white, fontSize: 16),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //     backgroundColor: color,
+  //     behavior: SnackBarBehavior.floating,
+  //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+  //     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  //     duration: const Duration(seconds: 1),
+  //   );
 
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  }
+  //   ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  // }
 
   @override
   void dispose() {
-    _idController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -105,11 +112,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Container(
     width: double.infinity,
     height: double.infinity, 
-    color: Colors.white,
+    color: Theme.of(context).scaffoldBackgroundColor,
      child: SafeArea(
       bottom: true,
         child: Padding(
@@ -133,7 +140,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       'Login to your account',
                       style: theme.textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: const Color(0XFF213448),
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey.shade300
+                            : Color(0XFF213448)
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -145,12 +154,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 32),
 
                     TextFormField(
-                      controller: _idController,
+                      controller: _usernameController,
                       decoration: InputDecoration(
-                        hintText: 'Id',
+                        hintText: 'Username',
                         prefixIcon: const Icon(Icons.person_outline),
                         filled: true,
-                        fillColor: Colors.grey[50],
+                        fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[900] : Colors.grey[50],
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -176,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[50],
+                        fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[900] : Colors.grey[50],
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,

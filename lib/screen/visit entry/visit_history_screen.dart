@@ -7,31 +7,31 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:lottie/lottie.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../utils/user_session.dart';
 
-class AttandanceHistory extends StatefulWidget {
-  const AttandanceHistory({super.key});
+class VisitHistory extends StatefulWidget {
+  const VisitHistory({super.key});
 
   @override
-  State<AttandanceHistory> createState() => _AttandanceHistoryState();
+  State<VisitHistory> createState() => _VisitHistoryState();
 }
 
-class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProviderStateMixin {
+  class _VisitHistoryState extends State<VisitHistory> with TickerProviderStateMixin {
   final baseUrl = dotenv.env['API_BASE_URL'];
   final apiToken = dotenv.env['ACCESS_TOKEN'];
 
   String? emId, emUsername, compFname, compId, department;
-  List attendanceList = [];
+  List visitList = [];
+  Map<String, dynamic> vistorList = {};
   DateTime? selectedDate;
-  String? errorMessage;
+  String? errorMessage,visitorName;
   bool isLoading = true;
   bool isFirstLoadDone = false; 
-  // late final AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
-    // gettokenData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final passedDate = args?['selectedDate'] as DateTime?;
@@ -40,30 +40,16 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
       setState(() {
         selectedDate = passedDate;
       });
-      fetchAttendanceData(passedDate);
+      fetchVisitData(passedDate);
     } else {
       final today = DateTime.now();
       setState(() {
         selectedDate = today;
       });
-      fetchAttendanceData(today);
+      fetchVisitData(today);
     }
   });
-
-
-    //   _animationController = AnimationController(
-    //   vsync: this,
-    //   duration: const Duration(seconds: 30),
-    // )..repeat();
-
-  }
-
-  // @override 
-  // void dispose(){
-  //    _animationController.dispose();
-  //   super.dispose();
-
-  // }
+}
 
   String getFormattedDate(String dateString) {
     try {
@@ -73,28 +59,6 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
       return "Invalid Date"; 
     }
   }
-//   String FormattedDate(String timeString) {
-//   try {
-//     if (timeString.contains(' ')) {
-//       DateTime parsed = DateFormat('yyyy-MM-dd HH:mm:ss').parse(timeString);
-//       return DateFormat('hh:mm a').format(parsed); 
-//     }
-
-//     DateTime parsedTime = DateFormat('HH:mm:ss').parse(timeString);
-//     return DateFormat('hh:mm a').format(parsedTime);
-//   } catch (e) {
-//     return "Invalid Time format"; 
-//   }
-// }
-
-
-  // Future<void> gettokenData() async {
-  //   final pref = await SharedPreferences.getInstance();
-  //   final token = pref.getString('token') ?? '';
-  //   final decode = Jwt.parseJwt(token);
-  //   compFname = decode['comp_fname'] ?? '';
-  //   department = decode['dep_name'] ?? '';
-  // }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -135,7 +99,7 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
         selectedDate = picked;
       });
       
-      await fetchAttendanceData(picked);
+      await fetchVisitData(picked);
 
       setState(() {
         isLoading = false;
@@ -143,7 +107,7 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
     }
   }
 
-  Future<void> fetchAttendanceData(DateTime date) async {
+  Future<void> fetchVisitData(DateTime date) async {
     try {
 
       final token = await UserSession.getToken();
@@ -162,7 +126,7 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
       print("Formatted Date: $formattedDate");
 
       final url = Uri.parse(
-        '$baseUrl/MyApis/punchlogs?user_id=$emId&date=$formattedDate',
+        '$baseUrl/MyApis/visittherecords?from_date=$formattedDate&to_date=$formattedDate',
       );
       print("URL: $url");
 
@@ -172,12 +136,13 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $apiToken',
           'auth_token': token,
+          'user_id': emId!
         },
       );
 
-      // print("Response Status Code: ${response.statusCode}");
-      // print("url: $response");
-      // print("body: ${response.body}");
+      print("Response Status Code: ${response.statusCode}");
+      print("url: $response");
+      print("body: ${response.body}");
 
       final jsonData = json.decode(response.body);
 
@@ -189,12 +154,17 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
 
      if (response.statusCode == 200) {
         if (jsonData['data_packet'] != null && jsonData['data_packet'] is List) {
-          attendanceList = jsonData['data_packet'];
+          visitList = jsonData['data_packet'];
+          vistorList = jsonData['user_details'] ?? {};
 
-          print("attendanceList: $attendanceList");
-          print("image:${attendanceList[0]['punch_img']}");
+        
+          visitorName = vistorList['name'] ?? 'N/A';
+          // print("Visitor Name: $visitorName");
+          // print("Visit List: $visitList");
+          // print("image from visit list:${visitList[0]['visit_img']}");
         } else {
-          attendanceList = [];
+          visitList = [];
+          vistorList = {};
         }
 
       await Future.delayed(Duration(seconds: 2));
@@ -205,7 +175,7 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
         });
       } else {
         throw Exception(
-          "Failed to load attendance data, status code: ${response.statusCode}",
+          "Failed to load visit entry data, status code: ${response.statusCode}",
         );
       }
     } catch (e) {
@@ -229,31 +199,6 @@ class _AttandanceHistoryState extends State<AttandanceHistory> with TickerProvid
       ).showSnackBar(const SnackBar(content: Text("Could not open map.")));
     }
   }
-
-  //   Widget buildAnimatedStripe({required double speedFactor, required Color color}) {
-  //   return AnimatedBuilder(
-  //     animation: _animationController,
-  //     builder: (context, child) {
-  //       // Move stripe from right to left (diagonally)
-  //       return Transform.translate(
-  //         offset: Offset(
-  //           200 - (_animationController.value * speedFactor * 400),
-  //           _animationController.value * speedFactor * 200,
-  //         ),
-  //         child: child,
-  //       );
-  //     },
-  //     child: Transform.rotate(
-  //       angle: -0.6, 
-  //       child: Container(
-  //         width: 20,
-  //         height: 400,
-  //         color: color,
-  //       ),
-  //     ),
-  //   );
-  // }
-
 
 void showImagePreview(BuildContext context, String image) {
   showGeneralDialog(
@@ -308,12 +253,154 @@ void showImagePreview(BuildContext context, String image) {
   );
 }
 
-  Widget buildAttendanceCard(Map item) {
-    final image = item['punch_img'];
-    final latitude = item['latitude'];
-    final longitude = item['longitude'];
+void _showDetailsOfVisit(Map item) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Theme.of(context).brightness == Brightness.light
+        ? Color(0xFFF2F5F8)
+        : Color(0xFF121212),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (BuildContext context) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.light
+                      ? Colors.grey[300]
+                      : Color(0xFF121212),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
 
-    return Container(
+                // Title
+                Text(
+                  "Visit Details",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).iconTheme.color,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                
+                _buildDetailRow(FontAwesomeIcons.calendar,"  Date", getFormattedDate(item['day_id_formatted'])),
+
+                _buildDetailRow(FontAwesomeIcons.clock,"  Time", item['visit_time_formatted'] ?? '-'),
+
+                _buildDetailRow(FontAwesomeIcons.user,"  Visitor Name", visitorName ?? '-'),
+
+                _buildDetailRow(FontAwesomeIcons.briefcase,"  Visit Type", item['visit_type'] ?? '-'),
+
+                _buildDetailRow(FontAwesomeIcons.building,"  Visit Company", item['party_name'] ?? '-'),
+
+                _buildDetailRow(FontAwesomeIcons.carSide, "  Travelling Mode", item['travel_mode'] ?? 'None'),
+
+                _buildDetailRow(FontAwesomeIcons.locationCrosshairs,'  To Address', item['to_location'] ?? 'N/A'),
+
+                _buildDetailRow(FontAwesomeIcons.locationArrow,'  From Address', item['from_location'] ?? 'N/A'),
+
+                _buildDetailRow(FontAwesomeIcons.road,"  Distance", item['distance'] ?? '0.0 km'),
+                
+
+                const SizedBox(height: 8),
+
+                if (item['latitude'] != null && item['longitude'] != null)
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade50,
+                      foregroundColor: Colors.blue.shade700,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      elevation: 0,
+                    ),
+                    onPressed: () => _launchMap(item['latitude'], item['longitude']),
+                    icon: const Icon(Icons.location_on_outlined),
+                    label: const Text(
+                      "View Location",
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Widget _buildDetailRow(IconData icon, String label, String value) {
+  return Container(
+    margin: const EdgeInsets.symmetric(vertical: 6),
+    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+    decoration: BoxDecoration(
+    color: Theme.of(context).brightness == Brightness.light
+  ? Colors.grey.shade50
+  : Color(0xFF121212),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.grey.shade200),
+    ),
+    child: Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.blueGrey.withOpacity(0.7)),
+        Expanded(
+          flex: 3,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade300 : Colors.black87,
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 5,
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade300 : Colors.black87,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+
+
+  Widget buildAttendanceCard(Map item) {
+    final image = item['visit_img'];
+    // final latitude = item['latitude'];
+    // final longitude = item['longitude'];
+
+    return GestureDetector(
+      onTap: () {
+        _showDetailsOfVisit(item);
+  },
+    child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -333,33 +420,32 @@ void showImagePreview(BuildContext context, String image) {
         children: [
           const SizedBox(height: 12),
           Text(
-            getFormattedDate(item['punch_date']),
-            style:TextStyle(
+            getFormattedDate(item['day_id_formatted']),
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Theme.of(context).iconTheme.color,
+               color: Theme.of(context).iconTheme.color,
             ),
           ),
 
           const SizedBox(height: 12),
-
           Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             buildImageOrPlaceholder(image, context),
               const SizedBox(width: 16),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Expanded(
                         child: Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
+                        padding: const EdgeInsets.only(left: 8.0),
                           child: Text(
-                            (item['punch_time'] ?? ''),
+                            (item['visit_time_formatted'] ?? ''),
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -367,11 +453,19 @@ void showImagePreview(BuildContext context, String image) {
                           ),
                         ),
                       ),
+
+                      Container(
+                        height: 16,
+                        width: 1,
+                        color: Colors.grey.shade400,
+                       margin: const EdgeInsets.only(right: 20.0),
+                      ),
+
                         Expanded(
                           child: Padding(
-                          padding:  EdgeInsets.symmetric(horizontal: 4.h),
+                          padding:  EdgeInsets.symmetric(horizontal: 10.h),
                           child: Text(
-                            item['punch_type'] ?? '',
+                            item['visit_type'] ?? '',
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -379,76 +473,35 @@ void showImagePreview(BuildContext context, String image) {
                           ),
                         ),
                       ),
-                        Expanded(
-                          child: Padding(
-                           padding:  EdgeInsets.symmetric(horizontal: 1.0.h),
-                          child: Text(
-                            item['punch_place'] ?? '',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        ),
-                        
-                      Padding(
-                       padding: const EdgeInsets.only(right: 10.0),
-                        child: (latitude != null && longitude != null)
-                          ? GestureDetector(
-                            onTap: () => _launchMap(latitude, longitude),
-                            child: Row(
-                              children: const [
-                                Icon(
-                                  Icons.location_on_outlined,
-                                  color: Colors.red,
-                                  size: 18,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  "View",
-                                  style: TextStyle(
-                                    color: Colors.blue,
-                                    fontSize: 14,
-                                    decoration: TextDecoration.underline,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ): SizedBox.shrink(),
-                        ),
                       ],
                     ),
-
+                  
                     const SizedBox(height: 4),
                     Row(
-                      children: const [
-                        Expanded(
-                          child: Text(
-                            "Time",
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 20.0),
+                        child: Text(
+                          "Time",
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
-                        Expanded(
-                          child: Text(
-                            "Punch",
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            "Place",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey
+                      ),
+                    ),
+
+                    Container(
+                      height: 0, 
+                      width: 1,
+                      color: Colors.transparent,
+                    ),
+
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 45.5),
+                        child: Text(
+                          "Visit",
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
                             ),
-                          ),
-                        ),
-                        Text(
-                          "Location",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
                           ),
                         ),
                       ],
@@ -461,18 +514,19 @@ void showImagePreview(BuildContext context, String image) {
           ),
         ],
       ),
+    ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).brightness == Brightness.light
+       backgroundColor: Theme.of(context).brightness == Brightness.light
         ? Color(0xFFF2F5F8)
         : Color(0xFF121212),
       appBar: AppBar(
                 title: Text(
-                  "Attendance History",
+                  "Visit History",
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -487,7 +541,7 @@ void showImagePreview(BuildContext context, String image) {
       body: Stack( 
        children: [
         Container(
-          decoration: BoxDecoration(
+         decoration: BoxDecoration(
               gradient: Theme.of(context).brightness == Brightness.dark
                   ? const LinearGradient(
                       colors: [Color(0xFF121212), Color(0xFF121212)],
@@ -501,15 +555,6 @@ void showImagePreview(BuildContext context, String image) {
                     ),
             ),
           ),
-
-          // buildAnimatedStripe(
-          //     speedFactor: 1.0, color: Colors.white.withOpacity(0.1)),
-          // buildAnimatedStripe(
-          //     speedFactor: 1.5, color: Colors.grey.withOpacity(0.1)),
-          // buildAnimatedStripe(
-          //     speedFactor: 2.0, color: Colors.white.withOpacity(0.07)),
-          // buildAnimatedStripe(
-          //     speedFactor: 2.5, color: Colors.grey.withOpacity(0.07)),
 
       Column(
         children: [
@@ -557,9 +602,9 @@ void showImagePreview(BuildContext context, String image) {
           Expanded(
             child:
                 isLoading
-                    ? Center(child: CircularProgressIndicator(color: Theme.of(context).iconTheme.color,))
+                    ? Center(child:CircularProgressIndicator(color: Theme.of(context).iconTheme.color,))
                     : isFirstLoadDone
-                    ? attendanceList.isEmpty
+                    ? visitList.isEmpty
                     ? Center(
                       child: Padding(
                         padding: const EdgeInsets.all(24.0),
@@ -574,12 +619,12 @@ void showImagePreview(BuildContext context, String image) {
                               fit: BoxFit.cover
                             ),
                             const SizedBox(height: 5),
-                            const Text(
-                              "No Attendance Records Found !",
+                             Text(
+                              "No Visit Entry Records Found !",
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.grey,
+                                color: Theme.of(context).brightness == Brightness.dark ? Colors.grey : Colors.black87,
                               ),
                             ),
                           ],
@@ -587,18 +632,18 @@ void showImagePreview(BuildContext context, String image) {
                       ),
                     )
                     : RefreshIndicator(
-                      color: Theme.of(context).iconTheme.color,
-                      backgroundColor: Theme.of(context).scaffoldBackgroundColor ,
+                      color: Colors.black,
+                      backgroundColor: Colors.white,
                       onRefresh: () async {
-                        await fetchAttendanceData(
+                        await fetchVisitData(
                           selectedDate ?? DateTime.now(),
                         );
                       },
                       child: ListView.builder(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        itemCount: attendanceList.length,
+                        itemCount: visitList.length,
                         itemBuilder: (context, index) {
-                          return buildAttendanceCard(attendanceList[index]);
+                          return buildAttendanceCard(visitList[index]);
                         },
                       ),
                     )
@@ -679,7 +724,7 @@ Widget _buildPlaceholderContainer() {
     height: 95,
     width: 95,
     decoration: BoxDecoration(
-      color: Colors.grey.shade300,
+      color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade300,
       borderRadius: BorderRadius.circular(12),
     ),
     child: const Icon(

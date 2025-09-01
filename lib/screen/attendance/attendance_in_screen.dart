@@ -13,6 +13,7 @@ import 'package:image/image.dart' as img;
 import 'package:camera/camera.dart';
 import '../utils/user_session.dart';
 import '../utils/network_failure.dart';
+import '../helper/top_snackbar.dart';
 
 class AttendanceScreenIN extends StatefulWidget {
   const AttendanceScreenIN({super.key});
@@ -120,7 +121,7 @@ initialStatus.then((status) {
 
   } catch (e) {
     debugPrint('Initialization error: $e');
-   _showCustomSnackBar(context, 'Error: $e', Colors.red, Icons.error);
+   showCustomSnackBar(context, 'Error: $e', Colors.red, Icons.error);
     _initializeControllerFuture = Future.value();
     setState(() {
       isLoading = false;
@@ -157,7 +158,7 @@ initialStatus.then((status) {
     await openAppSettings();
     return false;
   } else {
-    _showCustomSnackBar(context, 'Location permission is required.', Colors.teal.shade400, Icons.location_on_outlined);
+    showCustomSnackBar(context, 'Location permission is required.', Colors.teal.shade400, Icons.location_on_outlined);
     return false;
   }
 }
@@ -172,7 +173,7 @@ Future<bool> requestCameraPermission() async {
     await openAppSettings();
     return false;
   } else {
-    _showCustomSnackBar(context, 'Camera permission is required.', Colors.lightBlue.shade200, Icons.camera_alt_outlined);
+    showCustomSnackBar(context, 'Camera permission is required.', Colors.lightBlue.shade200, Icons.camera_alt_outlined);
     return false;
   }
 }
@@ -190,7 +191,7 @@ Future<void> getLocation() async {
   if (permission == LocationPermission.denied) {
     permission = await Geolocator.requestPermission();
     if (permission == LocationPermission.denied) {
-      _showCustomSnackBar(context, 'Location permission is Denied.', Colors.yellow.shade900, Icons.location_on_outlined);
+      showCustomSnackBar(context, 'Location permission is Denied.', Colors.yellow.shade900, Icons.location_on_outlined);
     }
   }
 
@@ -292,7 +293,7 @@ Future<void> _captureImage() async {
 
   if (!_formKey.currentState!.validate() || field == null) {
     if (mounted) {
-      _showCustomSnackBar(
+      showCustomSnackBar(
         context,
         "Please fill all fields",
         Colors.yellow.shade900,
@@ -305,7 +306,7 @@ Future<void> _captureImage() async {
 
   if (field == 'FIELD' && (narration?.trim().isEmpty ?? true)) {
     if (mounted) {
-      _showCustomSnackBar(
+      showCustomSnackBar(
         context,
         'Please enter a remark for Field work',
         Colors.orange,
@@ -318,7 +319,7 @@ Future<void> _captureImage() async {
 
   if (base64Image == null) {
     if (mounted) {
-      _showCustomSnackBar(
+      showCustomSnackBar(
         context,
         'Please capture an image',
         Colors.teal.shade400,
@@ -338,13 +339,12 @@ Future<void> _captureImage() async {
   }
 
   try {
-    if (currentPosition == null) {
-      currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-    }
 
-    _formKey.currentState!.save();
+     currentPosition ??= await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    // _formKey.currentState!.save();
 
     if (field == 'OFFICE') narration = '';
 
@@ -375,18 +375,21 @@ Future<void> _captureImage() async {
     await UserSession.checkInvalidAuthToken(context, resBody, response.statusCode);
 
     if (response.statusCode == 200) {
-      if (mounted) {
-        _showCustomSnackBar(
-          context,
-          'Punch In marked successfully',
-          Colors.green,
-          Icons.check_circle,
-        );
-        await _resetForm();
-      }
+      if (!mounted) return;
+      showCustomSnackBar(
+        context,
+        'Punch In marked successfully',
+        Colors.green,
+        Icons.check_circle,
+      );
+     
+      await _resetForm();
+
+      Navigator.pop(context,true);
+
     } else {
       if (mounted) {
-        _showCustomSnackBar(
+        showCustomSnackBar(
           context,
           resBody['message'] ?? 'Something went wrong',
           Colors.red,
@@ -395,8 +398,9 @@ Future<void> _captureImage() async {
       }
     }
   } catch (e) {
+    print('Error: $e');
     if (mounted) {
-      _showCustomSnackBar(
+      showCustomSnackBar(
         context,
         'An unexpected error occurred: $e',
         Colors.red,
@@ -404,10 +408,12 @@ Future<void> _captureImage() async {
       );
     }
   } finally {
-    if (mounted) {
-      setState(() => isSubmitting = false);
-    }
-  }
+  if (!mounted) return;
+  setState(() {
+    isSubmitting = false;
+    loadingText = null;
+  });
+}
 }
 
 
@@ -432,55 +438,34 @@ Future<void> _captureImage() async {
       field = null;
       base64Image = null;
       _imageFile = null;
-      currentPosition = null;
+      // currentPosition = null;
       });
     }
 
     @override
     void dispose() {
-    // _connectionSubscription?.cancel();
+    _connectivitySubscription?.cancel();
     _cameraController?.dispose();
     super.dispose();
     }
 
-
- void _showCustomSnackBar(BuildContext context, String message, Color color, IconData icon) {
-  final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    scaffoldMessenger.clearSnackBars();
-    final snackBar = SnackBar(
-      content: Row(
-        children: [
-          Icon(icon, color: Colors.white),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ),
-        ],
-      ),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      margin: const EdgeInsets.all(16),
-      duration: const Duration(seconds: 3),
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  }
-
 @override
 Widget build(BuildContext context) {
   return Scaffold(
-    backgroundColor: Color(0xFFF2F5F8),
+   backgroundColor: Theme.of(context).brightness == Brightness.light
+        ? Color(0xFFF2F5F8)
+        : Color(0xFF121212),
    appBar:AppBar(
     backgroundColor: Colors.transparent, 
-      title: const Text(
+      title: Text(
         "Check-In",
-        style: TextStyle(fontWeight: FontWeight.bold),
-      ),
+         style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+    ),
+    foregroundColor: Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black87,
       forceMaterialTransparency: true,
     ),
 
@@ -497,20 +482,26 @@ Widget build(BuildContext context) {
     children: [
     Container (
     padding: const EdgeInsets.all(20),
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-        begin: Alignment.topRight,
-        end: Alignment.bottomLeft,
-      ),
-    ),
+    decoration: BoxDecoration(
+              gradient: Theme.of(context).brightness == Brightness.dark
+                  ? const LinearGradient(
+                      colors: [Color(0xFF121212), Color(0xFF121212)],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)], 
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
+            ),
 
       child:Form(
         key: _formKey,
         child: RefreshIndicator(
           onRefresh: handlePullToRefresh,
-          color: Colors.black,
-          backgroundColor: Colors.white ,
+          color: Theme.of(context).iconTheme.color,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor ,
           child: ListView(
             children: [
             Padding(
@@ -518,11 +509,11 @@ Widget build(BuildContext context) {
         child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          buildReadOnlyField("Employee ID", _emId ?? "N/A"),
+          buildReadOnlyField(context,"Employee ID", _emId ?? "N/A"),
           const SizedBox(height: 16),
-          buildReadOnlyField("Employee Name", _emUsername ?? "N/A"),
+          buildReadOnlyField(context,"Employee Name", _emUsername ?? "N/A"),
           const SizedBox(height: 16),
-          buildReadOnlyField("Company Name", _compFname ?? "N/A"),
+          buildReadOnlyField(context,"Company Name", _compFname ?? "N/A"),
           const SizedBox(height: 24),
 
           Text("Punch Place*", style: labelStyle),
@@ -531,12 +522,14 @@ Widget build(BuildContext context) {
 
           DropdownButtonFormField<String>(
             value: field,
-            decoration: inputDecoration,
-            dropdownColor: Colors.white,
+            decoration: inputDecoration(context),
+            dropdownColor: Theme.of(context).scaffoldBackgroundColor,
             items: ['OFFICE', 'FIELD'].map((String value) {
               return DropdownMenuItem<String>(
                 value: value,
-                child: Text(value, style: inputTextStyle),
+                child: Text(value, style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: 14,
+                  )),
               );
             }).toList(),
             onChanged: (val) => setState(() => field = val),
@@ -558,10 +551,10 @@ Widget build(BuildContext context) {
           TextFormField(
             controller: _narrationController,
             maxLines: 2,
-            style: inputTextStyle,
-            decoration: inputDecoration.copyWith(
-              hintText: "Remark",
-            ),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            fontSize: 14),
+            decoration: inputDecoration(context).copyWith(
+              hintText: "Remark"),
             validator: (value) {
             if (field == 'FIELD' && (value == null || value.trim().isEmpty)) 
             {
@@ -584,7 +577,7 @@ Widget build(BuildContext context) {
             future: _initializeControllerFuture,
             builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return  Center(child: CircularProgressIndicator(color: Theme.of(context).iconTheme.color));
                 }
 
                 if (snapshot.connectionState == ConnectionState.done) {
@@ -647,7 +640,7 @@ Widget build(BuildContext context) {
                       : 'Press button to capture image'),
               style: TextStyle(
                 fontSize: 16,
-                color: _isCapturing ? Colors.red : Colors.black87,
+                color: _isCapturing ? Colors.red : Theme.of(context).iconTheme.color,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -763,25 +756,33 @@ Widget build(BuildContext context) {
   }
 }
 
- Widget buildReadOnlyField(String label, String value) {
+ Widget buildReadOnlyField(BuildContext context,String label, String value) {
           return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
           Text(
           label,
-          style: TextStyle(
-          fontSize: 14,
-          color: const Color(0xFF6C757D),
-          fontWeight: FontWeight.w500,
-        ),
-      ),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey.shade300 
+                  : const Color(0xFF6C757D), 
+            ),
+         ),
           const SizedBox(height: 8),
           Container(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.grey.shade900
+              : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(5),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey.shade700
+                : Colors.grey.shade300,
+          ),
           ),
           child: Row(
           children: [
@@ -790,7 +791,9 @@ Widget build(BuildContext context) {
           value,
           style: TextStyle(
           fontSize: 15,
-          color:  const Color(0xFF212529),
+          color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : const Color(0xFF212529),
         ),
        ),
       ),
@@ -812,9 +815,13 @@ final inputTextStyle = const TextStyle(
   color: Color(0xFF212529),
 );
 
-final inputDecoration = InputDecoration(
+InputDecoration inputDecoration(BuildContext context){
+  return InputDecoration(
   filled: true,
-  fillColor: Colors.white,
+  fillColor: Theme.of(context).brightness == Brightness.dark
+      ? Colors.grey.shade900
+      : Colors.white,
+
   contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
   border: OutlineInputBorder(
     borderRadius: BorderRadius.circular(5),
@@ -829,6 +836,7 @@ final inputDecoration = InputDecoration(
     borderSide: const BorderSide(color: Colors.blueGrey, width: 1.5),
   ),
 );
+}
 
 final primaryButtonStyle = ElevatedButton.styleFrom(
   backgroundColor: Colors.blue.shade50,

@@ -1,30 +1,43 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../helper/top_snackbar.dart';
 
-class LeaveDetailPage extends StatelessWidget {
-  final Map<String, dynamic> leave;
+class ExpenseRequestDetails extends StatelessWidget {
+
+  final Map<String, dynamic> expense;
   final void Function(String action, [String? reason]) onAction;
   final baseUrl = dotenv.env['API_BASE_URL'];
 
-  LeaveDetailPage({super.key, 
-    required this.leave,
+  ExpenseRequestDetails({super.key, 
+    required this.expense,
     required this.onAction,
   });
 
-  @override
+    void _launchMap(BuildContext context,String latitude, String longitude) async {
+    final url =
+        "https://www.google.com/maps/search/?api=1&query=$latitude,$longitude";
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      showCustomSnackBar(context, 'Cannot open map', Colors.red, Icons.error);
+
+    }
+  }
+
+    @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final status = leave['leave_status'] ?? 'pending';
+    final status = expense['approval_status'] ?? 'PENDING';
 
     return Scaffold(
       backgroundColor: Theme.of(context).brightness == Brightness.light
         ? Color(0xFFF2F5F8)
         : Color(0xFF121212),
       appBar: AppBar(
-        title: const Text("Leave Details", style: TextStyle(fontWeight: FontWeight.bold),),
+        title: const Text("Expense Request Details", style: TextStyle(fontWeight: FontWeight.bold),),
         centerTitle: false,
         elevation: 0,
         foregroundColor: Theme.of(context).brightness == Brightness.dark
@@ -75,7 +88,7 @@ class LeaveDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         
-                        // Leave Type
+                        // expense Type
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
                           decoration: BoxDecoration(
@@ -86,7 +99,7 @@ class LeaveDetailPage extends StatelessWidget {
                             children: [
                               Icon(Icons.calendar_today_outlined, size: 16, color: Colors.grey.shade600),
                               const SizedBox(width: 8),
-                              Expanded(child: Text(leave['leave_type_name'] ?? ''))
+                              Expanded(child: Text(expense['expense_name'] ?? ''))
                             ],
                           )
                         ),
@@ -95,78 +108,57 @@ class LeaveDetailPage extends StatelessWidget {
                         const Divider(height: 32),
                     
                         _buildSectionHeader(Icons.person_outline, 'Employee Information'),
-                        _buildInfoTile(context,Icons.badge_outlined, "Employee ID", leave['emp_id'].toString()),
-                        _buildInfoTile(context,Icons.person, "Employee", leave['empname']),
-                        _buildInfoTile(context,Icons.business_outlined, "Company", leave['compname']),
-                        _buildInfoTile(context,Icons.construction, "Department", leave['dep_name']),
+                        _buildInfoTile(context,Icons.badge_outlined, "Employee ID", expense['emp_id'].toString()),
+                        _buildInfoTile(context,Icons.person, "Employee", expense['empname']),
+                        _buildInfoTile(context,Icons.business_outlined, "Company", expense['compname']),
+                        _buildInfoTile(context,Icons.construction, "Department", expense['dep_name']),
                         
                         const Divider(height: 32),
                         
-                        _buildSectionHeader(Icons.date_range_outlined, 'Leave Dates'),
-                        _buildInfoTile(context,Icons.play_circle_outline, "Start Date", leave['start_date']),
-                        _buildInfoTile(context,Icons.stop_circle_outlined, "End Date", leave['end_date']),
-                        _buildInfoTile(context,Icons.timelapse_outlined, "Duration", "${leave['leave_duration_formatted']}"),
+                        _buildSectionHeader(Icons.date_range_outlined, 'expense Information'),
+              
+                        _buildInfoTile(context,Icons.timelapse_outlined, "Date", "${expense['exp_date_formatted']}"),
+
+                        _buildInfoTile(context,Icons.currency_rupee, "Amount", "${expense['expense_amount']}"),
                         
-                        const Divider(height: 32),
-                        
-                        _buildInfoTile(context,Icons.note_outlined, "Reason", leave['reason']),
+                        _buildInfoTile(context,Icons.note_outlined, "Description", expense['exp_description']),
 
-                        _buildInfoTile(context,Icons.attach_file_outlined, "Attachment",   (leave['leaveattachment'] != null && leave['leaveattachment'].toString().trim().isNotEmpty)
-                      ? leave['leaveattachment'].toString().split('/').last.split('?').first
-                      : "No attachment",
-                      color: (leave['leaveattachment'] != null && leave['leaveattachment'].toString().trim().isNotEmpty)
-                      ? Colors.blueGrey
-                      : Colors.grey,
-                        onTap: () async {
-                        print('onTap triggered');
-                        final fileUrl = leave['leaveattachment'];
-                        print('File Name: $fileUrl');
+                        if (expense['approval_status'] == 'REJECTED' && expense['rejectreason'] != null && expense['rejectreason'] != '') ...[
+                          _buildInfoTile(context,Icons.block_outlined, "Reject Reason", expense['rejectreason'], color: Colors.red),
 
-                        if (fileUrl == null || fileUrl.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('No attachment found')),
-                        );
-                        return;
-                        }
-                        
-                      print('Attachment: ${leave['leaveattachment']}');
-                      try {
-                      final fileName = fileUrl.split('/').last.split('?').first;
-                      final dir = await getTemporaryDirectory();
-                      final filePath = '${dir.path}/$fileName';
-                      await Dio().download(fileUrl, filePath);
-                      final result = await OpenFilex.open(filePath);
-                        if (result.type != ResultType.done) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Could not open attachment')),
-                          );
-                        }
-                      }catch(e){
-                        print('Download/open error: $e');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to download attachment')),
-                        );
-                      } 
-                    }        
-                  ),
-                        if (leave['leave_status'] == 'Rejected' && leave['reject_reason'] != null && leave['reject_reason'] != '') ...[
-                          _buildInfoTile(context,Icons.block_outlined, "Reject Reason", leave['reject_reason'], color: Colors.red),
+                        _buildInfoTile(context,Icons.confirmation_num, "Rejected By", expense['approval_by'], color: Colors.red),
 
-                        _buildInfoTile(context,Icons.confirmation_num, "Rejected By", leave['approval_by'], color: Colors.red),
-
-                        _buildInfoTile(context,Icons.timer, "Rejected At", leave['approval_at'], color: Colors.red),
+                        _buildInfoTile(context,Icons.timer, "Rejected At", expense['approval_at'], color: Colors.red),
                         ],
 
-                       if(leave['leave_status'] == 'Approve') ...[
-                          _buildInfoTile(context,Icons.confirmation_num, "Approved By", leave['approval_by'], color: Colors.green),
+                       if(expense['approval_status'] == 'APPROVED') ...[
+                          _buildInfoTile(context,Icons.confirmation_num, "Approved By", expense['approval_by'], color: Colors.green),
 
-                          _buildInfoTile(context,Icons.timer, "Approved At", leave['approval_at'], color: Colors.green),
+                          _buildInfoTile(context,Icons.timer, "Approved At", expense['approval_at'], color: Colors.green),
+
+                          _buildInfoTile(context,FontAwesomeIcons.rupeeSign, "Approved Amount", expense['approve_amt'], color: Colors.green),
                        ],
 
-                        if (status.toLowerCase() == 'pending') ...[
-                          const Divider(height: 32),
-                          _buildActionButtons(context),
-                        ],
+                        const SizedBox(height: 16),
+
+                 if (expense['latitude'] != null && expense['longitude'] != null)
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade50,
+                      foregroundColor: Colors.blue.shade700,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                      elevation: 2,
+                    ),
+                    onPressed: () => _launchMap(context,expense['latitude'], expense['longitude']),
+                    icon: const Icon(FontAwesomeIcons.locationCrosshairs, size: 16),
+                    label: const Text(
+                      "View Location",
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
                       ],
                     ),
                   ),
@@ -249,46 +241,9 @@ Widget _buildInfoTile(
   );
 }
 
-  Widget _buildActionButtons(BuildContext context) {
-  return Column(
-    children: [
-      SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          icon: const Icon(Icons.check_circle_outline, size: 20),
-          onPressed: () => onAction('approve'),
-          label: const Text("Approve"),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            padding: const EdgeInsets.symmetric(vertical: 14.0),
-            textStyle: const TextStyle(fontSize: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-          ),
-        ),
-      ),
-      const SizedBox(height: 12),
-      SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          icon: const Icon(Icons.cancel_outlined, size: 20),
-          onPressed: () => _showRejectDialog(context),
-          label: const Text("Reject"),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            padding: const EdgeInsets.symmetric(vertical: 14.0),
-            textStyle: const TextStyle(fontSize: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-          ),
-        ),
-      ),
-    ],
-  );
-} 
-  void _showRejectDialog(BuildContext context) {
-  }
 
   IconData _getStatusIcon(String status) {
-    if (status.toLowerCase() == 'approve') {
+    if (status.toLowerCase() == 'approved') {
       return Icons.verified;
     } else if (status.toLowerCase() == 'rejected') {
       return Icons.cancel_outlined;
@@ -298,7 +253,7 @@ Widget _buildInfoTile(
   }
 
   Color _getStatusColor(String status) {
-    if (status.toLowerCase() == 'approve') {
+    if (status.toLowerCase() == 'approved') {
       return Colors.green.withOpacity(0.1);
     } else if (status.toLowerCase() == 'rejected') {
       return Colors.red.withOpacity(0.1);
@@ -308,7 +263,7 @@ Widget _buildInfoTile(
   }
 
   Color _getStatusTextColor(String status) {
-    if (status.toLowerCase() == 'approve') {
+    if (status.toLowerCase() == 'approved') {
       return Colors.green;
     } else if (status.toLowerCase() == 'rejected') {
       return Colors.red;

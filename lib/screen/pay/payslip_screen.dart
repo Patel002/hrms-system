@@ -6,11 +6,11 @@ import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';  
 import 'package:shimmer/shimmer.dart';
 import 'package:open_filex/open_filex.dart';
-// import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-// import 'package:permission_handler/permission_handler.dart';
 import 'package:dio/dio.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../utils/user_session.dart';
+import '../helper/top_snackbar.dart';
 
 class PayslipScreen extends StatefulWidget {
   const PayslipScreen({super.key});
@@ -93,11 +93,11 @@ class _PayslipScreenState extends State<PayslipScreen> {
 
         print('Payslip List: $payslipList');
       } else {
-        _showCustomSnackBar(context, 'Failed to load payslips', Colors.red, Icons.error);
+        showCustomSnackBar(context, 'Failed to load payslips', Colors.red, Icons.error);
       }
     }catch(e){
       print(e); 
-      _showCustomSnackBar(context, '$e', Colors.red, Icons.error);
+      showCustomSnackBar(context, '$e', Colors.red, Icons.error);
       setState(() {
         isLoading = false;
       });
@@ -113,7 +113,7 @@ Future <void> _refreshPage() async {
     isLoading = true;
   });
   await fetchPaySlipDate();
-  _showCustomSnackBar(context, 'Payslip List Refreshed', Colors.teal.shade400, Icons.refresh);
+  showCustomSnackBar(context, 'Payslip List Refreshed', Colors.teal.shade400, Icons.refresh);
 
   setState(() {
     isLoading = false;
@@ -155,78 +155,43 @@ Future<void> downloadAndOpenPdf(BuildContext context, String url, String fileNam
 
     await OpenFilex.open(filePath);
   } catch (e) {
-    _showCustomSnackBar(context, 'Failed to download PDF', Colors.red, Icons.error);
+    showCustomSnackBar(context, 'Failed to download PDF', Colors.red, Icons.error);
 
   }
 }
-
-void _showCustomSnackBar(
-    BuildContext context,
-    String message,
-    Color color,
-    IconData icon,
-  ) {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    scaffoldMessenger.clearSnackBars();
-
-    final snackBar = SnackBar(
-      content: Row(
-        children: [
-          Icon(icon, color: Colors.white),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ),
-        ],
-      ),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      margin: const EdgeInsets.all(16),
-      duration: const Duration(seconds: 3),
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-      backgroundColor: Colors.lightBlueAccent.shade100,
-      appBar: PreferredSize(
-      preferredSize: const Size.fromHeight(kToolbarHeight),
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-            begin: Alignment.bottomLeft,
-            end: Alignment.topRight,
-          ),
-        ),
-        child: AppBar(
+      backgroundColor: Theme.of(context).brightness == Brightness.light
+        ? Color(0xFFF2F5F8)
+        : Color(0xFF121212),
+      appBar:AppBar(
                 title: const Text(
                   "Payslips",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               backgroundColor: Colors.transparent, 
-                foregroundColor: Colors.black,
+              foregroundColor: Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black87,
                 elevation: 0,
               ),
-            ),
-          ),
       body:Container (
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)],
-        begin: Alignment.topRight,
-        end: Alignment.bottomLeft,
-      ),
-    ),
+     decoration: BoxDecoration(
+              gradient: Theme.of(context).brightness == Brightness.dark
+                  ? const LinearGradient(
+                      colors: [Color(0xFF121212), Color(0xFF121212)],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)], 
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
+            ),
       child:isLoading
       ? _buildShimmerList()
             : RefreshIndicator(
@@ -240,7 +205,7 @@ void _showCustomSnackBar(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).scaffoldBackgroundColor,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.grey.shade300),
                     boxShadow: [
@@ -258,12 +223,12 @@ void _showCustomSnackBar(
                         isExpanded: true,
                         value: selectedYearValue,
                         borderRadius: BorderRadius.circular(10),
-                        dropdownColor: Color(0xFFF2F5F8),
+                        dropdownColor: Theme.of(context).scaffoldBackgroundColor,
                         hint: const Text("Select Financial Year"),
                         icon: const Icon(Icons.arrow_drop_down),
-                        style: const TextStyle(
-                          color: Colors.black87,
+                        style: TextStyle(    
                           fontSize: 16,
+                          color: Theme.of(context).iconTheme.color,
                         ),
                         items: yearList.map<DropdownMenuItem<String>>((year) {
                           return DropdownMenuItem<String>(
@@ -311,7 +276,7 @@ void _showCustomSnackBar(
               children: [
               Card(
                 elevation: 4,
-                color: Colors.white,
+                color: Theme.of(context).scaffoldBackgroundColor,
                 shadowColor: Colors.grey.withOpacity(0.2),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -337,24 +302,24 @@ void _showCustomSnackBar(
                                 style: const TextStyle(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w700,
-                                  color: Colors.black87,
+                                  // color: Colors.black87,
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  const Icon(Icons.event, size: 16, color: Colors.grey),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    "Salary Date: ${DateFormat('dd MMM yyyy').format(DateTime.parse(salaryDate))}",
-                                    style: TextStyle(
-                                      color: Colors.grey[700],
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                                const SizedBox(height: 4),
+                              // Row(
+                              //   children: [
+                              //     const Icon(Icons.event, size: 16, color: Colors.grey),
+                              //     const SizedBox(width: 6),
+                              //     Text(
+                              //       "Salary Date: ${DateFormat('dd MMM yyyy').format(DateTime.parse(salaryDate))}",
+                              //       style: TextStyle(
+                              //         color: Colors.grey[700],
+                              //         fontSize: 14,
+                              //       ),
+                              //     ),
+                              //   ],
+                              // ),
+                              //   const SizedBox(height: 4),
                                 Row(
                                   children: [
                                     const Icon(Icons.payments_rounded, size: 16, color: Colors.grey),
@@ -368,13 +333,55 @@ void _showCustomSnackBar(
                                     ),
                                   ],
                                 ),
+
+                              const SizedBox(height: 4),
+                                Row(
+                                children: [
+                                  const Icon(FontAwesomeIcons.calendar, size: 16, color: Colors.grey),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "Days: ${payslip['total_days'] ?? '0'}",
+                                    style: TextStyle(
+                                      color: Colors.grey[700],
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.account_balance, size: 16, color: Colors.grey),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "Earning: ${payslip['earnings'] ?? '0.00'}",
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.difference_rounded, size: 16,  color: Colors.grey),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "Deduction: ${payslip['deductions'] ?? '0.00'}",
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
                                     const Icon(Icons.paid, size: 16, color: Colors.grey),
                                     const SizedBox(width: 6),
                                     Text(
-                                      "Net Paid: ${payslip['net_pay'] ?? '0.00'}",
+                                      "Net Pay: ${payslip['net_pay'] ?? '0.00'}",
                                       style: TextStyle(
                                         color: Colors.grey[700],
                                         fontSize: 14,
