@@ -115,7 +115,7 @@ Future<void> _loadVersion() async {
 }
 
 
-  String getTime(String dateTime) {
+  String getTime(String? dateTime) {
     if (dateTime == null || dateTime.isEmpty) return '-';
       final parts = dateTime.split(" ");
     if (parts.length >= 3) {

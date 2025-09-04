@@ -487,7 +487,7 @@ Future<void> _confirmDelete(List<String> leaveIds) async {
           : Row(
               children: [
                  Text(
-                  "Expense History",
+                  "Leave History",
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),

@@ -67,7 +67,6 @@ final Map<String, IconData> sectionIcons = {
   "Letter": FontAwesomeIcons.letterboxd
 };
 
-
  void _onPageChanged(int index) {
     setState(() {
       _currentIndex = index;
@@ -78,7 +77,7 @@ final Map<String, IconData> sectionIcons = {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Scaffold(
+      Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(kToolbarHeight),
         child: AnimatedContainer(
@@ -117,7 +116,7 @@ final Map<String, IconData> sectionIcons = {
                         style: const TextStyle(fontSize: 16),
                       ),
                     ],
-                  ),     
+                   ),     
                   );
                 }).toList(),
                 offset: const Offset(0, kToolbarHeight),

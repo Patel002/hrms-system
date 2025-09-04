@@ -528,25 +528,25 @@ Widget build(BuildContext context) {
     Container (
     padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
-              gradient: Theme.of(context).brightness == Brightness.dark
-                  ? const LinearGradient(
-                      colors: [Color(0xFF121212), Color(0xFF121212)],
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
-                    )
-                  : const LinearGradient(
-                      colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)], 
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
-                    ),
+        gradient: Theme.of(context).brightness == Brightness.dark
+            ? const LinearGradient(
+                colors: [Color(0xFF121212), Color(0xFF121212)],
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+              )
+            : const LinearGradient(
+                colors: [Color(0xFFF5F7FA), Color(0xFFE4EBF5)], 
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+              ),
             ),
 
       child:Form(
         key: _formKey,
         child: RefreshIndicator(
           onRefresh: handlePullToRefresh,
-          color: Colors.black,
-          backgroundColor: Colors.white ,
+          color: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Theme.of(context).iconTheme.color,
           child: ListView(
             children: [
             Padding(
@@ -554,6 +554,7 @@ Widget build(BuildContext context) {
         child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+
           buildReadOnlyField(context,"Employee ID", _emId ?? "N/A"),
           const SizedBox(height: 16),
           buildReadOnlyField(context,"Employee Name", _emUsername ?? "N/A"),
@@ -586,7 +587,8 @@ Widget build(BuildContext context) {
             TextFormField(
               controller: (_amountController),
             keyboardType: TextInputType.number,
-            style: inputTextStyle,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            fontSize: 14),
             decoration: inputDecoration(context).copyWith(
               hintText: "Amount*",
               prefixText: "\₹ ",
@@ -622,9 +624,10 @@ Widget build(BuildContext context) {
           TextFormField(
             controller: _descriptionController,
             maxLines: 2,
-            style: inputTextStyle,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            fontSize: 14),
             decoration: inputDecoration(context).copyWith(
-              hintText: " Description*",
+              hintText: "Description*",
             ),
             validator: (value) {
             if ((value == null || value.trim().isEmpty)) 

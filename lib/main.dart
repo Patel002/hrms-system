@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:safe_device/safe_device.dart';
 import 'screen/splash_screen.dart';
 import 'screen/login_screen.dart';
 import 'screen/home_screen.dart';
@@ -24,9 +28,7 @@ import 'screen/expense/expense_apply_screen.dart';
 import 'screen/expense/expense_history_screen.dart';
 import 'screen/expense/expense_request_screen.dart';
 import 'screen/utils/keyboard_dismiss.dart';
-import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,8 +42,104 @@ void main() async {
     ),
   );
   await Future.delayed(Duration(seconds: 2));
-  runApp(const MyApp());
+  runApp(const RootApp());
 }
+
+
+class RootApp extends StatefulWidget {
+  const RootApp({super.key});
+
+  @override
+  State<RootApp> createState() => _RootAppState();
+}
+
+class _RootAppState extends State<RootApp> {
+  bool _isDeveloperMode = false;
+  bool _checked = false;
+  late Timer _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSafety();
+
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _checkSafety();
+    });
+  }
+
+  Future<void> _checkSafety() async {
+    bool devMode = false;
+    try {
+      devMode = await SafeDevice.isDevelopmentModeEnable;
+    } on PlatformException {
+      devMode = false;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isDeveloperMode = devMode;
+        _checked = true;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_checked) {
+      return const MaterialApp(
+        home: Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    if (_isDeveloperMode) {
+      return const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.warning_amber_rounded, size: 90, color: Colors.red),
+                  SizedBox(height: 20),
+                  Text(
+                    "Access Denied",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 14),
+                  Text(
+                    "Developer Mode is enabled on this device.\n"
+                    "Please disable Developer Options to continue.",
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return const MyApp();
+  }
+}
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -50,7 +148,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
 
     return KeyboardVisibilityProvider( 
-      child: GlobalKeyboardDismiss(   
+    child: GlobalKeyboardDismiss(   
     child: ScreenUtilInit(
       designSize: const Size(360, 690),
       minTextAdapt: true,
@@ -100,10 +198,10 @@ class MyApp extends StatelessWidget {
           '/apply-expense': (context) => const ExpenseApplyScreen(), 
           '/expense-history': (context) => const ExpenseHistoryScreen(),
           '/expense-request': (context) => const ExpenseRequestScreen(),
-        },
-      );
-      },
-    ),
+             },
+           );
+          },
+        ),
       ),
     );
   }

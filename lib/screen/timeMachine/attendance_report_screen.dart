@@ -124,6 +124,7 @@ Widget build(BuildContext context) {
           ),
     ),
     elevation: 0,
+    forceMaterialTransparency: true,
     foregroundColor: Theme.of(context).brightness == Brightness.dark
         ? Colors.white
         : Colors.black87,
@@ -294,7 +295,7 @@ Widget build(BuildContext context) {
                           default:
                             label = '';
                         }
-                        return BarTooltipItem(label, const TextStyle(color: Colors.white));
+                        return BarTooltipItem(label, TextStyle(color: Colors.white));
                       },
                     ),
                   ),
@@ -328,7 +329,7 @@ Widget build(BuildContext context) {
                               value % 15 == 0 ? value.toInt().toString() : '',
                               style: const TextStyle(
                                 fontSize: 11,
-                                color: Colors.white,
+                                // color: Colors.white,
                               ),
                               textAlign: TextAlign.center,
                             );
