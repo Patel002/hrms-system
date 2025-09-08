@@ -16,6 +16,8 @@ class SwipFunction extends StatefulWidget {
 class _SwipFunctionState extends State<SwipFunction> with TickerProviderStateMixin {
 
   int _currentIndex = 0;
+  bool _isMenuOpen = false;
+
   late PageController _pageController;
 
   final List<String> sections = ['Profile', 'Bank Account','Documents','Salary','Letter'];
@@ -84,58 +86,88 @@ final Map<String, IconData> sectionIcons = {
           duration: const Duration(milliseconds: 400),
           curve: Curves.easeInOut,
           color: Theme.of(context).brightness == Brightness.light
-        ? Color(0xFFF2F5F8)
-        : Color(0xFF121212),
+              ? const Color(0xFFF2F5F8)
+              : const Color(0xFF121212),
           child: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
             centerTitle: false,
-            title: GestureDetector(
-              onTap: () {},   
-              child: PopupMenuButton<String>(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                onSelected: (String newValue) {
-                  final index = sections.indexOf(newValue);
-                  setState(() {
-                    _currentIndex = index;
-                  });
-                  _pageController.jumpToPage(index);
-                },
-                itemBuilder: (context) => sections.map((String section) {
-                  return PopupMenuItem<String>(
-                    value: section,
-                    child: Row(
+            title: PopupMenuButton<String>(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              onOpened: () {
+                setState(() => _isMenuOpen = true);
+              },
+              onCanceled: () {
+                setState(() => _isMenuOpen = false);
+              },
+              onSelected: (String newValue) {
+                final index = sections.indexOf(newValue);
+                setState(() {
+                  _currentIndex = index;
+                  _isMenuOpen = false;
+                });
+                _pageController.jumpToPage(index);
+              },
+              itemBuilder: (context) => sections.map((String section) {
+                return PopupMenuItem<String>(
+                  value: section,
+                  child: Row(
                     children: [
                       Icon(
                         sectionIcons[section] ?? Icons.circle,
                         color: Theme.of(context).iconTheme.color,
                       ),
                       const SizedBox(width: 10),
-                      Text(
-                        section,
-                        style: const TextStyle(fontSize: 16),
-                      ),
+                      Text(section, style: const TextStyle(fontSize: 16)),
                     ],
-                   ),     
-                  );
-                }).toList(),
-                offset: const Offset(0, kToolbarHeight),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
+                  ),
+                );
+              }).toList(),
+              offset: const Offset(0, kToolbarHeight),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Reddit-like title transition
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (Widget child, Animation<double> animation) {
+                      final offsetAnim = Tween<Offset>(
+                        begin: const Offset(0.2, 0),
+                        end: Offset.zero,
+                      ).animate(animation);
+
+                      return SlideTransition(
+                        position: offsetAnim,
+                        child: FadeTransition(
+                          opacity: animation,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Text(
                       sections[_currentIndex],
+                      key: ValueKey(_currentIndex),
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                         color: _currentIndex == 0
-                            ? const Color(0XFFBB2649)
+                            ? Colors.blue.shade800
                             : Theme.of(context).iconTheme.color,
                       ),
                     ),
-                     Icon(Icons.keyboard_arrow_down, color: Theme.of(context).iconTheme.color),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 4),
+                  // Arrow rotation
+                  AnimatedRotation(
+                    duration: const Duration(milliseconds: 250),
+                    turns: _isMenuOpen ? 0.5 : 0, // 0 = ▼, 0.5 = ▲
+                    curve: Curves.easeInOut,
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: Theme.of(context).iconTheme.color,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

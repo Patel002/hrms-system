@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import '../utils/user_session.dart';
 import '../utils/network_failure.dart';
+import '../helper/top_snackbar.dart';
 
 class UserInfo extends StatefulWidget {
   const UserInfo({super.key});
@@ -202,9 +203,8 @@ class _UserInfoState extends State<UserInfo> with SingleTickerProviderStateMixin
       //    }),
       //  );
 
+    /***********************************************************************/
 
-
-      
 
       //This method of update user info use when user have multiparted form/profile like image/video/documant along with text field like name,address,pin etc etc...
 
@@ -216,7 +216,6 @@ class _UserInfoState extends State<UserInfo> with SingleTickerProviderStateMixin
 
       request.fields['em_username'] = username ?? '';
       request.fields['first_name'] = firstname ?? '';
-      // request.fields['last_name'] = lastname ?? '';
       request.fields['em_email'] = email ?? '';
       request.fields['father_name'] = fathername ?? '';
       request.fields['em_address'] = address ?? '';
@@ -225,9 +224,9 @@ class _UserInfoState extends State<UserInfo> with SingleTickerProviderStateMixin
       request.fields['em_blood_group'] = bloodgroup ?? '';
       request.fields['pancard'] = pannumber ?? '';
       request.fields['em_birthday'] = dateOfBirth?.toIso8601String() ?? '';
-      request.fields['em_joining_date'] =
-          dateOfJoining?.toIso8601String() ?? '';
+      request.fields['em_joining_date'] = dateOfJoining?.toIso8601String() ?? '';
 
+      // request.fields['last_name'] = lastname ?? '';
       // if (_imageFile != null) {
       //   request.files.add(await http.MultipartFile.fromPath(
       //     'em_image',
@@ -241,7 +240,7 @@ class _UserInfoState extends State<UserInfo> with SingleTickerProviderStateMixin
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         debugPrint('User information updated successfully: $data');
-        _showCustomSnackBar(
+        showCustomSnackBar(
           context,
           'User information updated successfully',
           Colors.green,
@@ -255,7 +254,7 @@ class _UserInfoState extends State<UserInfo> with SingleTickerProviderStateMixin
         debugPrint('Failed to update user information: ${response.body}');
         final errorData = json.decode(response.body);
         String errorMessage = errorData['message'] ?? 'An error occurred';
-        _showCustomSnackBar(context, errorMessage, Colors.red, Icons.error);
+        showCustomSnackBar(context, errorMessage, Colors.red, Icons.error);
       }
     } catch (e) {
       debugPrint('Error updating user information: $e');
@@ -312,7 +311,7 @@ Future<void> updateUserPassword() async {
       debugPrint('Password updated successfully: $data');
       _currentPasswordController.clear();
       _newPasswordController.clear();
-      _showCustomSnackBar(
+      showCustomSnackBar(
         context,
         'Password updated successfully',
         Colors.green,
@@ -322,10 +321,10 @@ Future<void> updateUserPassword() async {
       debugPrint('Failed to update password: ${response.body}');
       final errorData = json.decode(response.body);
       String errorMessage = errorData['message'] ?? 'An error occurred';
-      _showCustomSnackBar(context, errorMessage, Colors.red, Icons.error);
+      showCustomSnackBar(context, errorMessage, Colors.red, Icons.error);
     }
   } catch (e) {
-    _showCustomSnackBar(context, e.toString(), Colors.red, Icons.error);
+    showCustomSnackBar(context, e.toString(), Colors.red, Icons.error);
   }finally {
     setState(() {
       isSubmitting = false;
@@ -346,38 +345,6 @@ Future<void> updateUserPassword() async {
     });
   }
 
-  void _showCustomSnackBar(
-    BuildContext context,
-    String message,
-    Color color,
-    IconData icon,
-  ) {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    scaffoldMessenger.clearSnackBars();
-
-    final snackBar = SnackBar(
-      content: Row(
-        children: [
-          Icon(icon, color: Colors.white),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ),
-        ],
-      ),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      margin: const EdgeInsets.all(16),
-      duration: const Duration(seconds: 3),
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  }
 
 @override
   void dispose() {
@@ -563,14 +530,7 @@ Future<void> updateUserPassword() async {
                         ),
                         const SizedBox(height: 12), 
 
-                        Text(
-                          'Contact Information',
-                          style: theme.textTheme.titleSmall
-                              ?.copyWith(
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
+                        _sectionTitle('Contact Information'),
 
                         const SizedBox(height: 8),
 
@@ -615,24 +575,10 @@ Future<void> updateUserPassword() async {
                         ),
                         const SizedBox(height: 12),
 
-                        Text(
-                          'Offical Details',
-                          style: theme.textTheme.titleSmall
-                              ?.copyWith(
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
+                       _sectionTitle('Offical Details'),
 
                         const SizedBox(height: 8),
-
-                        // _inlineEditableField(
-                        //   icon: Icons.attach_money,
-                        //   title: 'GST Number',
-                        //   value: gstnumber ?? '',
-                        //   onSaved: (value) => gstnumber = value,
-                        //   enabled: false
-                        // ),
+                        
                         _inlineEditableField(
                           icon: Icons.credit_score,
                           title: 'Aadhar Number',
@@ -703,14 +649,7 @@ Future<void> updateUserPassword() async {
                         ),
                         const SizedBox(height: 12),
 
-                        Text(
-                          'Password',
-                          style: theme.textTheme.titleSmall
-                              ?.copyWith(
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
+                        _sectionTitle('Change Password'),
 
                     const SizedBox(height: 16),
 

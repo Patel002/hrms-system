@@ -631,8 +631,8 @@ Widget build(BuildContext context) {
                     color: Colors.black12,
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Center(
-                    child: CircularProgressIndicator(),
+                  child: Center(
+                    child: CircularProgressIndicator(color: Theme.of(context).iconTheme.color,),
                   ),
                 );
               }
@@ -756,9 +756,9 @@ Widget build(BuildContext context) {
             ),
           ),
         ],
-      ): const Center(
+      ): Center(
           child: CircularProgressIndicator(
-            color: Colors.black87,
+            color: Theme.of(context).iconTheme.color,
           ),
       )
     );

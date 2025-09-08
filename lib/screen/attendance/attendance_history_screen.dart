@@ -651,7 +651,7 @@ Widget buildImageOrPlaceholder(String? image, BuildContext context) {
                   width: 80,
                   child: Center(
                     child: CircularProgressIndicator(
-                      color: Colors.black87,
+                      color: Theme.of(context).iconTheme.color,
                       value: loadingProgress.expectedTotalBytes != null
                           ? loadingProgress.cumulativeBytesLoaded /
                               (loadingProgress.expectedTotalBytes!)

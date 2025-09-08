@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.7.2
@@ -52,17 +52,27 @@ dependencies:
   syncfusion_flutter_xlsio: ^30.1.40
   syncfusion_flutter_pdfviewer: ^30.1.40
   month_picker_dialog: ^6.2.1
+  flutter_animate: ^4.5.2
   fl_chart: ^1.0.0
   flutter_custom_clippers: ^2.1.0
   photo_view: ^0.15.0
   curved_labeled_navigation_bar: ^2.0.6
   shimmer: ^3.0.0
-  toastification: ^3.0.3
+  top_snackbar_flutter: ^3.3.0
+  # fluttertoast: ^8.2.4
   open_filex: ^4.7.0  
   flutter_screenutil: ^5.9.3
   salomon_bottom_bar: ^3.3.2
   package_info_plus: ^8.3.0
   google_nav_bar: ^5.0.7
+  connectivity_plus: ^6.1.4
+  font_awesome_flutter: ^10.9.0
+  google_fonts: ^6.3.0
+  safe_device: ^1.3.5
+  screen_protector: ^1.4.2+1
+  audioplayers: ^6.1.0
+  flutter_keyboard_visibility: ^6.0.0
+
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -91,7 +101,6 @@ flutter_launcher_icons:
   remove_alpha_ios: true
 
  
-  
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -102,6 +111,7 @@ flutter:
     - .env
     - assets/icon/image.png
     - assets/icon/face-id.png
+    - assets/icon/drop.mp3
     - assets/image/image.png
     - assets/image/Animation.json
     - assets/image/Animation0.json
@@ -109,6 +119,8 @@ flutter:
     - assets/image/Animation4.json
     - assets/image/FaceId.json
     - assets/icon/user.json
+    - assets/icon/trash.json
+    - assets/image/error.json
 
 flutter_native_splash:
   color: "#FFFFFF"

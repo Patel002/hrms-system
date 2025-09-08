@@ -20,6 +20,7 @@ class _AttendanceReportPageState extends State<AttendanceReportPage> {
   final apiToken = dotenv.env['ACCESS_TOKEN'];
   List<dynamic> attendanceData = [];
   DateTime? selectedMonth;
+  // DateTime? joiningDate;
 
   @override
   void initState() {
@@ -32,53 +33,61 @@ class _AttendanceReportPageState extends State<AttendanceReportPage> {
     );
   }
 
-  Future<List<dynamic>> fetchAttendance({required DateTime fromDate, required DateTime toDate}) async {
+    Future<List<dynamic>> fetchAttendance({required DateTime fromDate, required DateTime toDate}) async {
 
-    final token = await UserSession.getToken();
+      final token = await UserSession.getToken();
 
-    if(token == null) {
-      Navigator.pushReplacementNamed(context, '/login');
-      return [];
-    }
-    
-    final empId = await UserSession.getUserId();
-
-    final fromDateStr = DateFormat('yyyy-MM-dd').format(fromDate);
-    final toDateStr = DateFormat('yyyy-MM-dd').format(toDate);
-
-
-    try {
-      final url = Uri.parse('$baseUrl/MyApis/attendancetherecords?emp_id=$empId&from_date=$fromDateStr&to_date=$toDateStr');
-
-      print('URL: $url');
-
-      final response = await http.get(url, 
-      headers: {
-        'Authorization': 'Bearer $apiToken',
-        'auth_token': token,
-        'user_id': empId!
-        });
-
-      print('Response Status: ${response.statusCode}');
-
-      await UserSession.checkInvalidAuthToken(
-        context,
-        json.decode(response.body),
-        response.statusCode,
-      );
-
-      if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        print('JSON Data: $jsonData[data_packet]');
-        return jsonData['data_packet'];
-      } else {
-        final error = json.decode(response.body);
-        throw Exception('Failed to load attendance data, status code: ${response.statusCode}, error: $error');
+      if(token == null) {
+        Navigator.pushReplacementNamed(context, '/login');
+        return [];
       }
-    } catch (e) {
-      throw Exception('Error: $e');
+      
+      final empId = await UserSession.getUserId();
+
+      final fromDateStr = DateFormat('yyyy-MM-dd').format(fromDate);
+      final toDateStr = DateFormat('yyyy-MM-dd').format(toDate);
+
+
+      try {
+        final url = Uri.parse('$baseUrl/MyApis/attendancetherecords?emp_id=$empId&from_date=$fromDateStr&to_date=$toDateStr');
+
+        print('URL: $url');
+
+        final response = await http.get(url, 
+        headers: {
+          'Authorization': 'Bearer $apiToken',
+          'auth_token': token,
+          'user_id': empId!
+          });
+
+        print('Response Status: ${response.statusCode}');
+
+        await UserSession.checkInvalidAuthToken(
+          context,
+          json.decode(response.body),
+          response.statusCode,
+        );
+
+        if (response.statusCode == 200) {
+          final jsonData = json.decode(response.body);
+          print('JSON Data: $jsonData[data_packet]');
+
+          //  final rawDate = jsonData['user_details']['em_joining_date'];
+          // if (rawDate != null && rawDate.toString().isNotEmpty) {
+          //   joiningDate = DateTime.parse(rawDate.replaceAll(" ", "T"));
+          //   print('Parsed Joining Date: $joiningDate');
+          //   print('Formatted Date: ${DateFormat('yyyy-MM-dd').format(joiningDate!)}');
+          // }
+
+          return jsonData['data_packet'];
+        } else {
+          final error = json.decode(response.body);
+          throw Exception('Failed to load attendance data, status code: ${response.statusCode}, error: $error');
+        }
+      } catch (e) {
+        throw Exception('Error: $e');
+      }
     }
-  }
 
   Map<DateTime, List<dynamic>> groupByMonth(List<dynamic> data) {
     Map<DateTime, List<dynamic>> grouped = {};
@@ -150,6 +159,8 @@ Widget build(BuildContext context) {
 
         selectedMonth ??= sortedMonths.first;
 
+        // final firstDate = DateTime(joiningDate!.year, joiningDate!.month);
+
         final records = groupedData[selectedMonth] ?? [];
 
         final totalPresent = records.where((r) => r['presabs'] == 'FP').length;
@@ -196,7 +207,7 @@ Widget build(BuildContext context) {
                       final selected = await showMonthPicker(
                         context: context,
                         initialDate: selectedMonth ?? DateTime.now(),
-                        firstDate: DateTime(2015),
+                        firstDate: DateTime(2020),
                         lastDate: DateTime.now(),
                         monthPickerDialogSettings: MonthPickerDialogSettings(
                           headerSettings: PickerHeaderSettings(

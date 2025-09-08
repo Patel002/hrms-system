@@ -6,7 +6,6 @@ import 'package:shimmer/shimmer.dart';
 import 'package:screen_protector/screen_protector.dart';
 import 'dart:convert';
 
-
 class AccountScreen extends StatefulWidget {
   const AccountScreen({Key? key}) : super(key: key);
 
@@ -40,7 +39,6 @@ class _AccountScreenState extends State<AccountScreen> {
   Future<void> _secure() async {
     await ScreenProtector.preventScreenshotOn();
   }
-
 
   Future<void> fetchBankAccountDetails() async {
 

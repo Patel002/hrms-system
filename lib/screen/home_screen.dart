@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
-import 'dart:convert';
 import 'package:http/http.dart' as http;  
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shimmer/shimmer.dart';
-import 'widgets/attendance_summary_screen.dart';
-import 'attendance/attendance_in_screen.dart';
-import 'attendance/attendance_out_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'utils/user_session.dart';
 import 'package:flutter/rendering.dart';
+import 'dart:convert';
 import '../screen/user/page_swip.dart';
+import 'utils/user_session.dart';
+import 'widgets/attendance_summary_screen.dart';
+import 'attendance/attendance_in_screen.dart';
+import 'attendance/attendance_out_screen.dart';
 import 'helper/top_snackbar.dart';
 
 class HomePage extends StatefulWidget {
@@ -71,7 +71,6 @@ class _HomePageState extends State<HomePage>  {
   bool _isBottomBarVisible = true;
 
 
-
   @override
 void initState() {
   super.initState();
@@ -88,7 +87,6 @@ void initState() {
       setState(() => _isBottomBarVisible = true);
     }
   });
-
 }
 
 
@@ -99,21 +97,20 @@ Future<void> _loadVersion() async {
   });
 }
 
-  String formatDuration(String rawDuration) {
-  try {
-    final parts = rawDuration.split(' ');
-    final hours = int.parse(parts[0].replaceAll('h', ''));
-    final minutes = int.parse(parts[1].replaceAll('m', ''));
+//   String formatDuration(String rawDuration) {
+//   try {
+//     final parts = rawDuration.split(' ');
+//     final hours = int.parse(parts[0].replaceAll('h', ''));
+//     final minutes = int.parse(parts[1].replaceAll('m', ''));
 
-    if (hours == 0 && minutes == 0) return '0 m';
-    if (hours == 0) return '$minutes m';
-    if (minutes == 0) return '$hours h';
-    return '$hours : $minutes h';
-  } catch (e) {
-    return rawDuration; 
-  }
-}
-
+//     if (hours == 0 && minutes == 0) return '0 m';
+//     if (hours == 0) return '$minutes m';
+//     if (minutes == 0) return '$hours h';
+//     return '$hours : $minutes h';
+//   } catch (e) {
+//     return rawDuration; 
+//   }
+// }
 
   String getTime(String? dateTime) {
     if (dateTime == null || dateTime.isEmpty) return '-';
@@ -132,6 +129,7 @@ Future<void> loadUserPermissions() async {
     Navigator.pushReplacementNamed(context, '/login');
     return;
    }
+
   final role = await UserSession.getRole();
   final name = await UserSession.getUserName();
   final emId = await UserSession.getUserId();
@@ -158,43 +156,33 @@ Future<void> loadUserPermissions() async {
     
   //  await fetchLeaveDurations();
 
-   await fetchPunchDurations(
-  fromDate: firstOfMonth(year: selectedYear, month: selectedMonth),
-  toDate: getToDate(selectedYear, selectedMonth),
-   );
+    await fetchPunchDurations(
+    fromDate: firstOfMonth(year: selectedYear, month: selectedMonth),
+    toDate: getToDate(selectedYear, selectedMonth));
 
   //  await fetchAttendanceSummary(fromDate: firstOfMonth(year: selectedYear, month: selectedMonth),toDate:lastOfMonth(year: selectedYear, month: selectedMonth));
   
-
     setState(() {
       isDataLoaded = true;    
     });
 }
 
-String formatWrkhrsToHM(String wrkhrs, {required bool isDecimalHours}) {
+String formatWrkhrsToHM(String wrkhrs) {
   wrkhrs = wrkhrs.trim();
   if (wrkhrs.isEmpty) return '0h 0m';
 
-  final val = double.tryParse(wrkhrs);
-  if (val == null) return '0h 0m';
+  final parts = wrkhrs.split('.');
+  final hours = int.tryParse(parts[0]) ?? 0;
+  int minutes = 0;
 
-  if (isDecimalHours) {
-    final hours = val.floor();
-    final minutes = ((val - hours) * 60).round();
-    return '${hours}h ${minutes}m';
-  } else {
-    final parts = wrkhrs.split('.');
-    final hours = int.tryParse(parts[0]) ?? 0;
-    int minutes = 0;
-    if (parts.length > 1) {
-      var minStr = parts[1];
-      if (minStr.length > 2) minStr = minStr.substring(0, 2);
-      if (minStr.length == 1) minStr = '${minStr}0';
-      minutes = int.tryParse(minStr) ?? 0;
-      if (minutes > 59) minutes = 59;
-    }
-    return '${hours}h ${minutes}m';
+  if (parts.length > 1) {
+    var minStr = parts[1];
+    if (minStr.length > 2) minStr = minStr.substring(0, 2);
+    if (minStr.length == 1) minStr = '${minStr}0'; 
+    minutes = int.tryParse(minStr) ?? 0;
+    if (minutes > 59) minutes = 59;
   }
+  return '${hours}h ${minutes}m';
 }
 
  DateTime getToDate(int year, int month) {
@@ -361,16 +349,15 @@ Future<void> fetchPunchDurations({required DateTime fromDate, required DateTime 
           absentDays = double.tryParse(summary['total_absent_days'].toString()) ?? 0;
           });
 
-        Map<DateTime, Map<String, dynamic>> tempDurations = {};
+          Map<DateTime, Map<String, dynamic>> tempDurations = {};
         
           for (var item in data) {
             DateTime date = DateTime.parse(item['date']);
-            String duration = formatWrkhrsToHM(item['wrkhrs'].toString(),isDecimalHours: true);
+            String duration = formatWrkhrsToHM(item['wrkhrs'].toString());
 
             String punchin = item['punchin_formatted']?.toString() ?? '';
 
             int weekoffs = int.tryParse(item['weekoffs'] ?? '0') ?? 0;
-
 
             // print('Weekoffs  item: ${item['weekoffs']} (${item['weekoffs'].runtimeType})');
 
@@ -386,7 +373,7 @@ Future<void> fetchPunchDurations({required DateTime fromDate, required DateTime 
             presabs != 'A' &&
             presabs != 'FP' &&
             (dayDetails == null || (dayDetails is Map && dayDetails.isEmpty))) {
-          continue;
+            continue;
         }
 
             DateTime key = DateTime(date.year, date.month, date.day);
@@ -498,11 +485,13 @@ Future<void> fetchPunchDurations({required DateTime fromDate, required DateTime 
       
       await Future.wait([
       // fetchLeaveDurations(),
-       fetchPunchDurations(
+      
+      fetchPunchDurations(
       fromDate: firstOfMonth(year: selectedYear, month: selectedMonth),
       toDate: getToDate(selectedYear, selectedMonth)),
 
       // fetchAttendanceSummary(fromDate: firstOfMonth(year: selectedYear, month: selectedMonth),toDate:   lastOfMonth(year: selectedYear, month: selectedMonth))
+
       ]);
       
       setState(() {
@@ -631,8 +620,8 @@ String _getEventLabel(String categoryKey) {
               ),
               const SizedBox(height: 20),
 
-              if (attendance != null && 
-              (attendance['presabs']?.toString().contains('FP') ?? false)) ...[
+              if (attendance != null &&
+              (attendance['presabs']?.toString().contains('P') ?? false)) ...[
                 Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -1473,6 +1462,9 @@ Widget buildLegendItem(Color color, String label) {
                   end: Alignment.bottomLeft,
                 ),
         ),
+         child: Column(
+        children: [
+          Expanded(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
         child: Column(
@@ -1807,31 +1799,49 @@ Widget buildLegendItem(Color color, String label) {
              ),
             ),
 
+          // Divider(thickness: 0.7, color: Colors.grey.shade300,indent: 25,
+          //   endIndent: 25),
+          // SizedBox(height: 6),
+           ],
+              ),
+            ),
+          ),
+
           Padding(
-            padding: const EdgeInsets.only(bottom: 25.0, top: 6.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Divider(thickness: 0.7, color: Colors.grey.shade300),
-                SizedBox(height: 6),
-                Text(
-                  'v$appVersion',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w400,
+          padding: const EdgeInsets.only(bottom: 25.0, left: 16.0, right: 16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.settings, size: 20, color: Colors.black54),
+                title: Text(
+                  "Settings",
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                ),
+                onTap: () {
+                  Navigator.pushNamed(context, '/settings');
+                },
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              ),
+
+                  Text(
+                    'v$appVersion',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w400,
                     ),
-                  ),// const SizedBox(height: 4),
+                  ),
                 ],
               ),
             ),
            ],
           ),
          ),
-        ),
-       );
+        );
       }
-     }
+    }
   
   class _InlineAppointmentDataSource extends CalendarDataSource {  
   _InlineAppointmentDataSource(List<Appointment> source) {

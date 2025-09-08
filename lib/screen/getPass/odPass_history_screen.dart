@@ -707,7 +707,7 @@ void initState() {
       print('OD-Pass ID: $id');
 
       final leaveDuration = calculateDuration(fromDate, toDate);
-      final int odType = leaveDuration <= 1.0 ? 1 : 2;
+      // final int odType = leaveDuration <= 1.0 ? 1 : 2;
 
       print('Leave Duration: $leaveDuration');
       print('base url: $baseUrl');

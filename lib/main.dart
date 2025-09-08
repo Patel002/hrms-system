@@ -5,6 +5,7 @@ import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:safe_device/safe_device.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screen/splash_screen.dart';
 import 'screen/login_screen.dart';
 import 'screen/home_screen.dart';
@@ -27,6 +28,7 @@ import 'screen/visit entry/visit_history_screen.dart';
 import 'screen/expense/expense_apply_screen.dart';
 import 'screen/expense/expense_history_screen.dart';
 import 'screen/expense/expense_request_screen.dart';
+import 'screen/settings/setting_screen.dart';
 import 'screen/utils/keyboard_dismiss.dart';
 import 'dart:async';
 
@@ -44,7 +46,6 @@ void main() async {
   await Future.delayed(Duration(seconds: 2));
   runApp(const RootApp());
 }
-
 
 class RootApp extends StatefulWidget {
   const RootApp({super.key});
@@ -141,8 +142,56 @@ class _RootAppState extends State<RootApp> {
 }
 
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+
+class _MyAppState extends State<MyApp> {
+
+  ThemeMode _themeMode = ThemeMode.system;
+
+  Future<void> _saveThemeMode(ThemeMode mode) async {
+  final prefs = await SharedPreferences.getInstance();
+  prefs.setString("themeMode", mode.toString());
+}
+
+Future<ThemeMode> _loadThemeMode() async {
+  final prefs = await SharedPreferences.getInstance();
+  final value = prefs.getString("themeMode");
+
+  switch (value) {
+    case "ThemeMode.light":
+      return ThemeMode.light;
+    case "ThemeMode.dark":
+      return ThemeMode.dark;
+    default:
+      return ThemeMode.system;
+  }
+}
+
+
+  @override
+  void initState() {
+    super.initState();
+    _loadThemeMode().then((mode) {
+      setState(() {
+        _themeMode = mode;
+      });
+    });
+  }
+
+  void _changeTheme(ThemeMode? mode) {
+  if (mode != null) {
+    setState(() {
+      _themeMode = mode;
+    });
+    _saveThemeMode(mode);
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -171,10 +220,11 @@ class MyApp extends StatelessWidget {
             primarySwatch: Colors.indigo,
             scaffoldBackgroundColor: Colors.black,
           ),
-        themeMode: ThemeMode.system,
+        // themeMode: ThemeMode.system,
         debugShowCheckedModeBanner: true,
         title: 'HuCap',
         initialRoute: '/',
+        themeMode: _themeMode, 
         routes: {
           '/': (context) => const SplashScreen(),
           '/login': (context) => const LoginScreen(),
@@ -198,6 +248,10 @@ class MyApp extends StatelessWidget {
           '/apply-expense': (context) => const ExpenseApplyScreen(), 
           '/expense-history': (context) => const ExpenseHistoryScreen(),
           '/expense-request': (context) => const ExpenseRequestScreen(),
+          '/settings': (context) => SettingScreen(
+                      themeMode: _themeMode,
+                      onThemeChanged: _changeTheme,
+                    ),
              },
            );
           },
